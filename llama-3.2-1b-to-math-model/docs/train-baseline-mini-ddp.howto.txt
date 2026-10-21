@@ -1,0 +1,16 @@
+# spark1
+cd ~/git/math-llm-sft-and-quantization/math-1b-sft-and-quantization
+# spark2
+cd ~/git/math-llm-sft-and-quantization/math-1b-sft-and-quantization
+# spark1
+./10-setup.sh
+# spark2
+./10-setup.sh
+# spark1
+export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=0
+# spark2
+export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=1
+# spark1
+INFRA=dgx-spark-2x ./14-baseline-train.sh mini ddp
+# spark2
+INFRA=dgx-spark-2x ./14-baseline-train.sh mini ddp

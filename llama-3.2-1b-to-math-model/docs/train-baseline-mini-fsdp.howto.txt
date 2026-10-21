@@ -1,0 +1,3 @@
+cd ~/git/math-llm-sft-and-quantization/math-1b-sft-and-quantization
+./10-setup.sh
+./14-baseline-train.sh mini fsdp

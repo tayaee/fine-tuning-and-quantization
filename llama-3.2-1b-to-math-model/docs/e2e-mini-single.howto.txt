@@ -1,0 +1,16 @@
+cd ~/git/math-llm-sft-and-quantization/math-1b-sft-and-quantization
+./10-setup.sh
+./14-baseline-train.sh mini single
+uv run 18-select-candidates.py --mode mini
+uv run 20-build-prompts.py --mode mini
+./22-generate.sh mini
+uv run 24-postprocess.py --mode mini
+./26-fft-train.sh mini single
+./28-qlora-train.sh mini single
+uv run 40-quant-awq.py --mode mini
+uv run 41-quant-fp8.py --mode mini
+./42-quant-gguf.sh mini
+uv run 43-quant-gptq.py --mode mini
+uv run 50-merge-lora.py --mode mini
+./51-eval.sh mini
+uv run 52-score.py --mode mini

@@ -1,0 +1,62 @@
+You are an expert at transforming general question-answer pairs into math-specific question-answer pairs. Follow the instructions below carefully to create a math-related question-answer pair based solely on the provided general question-answer pair.
+
+### Instructions
+#### Step 1: Analyze and Understand the General Question and Answer
+   - Objective: Thoroughly understand the context and structure of the provided general question-answer pair.
+   - Guidelines:
+     - Identify key elements (e.g., quantities, comparisons, scenarios) that can inspire a math-related transformation.
+     - Retain relevant real-world context while reframing the problem into a mathematical scenario.
+     - Ensure the transformed question-answer pair introduces mathematical reasoning, calculations, or logic.
+
+#### Step 2: Generate the Transformed Math Question
+   - Objective: Create a math-specific question by modifying the context of the general question into a mathematical problem.
+   - Guidelines:
+     - Integrate real-world relevance: Include quantities, proportions, or relationships that are implied or can be inferred from the general question.
+     - Ensure problem complexity is appropriate: The math problem should challenge logical reasoning or involve multiple steps if possible.
+     - Frame it clearly: The question should clearly present the scenario and what needs to be solved.
+
+#### Step 3: Generate the Transformed Math Answer
+   - Objective: Provide a mathematically accurate and concise answer to the transformed question.
+   - Guidelines:
+     - Show intermediate steps when applicable to improve clarity.
+     - Highlight the final answer clearly for ease of understanding
+
+### Example 1:
+- **General Question**: Given the sentence "A man with a beard playing an instrument." is it true that "The person has a beard."? Now, let's be accurate as possible. Some thinking first:
+- **General Answer**: Based on the given sentence, "A man with a beard playing an instrument," it is accurate to say that "The person has a beard." The original sentence describes a man who possesses a beard, and this man is engaged in an activity - playing an instrument. So, considering the provided information, we can confidently deduce that the person in question has a beard.
+
+- **Transformed Domain Question**: In a concert audience of 1,000 people, where 45% of attendees are male and 30% of the males have beards, what is the probability of randomly selecting a bearded man from the crowd?
+- **Transformed Domain Answer**: The probability of selecting a man is 45% of 1,000, which is 450 men. Of these, 30% have beards, equating to 0.3 * 450 = 135 bearded men. Therefore, the probability of randomly selecting a bearded man from the entire audience is 135 out of 1,000, which simplifies to 13.5%. Hence, the answer is 13.5%.
+The answer is: 13.5%
+
+### Example 2:
+- **General Question**: Acids have pH values below 7. The lower the pH value, the more strongly acidic the substance. Having read the above passage, choose the right answer to the following question (choices are higher or lower ): You can find tables that show the pH value of different fruits and vegetables. The fruits such as apples are barely acidic so they have a pH value that is higher or lower? A:
+- **General Answer**: higher
+
+- **Transformed Domain Question**: In a study of soil pH levels across various agricultural zones, it's noted that some zones are more acidic due to the types of crops grown there. If Zone A has an average soil pH of 5.7 and is noted for its apple orchards, which are known for requiring slightly acidic soil, calculate the comparative pH difference percentage between Zone A and Zone B, where Zone B has a soil pH of 6.8, suitable for less acidic crop requirements.
+- **Transformed Domain Answer**: To find the comparative pH difference percentage between Zone A and Zone B, we first determine the absolute difference in their pH levels, which is 
+6.8 - 5.7 = 1.1. Next, we calculate the percentage difference relative to Zone B's pH level, as it has the higher pH. The percentage difference is calculated as 
+(1.1 / 6.8) × 100% ≈ 16.18%. Hence, the soil in Zone A is approximately 16.18% more acidic compared to Zone B.
+The answer is: 16.18%
+
+### Example 3:
+- **General Question**: Detailed Instructions: In this task, you are given a sentence in the Hindi language and your task is to convert it into the English language. In translation, keep numbers as it is and make it sentence case (capitalize only the first word of each sentence and noun). Problem:हालांकि, प्रथम विश्व युद्ध के मद्देनजर ओटोमन और रूसी साम्राज्यों के पतन के कारण आर्मेनियाई-अज़रबैजानी युद्ध हुआ। Solution:
+- **General Answer**: However, the Armenian-Azerbaijani war took place due to the fall of the Ottoman and Russian empires in the context of World War I.
+
+- **Transformed Domain Question**: Given the geopolitical tension in the region described, if the fall of the Ottoman and Russian empires led to the redistribution of their controlled territories among other nations, assume these territories were divided into 10 new countries with varying sizes. The largest new country occupies 30% of the total territory once held by these empires. If the total land previously controlled by the Ottoman and Russian empires was 2,000,000 square kilometers, calculate the area of the largest new country in square kilometers.
+- **Transformed Domain Answer**: To determine the area of the largest new country, we need to calculate 30% of the total land previously controlled by the Ottoman and Russian empires. The total land area is given as 2,000,000 square kilometers. 
+
+The calculation is as follows:
+\[ \text{{Area of the largest new country}} = 30\% \times 2,000,000 \text{{ km}}^2 \]
+\[ \text{{Area of the largest new country}} = 0.3 \times 2,000,000 \text{{ km}}^2 \]
+\[ \text{{Area of the largest new country}} = 600,000 \text{{ km}}^2 \]
+
+Therefore, the area of the largest new country formed from the territories of the Ottoman and Russian empires is 600,000 square kilometers.
+The answer is: 600,000 km²
+
+### Example 4:
+- **General Question**: {dg_instruct}
+- **General Answer**: {dg_output}
+
+- **Transformed Domain Question**: 
+- **Transformed Domain Answer**: 

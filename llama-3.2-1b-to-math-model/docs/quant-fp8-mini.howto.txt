@@ -1,0 +1,8 @@
+cd ~/git/math-llm-sft-and-quantization/math-1b-sft-and-quantization
+./10-setup.sh
+uv run 18-select-candidates.py --mode mini
+uv run 20-build-prompts.py --mode mini
+./22-generate.sh mini
+uv run 24-postprocess.py --mode mini
+./26-fft-train.sh mini single
+uv run 41-quant-fp8.py --mode mini

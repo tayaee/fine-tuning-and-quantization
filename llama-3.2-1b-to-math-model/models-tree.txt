@@ -1,0 +1,183 @@
+# models-tree.txt — {mini,full} x {single,ddp,fsdp} 전체 모델 계보 (검토용, 미실행).
+# Notes_1.md 앞부분(현재 mini-single만) 확장판. [NN] = 생성 스크립트 번호.
+# (U) = HF 업로드 대상 (58-upload-hf.sh), => 뒤는 HF repo명.
+#
+# 설계 결정 (검토 포인트):
+# 1. 데이터셋은 모드 공용 (synthetic-{m}.jsonl). 전략별 비교의 전제라 나누지 않음.
+#    "its own 데이터"는 모드 단위이며, 모델만 콤보별 독립이다.
+# 2. 로컬명: 기존 ...-{m}-single 패턴 그대로, single→ddp/fsdp 치환.
+# 3. single HF repo명은 기존 그대로 동결 (이미 업로드됨, 예: ...-math-fft-mini).
+#    full은 무표기 (canonical): ...-math-fft  (mini 등 특수 케이스만 -mini 부착).
+#    ddp/fsdp는 -{s} 삽입: {slug}-math-{target}-{s} (full),
+#    {slug}-math-{target}-{s}-mini (mini).
+#    (대안: {slug}-math-{s}-{target}[-{m}] — 확정 전 결정 필요).
+#    로컬 디렉토리명은 -full- 유지 (디스크 공존용, 변경 없음).
+# 4. base-gsm8k (12 대조용) / qlora 미병합 어댑터는 업로드 안 함 (현행 유지).
+# 5. slug = Llama-3.2-1B (BASE_MODEL=unsloth/Llama-3.2-1B 기준, 74 SLUG 규칙).
+#
+# 학습 대상이 아닌 외부 모델 (트리 본문 앞에 명시):
+# - teacher: meta-llama/Llama-3.1-8B-Instruct (TEACHER_MODEL)
+#   22-teacher가 vLLM으로 합성 풀이 생성 (증류). 학습·평가·채점에 직접 쓰이지 않음.
+# - embedding: sentence-transformers/all-mpnet-base-v2 (EMB_MODEL)
+#   18-select-candidates가 Alpaca+GSM8K 임베딩 후 유사도 선별. 가중치는 학습 안 함.
+# - judge 모델은 없음. 54-score는 정규식 숫자 추출 룰베이스 (모델 호출 없음).
+# 6. 합계: 로컬 디렉토리 72개(콤보당 12) / HF repo 120개(콤보당 20, single 40개는 기존).
+# 7. 개조 완료: 32 SRC/OUT, 40~43·50~53 SRC/OUT(DST),
+#    48-measure-ppl.py + 50-eval.py + 72 gguf_file() + 58-upload-hf.py TARGETS/GQUANTS +
+#    50-eval.sh target_model() + 52-eval-gguf.sh gguf_file() + 60-serve-vllm.sh SUF/REPO +
+#    run-*.sh 하류 게이트. STRAT는 env(기본 single), run은 .inc 경유 export로 전달.
+#    12-compare는 비교용이라 현행 유지. eval/ppl 출력은 eval-{m}-{s}/, ppl-{m}-{s}/ 로 한정.
+
+unsloth/Llama-3.2-1B (BASE_MODEL)
+  mini
+    single
+      베이스라인 base-gsm8k-mini-single [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-mini-single [30] (U) => tayaee/Llama-3.2-1B-math-fft-mini
+        awq synthetic-fft-mini-single-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq-mini
+        fp8 synthetic-fft-mini-single-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8-mini
+        gguf synthetic-fft-mini-single-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k-mini (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m-mini (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m-mini (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m-mini (model-q3_k_m.gguf)
+        gptq synthetic-fft-mini-single-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq-mini
+      QLoRA 어댑터 synthetic-qlora-mini-single [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-mini-single-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora-mini
+          awq synthetic-qlora-mini-single-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq-mini
+          fp8 synthetic-qlora-mini-single-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8-mini
+          gguf synthetic-qlora-mini-single-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k-mini (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m-mini (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m-mini (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m-mini (model-q3_k_m.gguf)
+          gptq synthetic-qlora-mini-single-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq-mini
+    ddp
+      베이스라인 base-gsm8k-mini-ddp [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-mini-ddp [30] (U) => tayaee/Llama-3.2-1B-math-fft-ddp-mini
+        awq synthetic-fft-mini-ddp-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq-ddp-mini
+        fp8 synthetic-fft-mini-ddp-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8-ddp-mini
+        gguf synthetic-fft-mini-ddp-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-ddp-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0-ddp-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k-ddp-mini (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m-ddp-mini (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m-ddp-mini (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m-ddp-mini (model-q3_k_m.gguf)
+        gptq synthetic-fft-mini-ddp-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq-ddp-mini
+      QLoRA 어댑터 synthetic-qlora-mini-ddp [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-mini-ddp-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora-ddp-mini
+          awq synthetic-qlora-mini-ddp-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq-ddp-mini
+          fp8 synthetic-qlora-mini-ddp-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8-ddp-mini
+          gguf synthetic-qlora-mini-ddp-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-ddp-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0-ddp-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k-ddp-mini (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m-ddp-mini (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m-ddp-mini (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m-ddp-mini (model-q3_k_m.gguf)
+          gptq synthetic-qlora-mini-ddp-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq-ddp-mini
+    fsdp
+      베이스라인 base-gsm8k-mini-fsdp [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-mini-fsdp [30] (U) => tayaee/Llama-3.2-1B-math-fft-fsdp-mini
+        awq synthetic-fft-mini-fsdp-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq-fsdp-mini
+        fp8 synthetic-fft-mini-fsdp-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8-fsdp-mini
+        gguf synthetic-fft-mini-fsdp-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-fsdp-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0-fsdp-mini (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k-fsdp-mini (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m-fsdp-mini (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m-fsdp-mini (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m-fsdp-mini (model-q3_k_m.gguf)
+        gptq synthetic-fft-mini-fsdp-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq-fsdp-mini
+      QLoRA 어댑터 synthetic-qlora-mini-fsdp [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-mini-fsdp-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora-fsdp-mini
+          awq synthetic-qlora-mini-fsdp-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq-fsdp-mini
+          fp8 synthetic-qlora-mini-fsdp-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8-fsdp-mini
+          gguf synthetic-qlora-mini-fsdp-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-fsdp-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0-fsdp-mini (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k-fsdp-mini (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m-fsdp-mini (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m-fsdp-mini (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m-fsdp-mini (model-q3_k_m.gguf)
+          gptq synthetic-qlora-mini-fsdp-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq-fsdp-mini
+  full
+    single
+      베이스라인 base-gsm8k-full-single [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-full-single [30] (U) => tayaee/Llama-3.2-1B-math-fft
+        awq synthetic-fft-full-single-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq
+        fp8 synthetic-fft-full-single-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8
+        gguf synthetic-fft-full-single-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0 (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m (model-q3_k_m.gguf)
+        gptq synthetic-fft-full-single-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq
+      QLoRA 어댑터 synthetic-qlora-full-single [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-full-single-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora
+          awq synthetic-qlora-full-single-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq
+          fp8 synthetic-qlora-full-single-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8
+          gguf synthetic-qlora-full-single-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0 (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m (model-q3_k_m.gguf)
+          gptq synthetic-qlora-full-single-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq
+    ddp
+      베이스라인 base-gsm8k-full-ddp [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-full-ddp [30] (U) => tayaee/Llama-3.2-1B-math-fft-ddp
+        awq synthetic-fft-full-ddp-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq-ddp
+        fp8 synthetic-fft-full-ddp-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8-ddp
+        gguf synthetic-fft-full-ddp-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-ddp (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0-ddp (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k-ddp (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m-ddp (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m-ddp (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m-ddp (model-q3_k_m.gguf)
+        gptq synthetic-fft-full-ddp-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq-ddp
+      QLoRA 어댑터 synthetic-qlora-full-ddp [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-full-ddp-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora-ddp
+          awq synthetic-qlora-full-ddp-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq-ddp
+          fp8 synthetic-qlora-full-ddp-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8-ddp
+          gguf synthetic-qlora-full-ddp-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-ddp (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0-ddp (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k-ddp (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m-ddp (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m-ddp (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m-ddp (model-q3_k_m.gguf)
+          gptq synthetic-qlora-full-ddp-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq-ddp
+    fsdp
+      베이스라인 base-gsm8k-full-fsdp [10] (12 대조용, 미업로드)
+      FFT synthetic-fft-full-fsdp [30] (U) => tayaee/Llama-3.2-1B-math-fft-fsdp
+        awq synthetic-fft-full-fsdp-awq [40] (U) => tayaee/Llama-3.2-1B-math-fft-awq-fsdp
+        fp8 synthetic-fft-full-fsdp-fp8 [41] (U) => tayaee/Llama-3.2-1B-math-fft-fp8-fsdp
+        gguf synthetic-fft-full-fsdp-gguf/ [42] (U)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-fsdp (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q8_0-fsdp (model-q8_0.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q6_k-fsdp (model-q6_k.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q5_k_m-fsdp (model-q5_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q4_k_m-fsdp (model-q4_k_m.gguf)
+          => tayaee/Llama-3.2-1B-math-fft-gguf-q3_k_m-fsdp (model-q3_k_m.gguf)
+        gptq synthetic-fft-full-fsdp-gptq [43] (U) => tayaee/Llama-3.2-1B-math-fft-gptq-fsdp
+      QLoRA 어댑터 synthetic-qlora-full-fsdp [31] (미업로드, 병합 전)
+        병합 synthetic-qlora-full-fsdp-merged [32] (U) => tayaee/Llama-3.2-1B-math-qlora-fsdp
+          awq synthetic-qlora-full-fsdp-merged-awq [50] (U) => tayaee/Llama-3.2-1B-math-qlora-awq-fsdp
+          fp8 synthetic-qlora-full-fsdp-merged-fp8 [51] (U) => tayaee/Llama-3.2-1B-math-qlora-fp8-fsdp
+          gguf synthetic-qlora-full-fsdp-merged-gguf/ [52] (U)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-fsdp (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0-fsdp (model-q8_0.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k-fsdp (model-q6_k.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q5_k_m-fsdp (model-q5_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q4_k_m-fsdp (model-q4_k_m.gguf)
+            => tayaee/Llama-3.2-1B-math-qlora-gguf-q3_k_m-fsdp (model-q3_k_m.gguf)
+          gptq synthetic-qlora-full-fsdp-merged-gptq [53] (U) => tayaee/Llama-3.2-1B-math-qlora-gptq-fsdp

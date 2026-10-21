@@ -1,0 +1,45 @@
+[project]
+name = "math-1b-sft-and-quantization"
+version = "0.1.0"
+description = "math-1b-sft-and-quantization SFT/quant/eval training environment (DGX Spark, aarch64 + cu130)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # 핵심 학습 스택 (양 노드 검증된 버전으로 고정, 2026-10-11)
+    # torch CUDA 백엔드는 env UV_TORCH_BACKEND=cu130으로 선택 (uv 네이티브 지원)
+    "torch==2.13.0",
+    "torchvision==0.28.0",
+    "transformers==5.14.1",
+    "trl==1.8.0",
+    "peft==0.19.1",
+    "bitsandbytes==0.49.1",  # QLoRA 4bit (31-qlora). root lock과 동일, aarch64 휠 실측.
+    "accelerate==1.13.0",
+    "datasets==4.8.4",
+    "huggingface_hub==1.33.0",
+    # 양자화·서빙·평가
+    "vllm==0.31.0",
+    "gptqmodel==7.5.0",
+    "optimum==2.3.0",
+    "sentence-transformers==6.1.0",
+    "scikit-learn==1.9.0",
+    "hf-transfer==0.1.9",
+    "openai==3.29.0",
+    # 리포팅 2종 (wandb+trackio).
+    # trackio는 axolotl 핀(==0.19.0, hub>=1과 파손) 회피로 ==0.42.0 고정.
+    # axolotl이 이 프로젝트에 없으므로 override 불필요.
+    "trackio==0.42.0",
+    "wandb==0.28.2",
+    # torchaudio는 의도적 제외 (vLLM warmup에 불필요, 10-setup에서 제거 유지)
+]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
+
+# NOTE: llmcompressor는 여기서 설치하지 않는다. PyPI 0.14.0이 accelerate 핀으로
+# resolver를 깨뜨리므로 10-setup.sh에서 --no-deps로 별도 설치한다.
+# NOTE: compressed-tensors도 여기서 핀하지 않는다. vllm==0.31.0은 ==0.17.0을 요구하지만
+# llmcompressor==0.14.0은 ==0.19.0을 요구한다. 10-setup.sh에서 llmcompressor 설치 직후
+# 0.19.0을 명시 설치한다 (live 검증 조합).
+# NOTE: UV_TORCH_BACKEND=cu130이 env에 있어야 cu130 휠로 해석된다.

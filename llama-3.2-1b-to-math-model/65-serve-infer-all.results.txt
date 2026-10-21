@@ -1,0 +1,287 @@
+파이프라인 연습
+                                                          Records   Build  InstructScore   CorrectScore
+    logs/62.tayaee__llama-3.2-1b-math-fft.log             9466      1h44m  5   5   5   5   x   o   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-awq.log         9466+256  0h3m   5   5   5   0   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-fp8.log         9466+256  0h1m   5   5   4   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-gguf.log        9466      0h2m   5   5   5   5   x   o   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-gptq.log        9466+256  0h2m   0   5   5   0
+
+    logs/62.tayaee__llama-3.2-1b-math-fft-mini.log        62        0h3m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-awq-mini.log    62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-fp8-mini.log    62+32     0h1m   5   0   3   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-gguf-mini.log   62        0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-gptq-mini.log   62+32     0h2m   5   0   0   0
+
+    logs/62.tayaee__llama-3.2-1b-math-qlora.log           9466      2h25m  5   5   4   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-awq.log       9466+256  0h3m   0   0   5   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-fp8.log       9466+256  0h1m   5   5   5   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gguf.log      9466      0h2m   5   5   5   0   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gptq.log      9466+256  0h2m   5   5   5   5   x   x   x   x
+
+    logs/62.tayaee__llama-3.2-1b-math-qlora-mini.log      62        0h5m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-awq-mini.log  62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-fp8-mini.log  62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gguf-mini.log 62        0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gptq-mini.log 62+32     0h2m   4   0   0   0
+
+1B 파인튜닝 계획
+
+    어디까지 가능한가
+        순수 SFT(지도 학습)만으로는 1B 모델에 데이터를 아무리 쏟아부어도 GSM8K 해결에 명확한 한계가 오지만
+        RL(강화학습)과 장문 CoT(Test-Time Compute)를 결합하면 1B 모델로도 80~85% 이상의 높은 정답률을 달성할 수 있습니다
+
+    1B급 모델 중 GSM8K 최강자
+        Qwen2.5-Math-1.5B
+            수식, 코드, 논문텍스트 수조 개의 토큰으로 학습한 모델
+            CoT 기준 84~85%
+            코드 실행 결합 시 88%
+        DeepSeek-R1-Distill-Qwen-1.5B
+            수만개의 단계별 검증 데이터 사용하여 학습한 모델
+            88 ~ 89%
+
+    어느 수학 베이스 모델에서 시작하면 좋을까
+        Qwen2.5-Math-1.5B
+        DeepSeek-R1-Distill-Qwen-1.5B
+
+    최상 품질 1B 수학 모델 만들려면 데이터 얼마나 준비해야 할까
+        SFT용
+            고품질 다단계 CoT 증류 데이터 50k ~ 100k 필요
+            답만 포함시키면 100% 오답만 낸다. CoT 필요함.
+        Verifiable RL용
+            문제 + 정답 규칙 (rule-based verifier) 20k ~ 50k 필요
+        TIR (Tool-integrated) 병행 시
+            Python 코드 포함 데이터 30k ~ 50k 필요
+            코드 실행하여 값을 가져오게 튜닝하면 20~30%p 정답률 상승 가능하다.
+
+7B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Qwen2.5-Math-7B
+        Llama-3.1-8B-Base
+
+    학습 데이터 필요량
+        SFT용 최소 10k ~ 20k개 CoT 데이터 준비, 권장 50k ~ 100k개 CoT 데이터 학습
+        1B와 달리 7B에서는 권장량 주입 시 일반화가 일어난다
+
+    예상 학습 시간
+        FFT FSDP
+            DGX Spark 노드 1  28~36GB
+            DGX Spark 노드 2  28~36GB
+            학습 시간 1h10m ~ 1h30m (10k, 3 epochs, seq_len 2k)
+        FFT DDP
+            DGX Spark 노드 1  55~65GB
+            DGX Spark 노드 2  55~65GB
+            학습 시간 1h ~ 1h15m
+        QLoRA
+            DGX Spark 노드 1  8~12GB
+            학습 시간 1h40m ~ 2h
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm
+        AWQ (W4A16) for vllm
+        GGUF (Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math 문제 CoT 데이터를 최소 20k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        fsdp (bf16)으로 학습
+        bf16 으로 배포
+        vllm 으로 추론
+
+13B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Qwen2.5-14B-Base
+        DeepSeek-R1-Distill-Qwen-14B
+
+    학습 데이터 필요량
+        SFT용 최소 20k ~ 30k개 CoT 데이터 준비, 권장 50k ~ 100k개 CoT 데이터 학습
+        파라미터 용량이 충분해 CoT 다단계 추론 논리와 MATH 응용 문제 일반화 가능
+
+    예상 학습 시간
+        FFT FSDP (FULL_SHARD) [권장]
+            DGX Spark 노드 1  52~68GB
+            DGX Spark 노드 2  52~68GB
+            학습 시간 2h10m ~ 2h45m (10k, 3 epochs, seq_len 2k) / 약 11h ~ 14h (50k)
+        FFT DDP [비권장 - OOM 위험]
+            DGX Spark 노드 1  110~125GB
+            DGX Spark 노드 2  110~125GB
+            학습 시간 2h ~ 2h20m (10k)
+        QLoRA
+            DGX Spark 노드 1  14~18GB
+            학습 시간 3h ~ 3h40m (10k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [품질 손실 <0.5%, 서빙 VRAM 14~16GB]
+        AWQ (W4A16) for vllm [서빙 VRAM 8~10GB]
+        GGUF (Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math 문제 CoT 데이터를 최소 20k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        fsdp (bf16)으로 학습
+        bf16 으로 배포
+        vllm 으로 추론
+
+27B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Gemma-2-27B-Base
+        Qwen3.6-27B-Base
+
+    학습 데이터 필요량
+        SFT용 최소 30k ~ 50k개 CoT 데이터 준비, 권장 100k개 이상
+        고난도 다단계 정리 증명(MATH Level 4-5) 및 자체 오류 검증 능력 획득
+
+    예상 학습 시간
+        FFT FSDP (FULL_SHARD) [불가 - OOM]
+            정적 메모리만 노드당 160GB+ 필요하여 2x 노드 메모리(256GB) 초과
+            (CPU Offloading 시 구동 가능하나 통신 병목으로 비추천)
+        FFT DDP [불가]
+            단일 DGX Spark 노드 128GB에 적재 불가
+        QLoRA (r=64, alpha=128, NF4 + FSDP) [권장], FFT 대비 95%~98% 정확도 보존 예상됨.
+            DGX Spark 노드 1  28~38GB
+            DGX Spark 노드 2  28~38GB
+            학습 시간 6h ~ 8h (10k, 3 epochs, seq_len 2k) / 약 32h ~ 40h (50k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [BF16 대비 품질 손실 <0.1%, 서빙 VRAM 28~32GB]
+        AWQ (W4A16) for vllm [서빙 VRAM 16~18GB, 단일 노드 고속 서빙 최적]
+        GGUF (Q4_K_M ~ Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math + numinamath CoT 데이터를 최소 30k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        qlora-fsdp (nf4/bf16 mixed)로 학습
+        lora weight 병합 후 fp8 변환 배포
+        vllm 으로 추론
+
+30B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Qwen2.5-Math-32B
+        Muse Glimmer (30B) / R1-Distill-32B
+
+    학습 데이터 필요량
+        SFT용 최소 30k ~ 50k개 CoT 데이터 준비, 권장 100k개 이상
+        고난도 다단계 정리 증명(MATH Level 4-5) 및 자체 오류 검증 능력 획득
+
+    예상 학습 시간
+        FFT FSDP (FULL_SHARD) [불가 - OOM]
+            정적 메모리만 노드당 180GB+ 필요하여 2x 노드 메모리(256GB) 초과
+            (CPU Offloading 시 구동 가능하나 통신 병목으로 비추천)
+        FFT DDP [불가]
+            단일 DGX Spark 노드 128GB에 적재 불가
+        QLoRA (r=64, alpha=128, NF4 + FSDP) [권장], FFT 대비 95%~98% 정확도 보존 예상됨.
+            DGX Spark 노드 1  32~42GB
+            DGX Spark 노드 2  32~42GB
+            학습 시간 7h ~ 9h (10k, 3 epochs, seq_len 2k) / 약 36h ~ 45h (50k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [BF16 대비 품질 손실 <0.1%, 서빙 VRAM 32~36GB]
+        AWQ (W4A16) for vllm [서빙 VRAM 18~20GB, 단일 노드 고속 서빙 최적]
+        GGUF (Q4_K_M ~ Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math + numinamath CoT 데이터를 최소 30k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        qlora-fsdp (nf4/bf16 mixed)로 학습
+        lora weight 병합 후 fp8 변환 배포
+        vllm 으로 추론
+
+70B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Qwen2.5-72B-Base / Qwen2.5-Math-72B-Base
+        DeepSeek-R1-Distill-Llama-70B
+        Llama-3.3-70B-Instruct / Llama-3.1-70B-Base
+
+    학습 데이터 필요량
+        SFT용 최소 30k ~ 50k개 CoT 데이터 준비, 권장 100k개 이상
+        프론티어급 수학/정리 증명(Olympiad/AIME 수준) 및 복합 코드-수학 통합 추론 능력 발현
+
+    예상 학습 시간 (DGX Spark 2x 기준)
+        FFT FSDP (FULL_SHARD) [불가 - OOM]
+            정적 메모리만 노드당 420GB+ 필요하여 2x 노드 메모리(256GB) 극단적 초과
+        FFT DDP [불가]
+            단일 DGX Spark 노드 128GB에 적재 불가
+        QLoRA (r=64, alpha=128, NF4 + FSDP) [유일한 실행 가능 옵션], FFT 대비 97%+ 정확도 보존
+            DGX Spark 노드 1  55~75GB
+            DGX Spark 노드 2  55~75GB
+            학습 시간 16h ~ 22h (10k, 3 epochs, seq_len 2k) / 약 80h ~ 110h (약 3.5~4.5일, 50k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [서빙 VRAM 72~78GB, 2-Node 분산 서빙 권장(TP=2)]
+        AWQ (W4A16) for vllm [서빙 VRAM 38~42GB, 단일 DGX Spark 노드 128GB 내 단독 고속 서빙 가능]
+        GGUF (Q4_K_M) for llama.cpp [단일 노드 CPU+GPU 통합 메모리 직접 구동]
+
+    베이스라인 학습
+        gsm8k + math + numinamath + aime CoT 데이터를 최소 30k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        qlora-fsdp (nf4/bf16 mixed, double quant 활성화)로 학습
+        lora weight 병합 후 awq 또는 fp8 변환 배포
+        vllm 으로 추론
+
+100B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Command R+ (104B Dense)
+        Llama-3-120B (frankenmerge Dense)
+
+    학습 데이터 필요량
+        SFT용 최소 30k ~ 50k개 CoT 데이터 준비, 권장 100k개 이상
+        다단계 논문급 정리 증명, 복합 에이전틱 CoT 및 다중 도메인 수학 통합 추론
+
+    예상 학습 시간 (DGX Spark 2x 기준)
+        FFT FSDP (FULL_SHARD) [불가 - OOM]
+            정적 메모리만 노드당 300GB+ 필요하여 2x 노드 메모리(256GB) 극단적 초과
+        FFT DDP [불가]
+            단일 DGX Spark 노드 128GB에 적재 불가
+        QLoRA (r=64, alpha=128, NF4 + FSDP) [턱걸이 가능 - OOM 위험 주의]
+            DGX Spark 노드 1  110~125GB (Dense 100B 기준, 128GB 한계선 근접)
+            DGX Spark 노드 2  110~125GB
+            학습 시간 24h ~ 32h (10k, 3 epochs, seq_len 2k) / 약 120h ~ 160h (약 5~6.5일, 50k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [서빙 VRAM 105~115GB, 2-Node 분산 서빙 필수(TP=2)]
+        AWQ (W4A16) for vllm [서빙 VRAM 55~65GB, 2-Node 분산 서빙 권장]
+        GGUF (Q4_K_M) for llama.cpp [노드당 분산 구동]
+
+    베이스라인 학습
+        gsm8k + math + numinamath + olympiad CoT 데이터를 최소 30k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        qlora-fsdp (nf4/bf16 mixed, double quant 필수, per_device_bs=1)로 학습
+        lora weight 병합 후 fp8 또는 awq 변환 배포
+        vllm 으로 추론 (TP=2 분산 엔드포인트)
+
+140B 파인튜닝 계획
+
+    어느 베이스 수학 모델에서 시작하면 좋을까
+        Mixtral-8x22B-v0.1 / Mixtral-8x22B-Instruct (총 141B / 활성 39B MoE) [최우선 권장]
+        DeepSeek-V2-Lite 파생 초대형 MoE
+
+    학습 데이터 필요량
+        SFT용 최소 30k ~ 50k개 CoT 데이터 준비, 권장 100k개 이상
+        다단계 논문급 정리 증명, 복합 에이전틱 CoT 및 다중 도메인 수학 통합 추론
+
+    예상 학습 시간 (DGX Spark 2x 기준)
+        FFT FSDP (FULL_SHARD) [불가 - OOM]
+            정적 메모리만 840GB+ 필요하여 2x 노드 메모리(256GB) 극단적 초과
+        FFT DDP [불가]
+            단일 DGX Spark 노드 128GB에 적재 불가
+        QLoRA (r=64, alpha=128, NF4 + FSDP) [유일한 실행 가능 옵션], FFT 대비 97%+ 정확도 보존
+            DGX Spark 노드 1  85~105GB (141B MoE 기준: 활성 39B로 활성화 메모리 절감)
+            DGX Spark 노드 2  85~105GB
+            학습 시간 32h ~ 42h (10k, 3 epochs, seq_len 2k) / 약 160h ~ 210h (약 7~9일, 50k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [서빙 VRAM 140~150GB, 2-Node 분산 서빙 필수(TP=2)]
+        AWQ (W4A16) for vllm [서빙 VRAM 75~85GB, 2-Node 분산 서빙(TP=2) 권장]
+        GGUF (Q4_K_M) for llama.cpp [노드당 분산 구동]
+
+    베이스라인 학습
+        gsm8k + math + numinamath + olympiad CoT 데이터를 최소 30k 권장 50k를 준비하여
+        dgx spark 2x 에서
+        qlora-fsdp (nf4/bf16 mixed, double quant 필수)로 학습
+        lora weight 병합 후 fp8 또는 awq 변환 배포
+        vllm 으로 추론 (TP=2 분산 엔드포인트)
