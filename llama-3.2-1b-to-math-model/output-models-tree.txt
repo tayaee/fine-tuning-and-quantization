@@ -1,4 +1,4 @@
-# models-tree.txt — {mini,full} x {single,ddp,fsdp} 전체 모델 계보 (검토용, 미실행).
+# output-models-tree.txt — {mini,full} x {single,ddp,fsdp} 전체 모델 계보 (검토용, 미실행).
 # Notes_1.md 앞부분(현재 mini-single만) 확장판. [NN] = 생성 스크립트 번호.
 # (U) = HF 업로드 대상 (58-upload-hf.sh), => 뒤는 HF repo명.
 #

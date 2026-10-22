@@ -73,7 +73,7 @@ case "$TARGET" in
 esac
 
 # HF repo명 규칙은 58-upload-hf.py repo_name()과 동일 (single 동결, full 무표기).
-# models-tree.txt 설계 결정 3 참조.
+# output-models-tree.txt 설계 결정 3 참조.
 MODEL_SLUG="${BASE_MODEL##*/}"
 REPO="tayaee/${MODEL_SLUG}-math-${TARGET}"
 [ "$STRAT" != single ] && REPO="$REPO-$STRAT"

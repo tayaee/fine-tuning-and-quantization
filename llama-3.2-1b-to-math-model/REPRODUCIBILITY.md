@@ -65,5 +65,5 @@ diff <(uv pip freeze | sort) <(grep -v '^#' requirements-frozen.txt)
 ## 6. 의도적 비고정 (재현에 영향 없음)
 
 - `GPU_UTIL` (60-serve 기본 `0.5`): 환경 VRAM 여유에 따른 실행 튜닝. 가중치 불변.
-- `PORT/SOURCE/QTYPE/STRAT/PROFILE`: 실행 방법 선택. 산출물 경로 규칙은 `models-tree.txt`.
+- `PORT/SOURCE/QTYPE/STRAT/PROFILE`: 실행 방법 선택. 산출물 경로 규칙은 `output-models-tree.txt`.
 - `REPORT_TO/wandb/trackio`: 로깅 sink. `train-time-log.md`에만 영향.

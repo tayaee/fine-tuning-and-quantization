@@ -49,7 +49,7 @@ TARGETS = {
 }
 
 
-# HF repo명 규칙 (models-tree.txt 설계 결정 3):
+# HF repo명 규칙 (output-models-tree.txt 설계 결정 3):
 # single 동결 ({slug}-math-{target}-{m}, full이면 -{m} 생략),
 # ddp/fsdp는 -{s} 삽입, full은 무표기.
 def repo_name(target: str, strat: str, mode: str) -> str:
