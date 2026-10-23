@@ -25,15 +25,14 @@ rq_repro_echo
 
 case "$TARGET" in
   base)        SUF="raon-bf16"; QUANT="" ;;
-  awq-w5)      SUF="raon-awq-w5-$MODE"; QUANT="gptq" ;;
-  awq-w3)      SUF="raon-awq-w3-$MODE"; QUANT="gptq" ;;
+  awq-w5)      SUF="raon-awq-w5-$MODE"; QUANT="compressed-tensors" ;;
+  awq-w3)      SUF="raon-awq-w3-$MODE"; QUANT="compressed-tensors" ;;
   nvfp4-awq)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors" ;;
   nvfp4-gptq)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors" ;;
   *) echo "target: base|nvfp4-awq|nvfp4-gptq|awq-w5|awq-w3" >&2; exit 1 ;;
 esac
 
 REPO="tayaee/${BASE_MODEL##*/}-${TARGET}"
-[ "$MODE" = smoke ] && REPO="$REPO-smoke"
 [ "$MODE" = smoke ] && REPO="$REPO-smoke"
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$RQ_MODELS/$SUF"; fi
 

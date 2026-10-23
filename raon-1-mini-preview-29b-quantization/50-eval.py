@@ -13,7 +13,7 @@ import os
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 ALL_TARGETS = ["base", "awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
 QUANT_OF = {"nvfp4-awq": "compressed-tensors",
-            "nvfp4-gptq": "compressed-tensors", "awq-w5": "gptq", "awq-w3": "gptq"}
+            "nvfp4-gptq": "compressed-tensors", "awq-w5": "compressed-tensors", "awq-w3": "compressed-tensors"}
 
 
 def resolve(target: str, mode: str) -> str:

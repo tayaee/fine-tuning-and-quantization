@@ -14,7 +14,7 @@ target_model() {
 }
 rq_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=$VLLM_GPU_MEM_UTIL"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
-for t in $TARGETS; do
+for t in $(echo "$TARGETS" | tr ',' ' '); do
   [ "$t" = all ] && { uv run "$RQ_ROOT/50-eval.py" --mode "$MODE" --target all --n "$N" --tp "$TP"; break; }
   out="$RQ_OUTPUTS/eval-$MODE/$t.jsonl"
   m="$(target_model "$t")"
