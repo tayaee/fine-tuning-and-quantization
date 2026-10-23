@@ -8,11 +8,12 @@
 #   PIPELINE_TEST=1 ./run-smoke.sh       # 빠른 점검 (양자화 제외)
 #   SKIP_SETUP=1 ./run-smoke.sh         # 10-setup 생략
 #   STEPS=setup,calib,compat ./run-smoke.sh  # 일부 스텝만
-# 스텝명: setup calib compat validate dequant quant ppl eval (기본 STEPS=all)
-# TARGETS: 양자화 타깃 부분집합 (콤마 구분, 기본 all)
+# 스텝명: setup calib compat validate dequant quant ppl eval prep (기본 STEPS=all)
+# TARGETS: 양자화 타깃 부분집합 (콤마 구분, 기본 all). PPL/eval/prep/upload은 base를 앞에 붙여 측정한다.
 #   예: TARGETS=awq-w3,awq-w5 STEPS=quant ./run-smoke.sh   # spark1 분담
 #       TARGETS=nvfp4-awq,nvfp4-gptq STEPS=quant ./run-smoke.sh  # spark2 분담
 # 2노드 smoke/full 모두 같은 분할을 쓴다 (dequant는 공유 1회, PPL/eval은 전 타깃 모인 뒤 1곳에서).
+# QUANT_CPU_ONLY=1 ./run-smoke.sh  # 양자화 단계만 GPU를 가리고 PPL/eval은 GPU 사용.
 set -euo pipefail
 source "$(dirname "$0")/run-smoke.inc"
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
@@ -63,34 +64,48 @@ want_step dequant && rq_step "30-dequant" ./30-dequant-mxfp8.sh "$MODE"
 if want_step validate; then
   rq_step "validate-helps" bash -c '
     for s in 30-dequant-mxfp8 32-quant-awq-w5 33-quant-awq-w3 35-quant-nvfp4-awq 36-quant-nvfp4-gptq \
-             48-measure-ppl 50-eval 54-score 58-upload-hf; do
+             48-measure-ppl 50-eval 54-score 56-prep-upload 58-upload-hf; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in 48-measure-ppl 50-eval 54-score 58-upload-hf 60-serve-vllm 62-infer-examples; do
+    for s in 48-measure-ppl 50-eval 54-score 56-prep-upload 58-upload-hf 60-serve-vllm 62-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
     done
-    echo "validate OK (15 scripts)"' "$ROOT"
+    echo "validate OK (17 scripts)"' "$ROOT"
+fi
+
+# TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
+_targets="${TARGETS:-all}"
+case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
+# base(30-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
+_eval_targets="base,$_targets"
+
+# 양자화만 CPU 강제(QUANT_CPU_ONLY=1): env로 자식 프로세스에만 빈 값을 넘겨
+# 48-ppl/50-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
+if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then
+  _quant_cmd=(env CUDA_VISIBLE_DEVICES=)
+  rq_log "QUANT_CPU_ONLY=1 — 양자화 단계만 GPU 숨김, PPL/eval은 GPU 사용"
+else
+  _quant_cmd=(env)
 fi
 
 if want_step quant; then
-  _targets="${TARGETS:-all}"
-  case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
   for _t in $(echo "$_targets" | tr ',' ' '); do
     case "$_t" in
-      awq-w3) rq_step "33-awq-w3" ./33-quant-awq-w3.sh "$MODE" ;;
-      awq-w5) rq_step "32-awq-w5" ./32-quant-awq-w5.sh "$MODE" ;;
-      nvfp4-awq) rq_step "35-nvfp4-awq" ./35-quant-nvfp4-awq.sh "$MODE" ;;
-      nvfp4-gptq) rq_step "36-nvfp4-gptq" ./36-quant-nvfp4-gptq.sh "$MODE" ;;
+      awq-w3) rq_step "33-awq-w3" "${_quant_cmd[@]}" ./33-quant-awq-w3.sh "$MODE" ;;
+      awq-w5) rq_step "32-awq-w5" "${_quant_cmd[@]}" ./32-quant-awq-w5.sh "$MODE" ;;
+      nvfp4-awq) rq_step "35-nvfp4-awq" "${_quant_cmd[@]}" ./35-quant-nvfp4-awq.sh "$MODE" ;;
+      nvfp4-gptq) rq_step "36-nvfp4-gptq" "${_quant_cmd[@]}" ./36-quant-nvfp4-gptq.sh "$MODE" ;;
       *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
     esac
   done
 fi
 
-want_step ppl && rq_step "48-ppl" ./48-measure-ppl.sh "$MODE"
+want_step ppl && rq_step "48-ppl" ./48-measure-ppl.sh "$MODE" "$_eval_targets"
 if want_step eval; then
-  rq_step "50-eval" ./50-eval.sh "$MODE"
+  rq_step "50-eval" ./50-eval.sh "$MODE" "$_eval_targets"
   rq_step "54-score" ./54-score.sh "$MODE"
 fi
+want_step prep && rq_step "56-prep" ./56-prep-upload.sh "$MODE" "$_targets"
 
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---

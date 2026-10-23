@@ -23,15 +23,21 @@ uv run hf auth login
 RQ_AWQ_FIRST=0 ./33-quant-awq-w3.sh smoke   # custom_arch AWQ 실패 시 pure-GPTQ 폴백
 RQ_TARGETS=all ./36-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 
-# 4. PPL (일부 타깃만)
+# 4. PPL (일부 타깃만 — 타겟마다 별도 프로세스, 마지막에 캐시 집계)
 ./48-measure-ppl.sh smoke
 ./48-measure-ppl.sh smoke nvfp4-gptq,nvfp4-awq
 
-# 5. eval + score
+# 5. eval + score (백엔드: auto = vLLM → 커스텀 아키텍처 미지원 시 transformers)
 ./50-eval.sh smoke nvfp4-gptq
 ./54-score.sh smoke
+RQ_EVAL_BACKEND=transformers ./50-eval.sh smoke nvfp4-gptq
 
-# 6. 업로드·서빙 (full만 업로드)
+# 6. 모델카드 (업로드 전 — README.md 생성 + 디렉터리 검증)
+./56-prep-upload.sh smoke
+./56-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
+
+# 7. 업로드·서빙 (full만 업로드, 56-prep 산출물이 있어야 함)
+DRY_RUN=1 ./58-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증
 ./58-upload-hf.sh full
 ./60-serve-vllm.sh smoke nvfp4-gptq  # 터미널1
 ./62-infer-examples.sh 3             # 터미널2
@@ -40,6 +46,7 @@ RQ_TARGETS=all ./36-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 # 원샷
 ./run-smoke.sh
 SKIP_SETUP=1 STEPS=quant,ppl ./run-smoke.sh
+QUANT_CPU_ONLY=1 ./run-smoke.sh      # 양자화만 CPU 강제, PPL/eval은 GPU
 ./run-full.sh
 
 # 2노드 분산 (smoke/full 동일 분할, dequant 공유·PPL/eval은 1곳)
