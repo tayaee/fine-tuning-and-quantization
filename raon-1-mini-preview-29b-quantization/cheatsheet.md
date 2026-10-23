@@ -41,6 +41,12 @@ RQ_TARGETS=all ./36-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 ./run-smoke.sh
 SKIP_SETUP=1 STEPS=quant,ppl ./run-smoke.sh
 ./run-full.sh
+
+# 2노드 분산 (smoke/full 동일 분할, dequant 공유·PPL/eval은 1곳)
+TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-smoke.sh  # spark1
+TARGETS=nvfp4-awq,nvfp4-gptq STEPS=dequant,quant ./run-smoke.sh  # spark2
+STEPS=ppl,eval ./run-smoke.sh  # 전 타깃 모인 뒤 1곳에서
+# full도 동일: MODE만 full (run-full.sh + 같은 TARGETS/STEPS)
 ```
 
 env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./60-serve-vllm.sh smoke nvfp4-gptq`

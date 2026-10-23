@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # run-full.sh — full 전 파이프라인 원샷 (calib 256·seq 2048, 밤샘 권장).
 # NOTE: 28.8B MoE NVFP4-GPTQ/AWQ가 가장 오래 걸린다. 공식 KRAFTON NVFP4와 PPL 비교 권장.
+# TARGETS: 양자화 타깃 부분집합 (콤마 구분, 기본 all) — 2노드 분산용.
+#   예: TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-full.sh        # spark1 분담
+#       TARGETS=nvfp4-awq,nvfp4-gptq STEPS=dequant,quant ./run-full.sh  # spark2 분담
+#   smoke와 동일한 TARGETS 분할을 쓴다 (dequant 공유 1회, PPL/eval은 전 타깃 모인 뒤 1곳에서).
 # 제외: 58-upload-hf, 60-serve, 62-infer, 64-serve-infer-all → 맨 아래 주석 명령으로 개별 실행.
 set -euo pipefail
 source "$(dirname "$0")/run-full.inc"
@@ -43,10 +47,17 @@ want_step compat && rq_step "20-compat" ./20-compat-check.sh "$MODE"
 want_step dequant && rq_step "30-dequant" ./30-dequant-mxfp8.sh "$MODE"
 
 if want_step quant; then
-  rq_step "33-awq-w3" ./33-quant-awq-w3.sh "$MODE"
-  rq_step "32-awq-w5" ./32-quant-awq-w5.sh "$MODE"
-  rq_step "35-nvfp4-awq" ./35-quant-nvfp4-awq.sh "$MODE"
-  rq_step "36-nvfp4-gptq" ./36-quant-nvfp4-gptq.sh "$MODE"
+  _targets="${TARGETS:-all}"
+  case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
+  for _t in $(echo "$_targets" | tr ',' ' '); do
+    case "$_t" in
+      awq-w3) rq_step "33-awq-w3" ./33-quant-awq-w3.sh "$MODE" ;;
+      awq-w5) rq_step "32-awq-w5" ./32-quant-awq-w5.sh "$MODE" ;;
+      nvfp4-awq) rq_step "35-nvfp4-awq" ./35-quant-nvfp4-awq.sh "$MODE" ;;
+      nvfp4-gptq) rq_step "36-nvfp4-gptq" ./36-quant-nvfp4-gptq.sh "$MODE" ;;
+      *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
+    esac
+  done
 fi
 
 want_step ppl && rq_step "48-ppl" ./48-measure-ppl.sh "$MODE"

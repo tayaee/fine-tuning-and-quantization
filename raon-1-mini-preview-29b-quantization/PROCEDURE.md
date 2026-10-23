@@ -31,6 +31,7 @@
 | SEQ_LEN | 512 | 2048 |
 | EVAL_N / PPL_N | 8 / 8 | 200 / 32 |
 | 실행순 | awq-w3 → awq-w5 → nvfp4-awq → nvfp4-gptq (알파벳순) | 동일 (밤샘 권장) |
+| 2노드 분할 | `TARGETS=awq-w3,awq-w5` (spark1) + `TARGETS=nvfp4-awq,nvfp4-gptq` (spark2), `STEPS=dequant,quant`로 양쪽 실행 후 1곳에서 `STEPS=ppl,eval` | 동일 분할 (`MODE=full`) |
 
 ## 30B 경로와의 관계 (65 결과 파일 기준)
 
