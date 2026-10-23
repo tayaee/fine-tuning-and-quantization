@@ -8,6 +8,7 @@ sys.path에 들어오므로 plain `import quant_common`으로 로드된다.
 
 import json
 import os
+from typing import NamedTuple
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 DEFAULT_CALIB_FILE = f"{SHARED}/datasets/raon-calibration-8.jsonl"
@@ -59,6 +60,132 @@ def resolve_targets() -> list[str]:
     return [which]  # custom 패턴 직접 지정
 
 TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+
+
+class _PackedContract(NamedTuple):
+    """압축 포맷별 on-disk 텐서 계약 (compressed_tensors 컴프레서 기준)."""
+
+    packed_dtype: str  # weight_packed safetensors dtype 문자열
+    scale_dtype: str | None  # weight_scale dtype (None = 제약 없음)
+    needs_global_scale: bool  # weight_global_scale(F32) 필수 여부
+    forbid_zero_point: bool  # weight_zero_point 잔존 금지 (대칭 전용 포맷)
+
+
+PACK_QUANTIZED = "pack-quantized"
+NVFP4_PACK_QUANTIZED = "nvfp4-pack-quantized"
+CUSTOM_CODE_FILES = ("configuration_raon1_mini.py", "modeling_raon1_mini.py")
+
+# nvfp4: U8 패킹 + F8_E4M3 블록 스케일 + F32 전역 스케일, 대칭 전용.
+# pack-quantized(int): num_bits개를 I32에 몰아넣음, 대칭 여부는 레시피가 정한다.
+PACKED_CONTRACTS: dict[str, _PackedContract] = {
+    PACK_QUANTIZED: _PackedContract("I32", None, False, False),
+    NVFP4_PACK_QUANTIZED: _PackedContract("U8", "F8_E4M3", True, True),
+}
+
+
+def _scan_shard_dtypes(model_dir) -> tuple[dict[str, set[str]], dict[str, int], int]:
+    """모든 .safetensors 헤더를 스캔해 텐서명 접미사 → dtype 집합/개수, shard 수 반환.
+    텐서 데이터는 읽지 않고 헤더만 본다(수십 GB 체크포인트를 훑지 않기 위함)."""
+    from pathlib import Path
+
+    from safetensors import safe_open
+
+    shards = sorted(Path(model_dir).glob("*.safetensors"))
+    if not shards:
+        raise RuntimeError(f"{model_dir}: .safetensors 없음 — 압축 체크포인트 아님")
+    dtypes: dict[str, set[str]] = {}
+    counts: dict[str, int] = {}
+    for shard in shards:
+        with safe_open(shard, framework="pt") as f:
+            # safetensors safe_open은 순회 불가 → keys()로 텐서명 나열
+            for name in f.keys():  # noqa: SIM118
+                suffix = name.rsplit(".", 1)[-1]  # layer.weight_packed → weight_packed
+                dtypes.setdefault(suffix, set()).add(str(f.get_slice(name).get_dtype()))
+                counts[suffix] = counts.get(suffix, 0) + 1
+    return dtypes, counts, len(shards)
+
+
+def _weights_symmetric(qc: dict) -> bool:
+    """config_groups 전체가 대칭 가중치 양자화인지 (QuantizationArgs 기본값 True).
+    하나라도 weights.symmetric=False면 비대칭(zero_point 정상 잔존)."""
+    groups = qc.get("config_groups") or {}
+    for scheme in groups.values():
+        for one in scheme if isinstance(scheme, list) else [scheme]:
+            if not isinstance(one, dict):
+                continue
+            weights = one.get("weights")
+            if isinstance(weights, dict) and not weights.get("symmetric", True):
+                return False
+    return True
+
+
+def verify_compressed_output(model_dir, expected_format: str) -> dict:
+    """저장 직후(commit_dir 전) 압축 포맷 계약을 검증한다. 실패 시 RuntimeError.
+
+    llmcompressor oneshot은 커스텀 모듈에서 can_compress=False면 에러 없이
+    DenseCompressor("format": "dense")로 폴백한다. 그 결과 미패킹 59GB BF16
+    체크포인트가 정상 산출물로 커밋되고, 나중에 vLLM 로드/정확도 단계에서야 드러난다.
+    그래서 config.json의 format과 safetensors 헤더의 텐서 계약(패킹 dtype,
+    scale dtype, global scale, zero_point 잔존)을 여기서 강제한다.
+
+    반환값: {"format", "packed", "shards"}
+    """
+    from pathlib import Path
+
+    model_dir = Path(model_dir)
+    contract = PACKED_CONTRACTS.get(expected_format)
+    if contract is None:
+        raise RuntimeError(f"unknown expected_format={expected_format!r}")
+
+    cfg_path = model_dir / "config.json"
+    if not cfg_path.is_file():
+        raise RuntimeError(f"{model_dir}: config.json 없음 — 압축 산출물 아님")
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"{cfg_path}: config.json 파싱 실패: {e}") from e
+    qc = cfg.get("quantization_config")
+    if not isinstance(qc, dict):
+        # 압축 미적용(폴백) 실패 계약이라 TypeError가 아닌 RuntimeError를 던진다
+        raise RuntimeError(f"{cfg_path}: quantization_config 없음 — 양자화가 적용되지 않음")  # noqa: TRY004
+    fmt = qc.get("format")
+    if fmt != expected_format:
+        raise RuntimeError(
+            f"quantization_config.format={fmt!r} != 기대값 {expected_format!r}"
+            " — compressor가 can_compress=False로 dense 폴백했을 가능성"
+        )
+
+    dtypes, counts, n_shards = _scan_shard_dtypes(model_dir)
+    packed = dtypes.get("weight_packed")
+    if not packed:
+        raise RuntimeError(f"{model_dir}: weight_packed 텐서 없음 — 패킹되지 않은 dense 체크포인트")
+    if packed != {contract.packed_dtype}:
+        raise RuntimeError(
+            f"weight_packed dtype={sorted(packed)} != [{contract.packed_dtype}] — 포맷 {fmt!r} 불일치"
+        )
+    scale = dtypes.get("weight_scale")
+    if not scale:
+        raise RuntimeError(f"{model_dir}: weight_scale 텐서 없음 — 역양자화 불가")
+    if contract.scale_dtype and scale != {contract.scale_dtype}:
+        raise RuntimeError(f"weight_scale dtype={sorted(scale)} != [{contract.scale_dtype}]")
+    if contract.needs_global_scale:
+        gscale = dtypes.get("weight_global_scale")
+        if not gscale:
+            raise RuntimeError(f"{model_dir}: weight_global_scale 텐서 없음 — {fmt}는 F32 전역 스케일 필수")
+        if gscale != {"F32"}:
+            raise RuntimeError(f"weight_global_scale dtype={sorted(gscale)} != [F32]")
+    if contract.forbid_zero_point and "weight_zero_point" in dtypes:
+        raise RuntimeError(f"{model_dir}: weight_zero_point 잔존 — {fmt}는 대칭 전용 (vLLM 로드 불가)")
+    if _weights_symmetric(qc) and "weight_zero_point" in dtypes:
+        raise RuntimeError(f"{model_dir}: 대칭 양자화인데 weight_zero_point 잔존 (vLLM 로드 불가)")
+
+    missing = [name for name in CUSTOM_CODE_FILES if not (model_dir / name).is_file()]
+    if missing:
+        raise RuntimeError(f"{model_dir}: custom code 누락 {missing} — trust_remote_code 재로드 불가")
+
+    info = {"format": fmt, "packed": counts.get("weight_packed", 0), "shards": n_shards}
+    print(f"verify_compressed_output OK {model_dir} {info}")
+    return info
 
 
 def save_custom_code(out_dir: str, src_dir: str | None = None) -> None:

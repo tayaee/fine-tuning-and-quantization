@@ -12,11 +12,13 @@ import os
 from io_common import clean_tmp, commit_dir, tmp_path
 from quant_common import (
     DEFAULT_IGNORE,
+    PACK_QUANTIZED,
     allow_trusted_remote_code,
     build_awq_smoothing,
     load_calib_texts,
     resolve_targets,
     save_custom_code,
+    verify_compressed_output,
 )
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
@@ -72,6 +74,9 @@ def main(mode: str, calib: int, calib_file: str | None, seq_len: int):
             )
             AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True, revision=BASE_REVISION).save_pretrained(tmp)
             save_custom_code(tmp, SRC)
+            # compressor가 can_compress=False로 dense 폴백하면 미패킹 BF16가 그대로
+            # 커밋된다 → commit_dir 전에 포맷 계약 검증으로 조기 실패시킨다.
+            verify_compressed_output(tmp, PACK_QUANTIZED)
             commit_dir(tmp, out)
             print(f"[{mode}] {TARGET} calib={calib} seq={seq_len} -> {out}")
             return
