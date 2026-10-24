@@ -212,11 +212,43 @@ def save_custom_code(out_dir: str, src_dir: str | None = None) -> None:
         print("WARN: no *.py in source — custom_arch reload may fail")
 
 
+def patch_unified_memory_info() -> None:
+    """GB10(128GB 통합 메모리, is_integrated=1)에서 OS 페이지 캐시(buff/cache) 때문에
+    cudaMemGetInfo의 free가 수 GB로 낮게 보고되는 문제를 보정한다.
+    실제 CUDA 할당 시 커널이 페이지 캐시를 즉시 회수하므로 MemAvailable을 반영한다.
+    """
+    try:
+        import psutil
+        import torch
+
+        if not torch.cuda.is_available():
+            return
+        if not getattr(torch.cuda.get_device_properties(0), "is_integrated", 0):
+            return
+        _orig = getattr(torch.cuda, "_orig_mem_get_info", None) or torch.cuda.mem_get_info
+        torch.cuda._orig_mem_get_info = _orig  # type: ignore[attr-defined]
+
+        def _unified_mem_get_info(device=None):
+            free, total = _orig(device)
+            avail = int(psutil.virtual_memory().available)
+            return (max(free, avail), total)
+
+        torch.cuda.mem_get_info = _unified_mem_get_info
+        if hasattr(torch, "accelerator"):
+            if hasattr(torch.accelerator, "memory"):
+                torch.accelerator.memory.get_memory_info = _unified_mem_get_info
+            if hasattr(torch.accelerator, "get_memory_info"):
+                torch.accelerator.get_memory_info = _unified_mem_get_info
+    except (ImportError, RuntimeError):  # pragma: no cover - CPU 전용 환경
+        return
+
+
 def allow_trusted_remote_code() -> None:
     """llmcompressor 내부 AutoConfig 호출(trust 미전파) 우회.
     pinned revision 코드를 직접 검토했으므로 trust=None만 True로 해결
     (명시적 False는 유지). transformers configuration_auto 경유 전제.
     """
+    patch_unified_memory_info()
     try:
         import transformers.models.auto.configuration_auto as caa
     except ImportError:
@@ -225,14 +257,14 @@ def allow_trusted_remote_code() -> None:
         raise SystemExit(
             "transformers API changed: no resolve_trust_remote_code in configuration_auto"
         )
-    _orig = caa.resolve_trust_remote_code
+    _orig = caa.resolve_trust_remote_code  # pyright: ignore[reportPrivateImportUsage]
 
     def _resolve(trust_remote_code, *args, **kwargs):
         if trust_remote_code is None:
             return True
         return _orig(trust_remote_code, *args, **kwargs)
 
-    caa.resolve_trust_remote_code = _resolve
+    caa.resolve_trust_remote_code = _resolve  # pyright: ignore[reportPrivateImportUsage]
     print("trust_remote_code: None->True (pinned revision, reviewed)")
 
 

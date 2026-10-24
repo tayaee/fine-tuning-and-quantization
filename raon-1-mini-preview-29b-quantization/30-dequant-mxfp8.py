@@ -295,6 +295,9 @@ def main():
     from compressed_tensors.entrypoints.convert import convert_checkpoint
     from huggingface_hub import snapshot_download
 
+    from quant_common import patch_unified_memory_info
+
+    patch_unified_memory_info()
     snap = snapshot_download(
         repo_id=BASE_MODEL,
         revision=BASE_REVISION,
