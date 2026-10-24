@@ -144,7 +144,7 @@ def _make_mxfp8_dequantizer_cls():
 
 
 class _LazyMXFP8Dequantizer:
-    """`MXFP8BlockDequantizer` 이름 접근 시에만 실제 클래스를 만든다(지연 import)."""
+    """`MXFP8BlockDequantizer` 호출/속성 접근 시에만 실제 클래스를 만든다(지연 import)."""
 
     _cls = None
 

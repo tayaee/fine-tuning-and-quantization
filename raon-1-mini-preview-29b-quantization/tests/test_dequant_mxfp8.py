@@ -20,12 +20,13 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest  # pyright: ignore[reportMissingImports] — venv pytest(설치됨)
 import torch
 from safetensors.torch import save_file
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from tests._compat import pytest, run_standalone
 
 EXPERT_KEY = "model.layers.1.moe.experts.0.gate_proj.weight"
 
@@ -224,8 +225,11 @@ def _vendor_snapshot() -> Path:
     from huggingface_hub import constants as hf_constants
 
     rev = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
-    base = Path(hf_constants.HF_HUB_CACHE) / "models--KRAFTON--Raon-1-mini-preview" / "snapshots" / rev
-    return base if (base / "modeling_raon1_mini.py").is_file() else Path("")
+    for hub_root in (Path(hf_constants.HF_HUB_CACHE), Path(deq.SHARED) / "hf-cache" / "hub"):
+        cand = hub_root / "models--KRAFTON--Raon-1-mini-preview" / "snapshots" / rev
+        if (cand / "modeling_raon1_mini.py").is_file():
+            return cand
+    return Path("")
 
 
 def test_vendor_model_experts_become_plain_linear():
@@ -369,19 +373,7 @@ def test_verify_dequantized_bf16_rejects_missing_modeling():
 
 
 def _main() -> int:
-    failed = []
-    for name, fn in sorted(globals().items()):
-        if not name.startswith("test_") or not callable(fn):
-            continue
-        try:
-            fn()
-        except Exception as e:  # noqa: BLE001 — 단독 러너는 실패 목록만 보고
-            failed.append((name, e))
-            print(f"FAIL {name}: {type(e).__name__}: {e}")
-        else:
-            print(f"PASS {name}")
-    print(f"\n{len(failed)} failed")
-    return 1 if failed else 0
+    return run_standalone(globals())
 
 
 if __name__ == "__main__":

@@ -51,7 +51,9 @@ else
   echo "FAIL: 단위 테스트 실패"; grep -E '^(FAIL|Traceback)' /tmp/verify-issue-2.log || true; fail=1
 fi
 
-# 4. 30-dequant-mxfp8.sh은 영향 없음 (bash -n)
+# 4. 30-dequant-mxfp8.sh은 shim 유무까지 확인하고 문법 검사 통과
+grep -q 'return nn.Linear(in_features, out_features, bias=False)' "$ROOT/30-dequant-mxfp8.sh" \
+  || { echo "FAIL: 30-dequant-mxfp8.sh fresh-skip이 nn.Linear shim 유무를 확인하지 않음"; fail=1; }
 bash -n "$ROOT/30-dequant-mxfp8.sh" || { echo "FAIL: 30-dequant-mxfp8.sh bash -n"; fail=1; }
 
 exit $fail

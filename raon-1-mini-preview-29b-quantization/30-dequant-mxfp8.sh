@@ -8,6 +8,7 @@ OUT="$RQ_MODELS/raon-bf16"
 rq_lock "$OUT"
 if [ -f "$OUT/config.json" ] && [ "${FORCE:-0}" != 1 ] \
   && ! grep -q '"quantization_config"' "$OUT/config.json" \
+  && grep -q 'return nn.Linear(in_features, out_features, bias=False)' "$OUT/modeling_raon1_mini.py" 2>/dev/null \
   && [ "$OUT/config.json" -nt "$RQ_ROOT/30-dequant-mxfp8.py" ]; then
   rq_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
