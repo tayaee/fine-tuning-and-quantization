@@ -15,12 +15,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest  # pyright: ignore[reportMissingImports] — venv pytest(설치됨)
 import torch
 from safetensors.torch import save_file
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from tests._compat import pytest, run_standalone
 
 
 def _load_script(name: str):
@@ -355,22 +356,7 @@ def test_prep_and_upload_accept_space_and_env_targets(workspace, monkeypatch, ca
 
 
 def _main() -> int:
-    failed = []
-    for name, fn in sorted(globals().items()):
-        if not name.startswith("test_") or not callable(fn):
-            continue
-        if fn.__code__.co_argcount:
-            print(f"SKIP {name} (fixture 필요 — pytest로 실행)")
-            continue
-        try:
-            fn()
-        except Exception as e:  # noqa: BLE001
-            failed.append((name, e))
-            print(f"FAIL {name}: {type(e).__name__}: {e}")
-        else:
-            print(f"PASS {name}")
-    print(f"\n{len(failed)} failed")
-    return 1 if failed else 0
+    return run_standalone(globals())
 
 
 if __name__ == "__main__":
