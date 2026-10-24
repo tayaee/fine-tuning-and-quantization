@@ -117,10 +117,27 @@ def ppl_of(model_name: str, texts: list[str], seq: int) -> float:
         release_memory()
 
 
-def verdict(delta: float) -> str:
-    if delta < 0.3:
+def acceptance_spec(target: str) -> dict:
+    """타깃별 수용 기준(Stage 1 산출물). 파일이 없으면 기존 기본값(0.3/1.0)."""
+    try:
+        from sdlc import load_acceptance, target_spec
+
+        return target_spec(load_acceptance(), target)
+    except Exception:  # noqa: BLE001 — 기준 파일이 없으면 하드코딩 기본값으로 폴백
+        return {"ppl_delta_warn": 0.3, "ppl_delta_max": 1.0}
+
+
+def verdict(delta: float, spec: dict | None = None) -> str:
+    """base 대비 Δ 판정: <warn Accept / <max Conditional / 그 이상 Discard.
+
+    임계값은 config/acceptance.toml(Stage 1)이 단일 소스다.
+    """
+    spec = spec or {}
+    warn = float(spec.get("ppl_delta_warn", 0.3))
+    mx = float(spec.get("ppl_delta_max", 1.0))
+    if delta < warn:
         return "Accept"
-    if delta < 1.0:
+    if delta < mx:
         return "Conditional"
     return "Discard"
 
@@ -149,7 +166,7 @@ def summarize(outdir: str | Path, measured: set[str] | tuple[str, ...] = ()) -> 
             r["verdict"] = "no-ref"
             continue
         r["delta"] = r["ppl"] - base
-        r["verdict"] = verdict(r["delta"])
+        r["verdict"] = verdict(r["delta"], acceptance_spec(t))
         r["ref_source"] = ref_src
     with open(os.path.join(outdir, "summary.json"), "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=2)

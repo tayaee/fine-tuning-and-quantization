@@ -102,6 +102,29 @@ TARGET_RULES: dict[str, dict] = {
 EXPECTED_FULL_EXPERT_LINEAR_COUNT = 24 * 128 * 3  # 9,216
 
 
+def _apply_acceptance_size_ranges() -> None:
+    """Stage 1 계약(config/acceptance.toml)의 size_gb 범위로 TARGET_RULES를 덮어쓴다.
+
+    계약 파일이 없으면 기존의 하드코딩 범위를 그대로 쓴다(하위 호환).
+    """
+    try:
+        from sdlc import load_acceptance
+
+        data = load_acceptance()
+    except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기본값 유지
+        return
+    for target, spec in (data.get("targets") or {}).items():
+        rule = TARGET_RULES.get(target)
+        if not rule or not isinstance(spec, dict):
+            continue
+        size = spec.get("size_gb")
+        if isinstance(size, list) and len(size) == 2:
+            rule["size_gb_range"] = (float(size[0]), float(size[1]))
+
+
+_apply_acceptance_size_ranges()
+
+
 def MODELS_DIR(mode: str) -> str:
     return f"{SHARED}/models"
 
@@ -208,6 +231,18 @@ def _check_custom_code_ast(d: Path) -> list[str]:
     return errors
 
 
+def _base_config() -> dict:
+    """베이스(BF16 복원본) config.json — 기준 모델이 무엇을 갖고 있는지 확인용."""
+    fp = Path(BF16_DIR()) / "config.json"
+    if not fp.is_file():
+        return {}
+    try:
+        cfg = json.loads(fp.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return cfg if isinstance(cfg, dict) else {}
+
+
 def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
     """vLLM 및 transformers 로드에 필요한 config.json 필드 점검."""
     errors: list[str] = []
@@ -227,7 +262,14 @@ def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
         if auto_map.get(key) != expected_ref:
             errors.append(f"{d}/config.json: auto_map[{key!r}]={auto_map.get(key)!r} ({expected_ref!r} 필요)")
 
-    for key in ("eos_token_id", "pad_token_id", "num_experts", "num_experts_per_token"):
+    # 토큰 필드(eos/pad)는 **베이스 모델에 있을 때만** 양자화본에도 있어야 한다.
+    # KRAFTON 원본 config.json은 eos_token_id/pad_token_id가 없다(토크나이저 설정만 보유) —
+    # 원본에 없는 필드를 요구하면 compliant 모델을 오탐으로 막는다.
+    base_cfg = _base_config()
+    for key in ("eos_token_id", "pad_token_id"):
+        if base_cfg.get(key) is not None and cfg.get(key) is None:
+            errors.append(f"{d}/config.json: 베이스에 있는 '{key}' 누락")
+    for key in ("num_experts", "num_experts_per_token"):
         if cfg.get(key) is None:
             errors.append(f"{d}/config.json: vLLM/생성 필수 필드 '{key}' 누락")
 

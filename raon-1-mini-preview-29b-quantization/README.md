@@ -39,6 +39,7 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 ```bash
 ./10-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
+./07-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
 ./13-prep-calibration.sh smoke      # calib jsonl 생성
 ./16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
 ./19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
@@ -53,6 +54,28 @@ PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
 ```
 
 상세: `PROCEDURE.md`, 명령 모음: `cheatsheet.md`.
+
+## SDLC (9단계)
+
+파이프라인은 9단계 SDLC로 관리한다 — 단계마다 산출물과 **게이트(검증 관문)**가 있고,
+게이트가 실패하면 다음 단계로 넘어가지 않는다.
+
+| # | 단계 | 산출물 | 게이트 |
+|---|---|---|---|
+| 0 | 환경 | `.venv/.rq-setup-stamp` | - |
+| 1 | 수용 기준 | `outputs/acceptance-<mode>.json` | gate-acceptance |
+| 2 | 데이터 | `datasets/raon-calibration-<N>.jsonl` | - |
+| 3 | 호환성 | `outputs/compat.stamp` | - |
+| 4 | 베이스 복원 | `models/raon-bf16` | - |
+| 5 | 양자화 | `models/raon-<target>-<mode>` | gate-quant |
+| 6 | PPL | `outputs/ppl-<mode>/<target>.json` | gate-ppl |
+| 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` | gate-eval |
+| 8 | 릴리스·배포 | `outputs/release-notes-<mode>.md` | gate-release / gate-serving |
+
+- 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷의 단일 소스
+- 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
+- 증빙: `outputs/stage-ledger-<mode>.json` → `61-release-notes.py` → 릴리스 노트
+- 정의 문서: `docs/SDLC.md`
 
 ## 알려진 위험 (스캐폴딩 시점 미검증)
 

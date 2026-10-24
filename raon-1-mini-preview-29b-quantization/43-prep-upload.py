@@ -116,6 +116,47 @@ def _fmt(value, digits: int = 2, dash: str = "—") -> str:
     return str(value)
 
 
+def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[str]:
+    """Stage 1 수용 기준(acceptance.toml) vs 실측 대조표(모델 카드용)."""
+    try:
+        from sdlc import load_acceptance, target_spec, verdict_for_delta
+
+        data = load_acceptance()
+    except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기준 표를 생략
+        return ["_수용 기준 파일(config/acceptance.toml)이 없어 대조표를 생성하지 않았습니다._"]
+    spec = target_spec(data, target)
+    row = (ppl or {}).get(target) or {}
+    delta = row.get("delta")
+    verdict = row.get("verdict")
+    if delta is not None and not verdict:
+        try:
+            verdict = verdict_for_delta(float(delta), spec)
+        except Exception:  # noqa: BLE001
+            verdict = None
+    lo, hi = (spec.get("size_gb") or [None, None])[:2]
+    size_ok = "n/a"
+    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+        size_ok = "PASS" if float(lo) <= float(size_gb) <= float(hi) else "FAIL"
+    rows = [
+        "| 기준 항목 | 기준값 | 실측 | 판정 |",
+        "| --- | --- | --- | --- |",
+        (
+            f"| ΔPPL (base 대비) | < {spec.get('ppl_delta_max')} (Conditional 상한) | "
+            f"{_fmt(delta)} | {verdict or 'n/a'} |"
+        ),
+        (
+            f"| ΔPPL 경고선 | < {spec.get('ppl_delta_warn')} (Accept 상한) | "
+            f"{_fmt(delta)} | {'Accept' if verdict == 'Accept' else 'n/a'} |"
+        ),
+        f"| 체크포인트 용량(GB) | {lo} ~ {hi} | {size_gb} | {size_ok} |",
+        (
+            f"| 저장 포맷 | `{spec.get('quant_format')}` | `{SPECS[target]['format']}` | "
+            f"{'PASS' if spec.get('quant_format') == SPECS[target]['format'] else 'FAIL'} |"
+        ),
+    ]
+    return rows
+
+
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
     """HuggingFace 모델 카드 전체를 만든다 (요구사항 2.1-3)."""
     spec = SPECS[target]
@@ -132,6 +173,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
         name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
         lines_table.append(f"| {name} | {_fmt(p, 3)} | {_fmt(delta)} | " + " | ".join(accs) + " |")
 
+    acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb)
     tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
     fm = [
         "---",
@@ -169,6 +211,13 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 | 캘리브레이션 | {CALIB_NOTE} |
 | 체크포인트 용량 | {size_gb} GB |
 | 저장 포맷 | `{spec['format']}` |
+
+## 수용 기준 (Stage 1 계약) 대비 판정
+
+수용 기준은 `config/acceptance.toml`에 정의된 파이프라인 계약입니다.
+아래 표는 그 계약과 실측값의 대조 결과입니다.
+
+{chr(10).join(acceptance_rows)}
 
 ## 성능 비교
 

@@ -40,10 +40,28 @@ rq_step() {
   if [ "$_rc" -ne 0 ] || [ "$_dt" -gt 0 ]; then
     printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "$MODE" "$_name" "$_dt" "$_rc" >>"$TIMING_LOG"
   fi
+  # SDLC 9단계 원장 기록 (실패도 기록한다 — 증빙이므로).
+  local _stage _sid _sname _st _tgt
+  _stage="$(rq_stage_of "$_name")"
+  if [ -n "$_stage" ]; then
+    _sid="${_stage%% *}"; _sname="${_stage##* }"
+    if [ "$_rc" -eq 0 ]; then _st=pass; else _st=fail; fi
+    _tgt="$(rq_target_of "$_name")"
+    if [ -n "$_tgt" ]; then
+      rq_stage_target "$_sid" "$_sname" "$_st" "$_tgt" "$_name"
+    else
+      rq_stage_record "$_sid" "$_sname" "$_st" "$_name"
+    fi
+  fi
   return $_rc
 }
 want_step() {
   case ",${STEPS:-all}," in *,all,*|*,"$1",*) return 0 ;; *) return 1 ;; esac
+}
+# 명시적으로 나열한 스텝만 실행 (STEPS=all 에는 포함되지 않는다).
+#   STEPS=verify ./run-smoke.sh   → 46-verify + gate-release 만 추가
+want_step_explicit() {
+  case ",${STEPS:-all}," in *,"$1",*) return 0 ;; *) return 1 ;; esac
 }
 run_done() {
   rq_log "run-$MODE end rc=$? total=$(( $(date +%s) - RUN_T0 ))s (timing: $TIMING_LOG)"
@@ -56,25 +74,40 @@ if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
   rq_step "10-setup" ./10-setup.sh
 fi
 
-want_step calib && rq_step "13-calib" ./13-prep-calibration.sh "$MODE"
-want_step compat && rq_step "16-compat" ./16-compat-check.sh "$MODE"
+# Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(07-acceptance).
+if want_step acceptance; then
+  rq_step "07-acceptance" ./07-acceptance.sh "$MODE"
+  rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
+fi
 
-want_step dequant && rq_step "19-dequant" ./19-dequant-mxfp8.sh "$MODE"
+want_step calib && rq_step "13-calib" ./13-prep-calibration.sh "$MODE"
+if want_step compat; then
+  rq_step "16-compat" ./16-compat-check.sh "$MODE"
+  rq_stage_record 3 compat pass "$RQ_OUTPUTS/compat.stamp"
+fi
+
+if want_step dequant; then
+  rq_step "19-dequant" ./19-dequant-mxfp8.sh "$MODE"
+  rq_stage_record 4 dequant pass "$RQ_MODELS/raon-bf16"
+fi
 
 if want_step validate; then
   rq_step "validate-helps" bash -c '
-    for s in 19-dequant-mxfp8 25-quant-awq-w5 22-quant-awq-w3 28-quant-nvfp4-awq 31-quant-nvfp4-gptq \
-             34-measure-ppl 37-eval 40-score 43-prep-upload 49-upload-hf; do
+    for s in 07-acceptance 19-dequant-mxfp8 25-quant-awq-w5 22-quant-awq-w3 28-quant-nvfp4-awq 31-quant-nvfp4-gptq \
+             34-measure-ppl 37-eval 40-score 43-prep-upload 46-verify-upload 49-upload-hf \
+             61-release-notes 64-verify-serving; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in 34-measure-ppl 37-eval 40-score 43-prep-upload 49-upload-hf 52-serve-vllm 55-infer-examples; do
+    for s in 07-acceptance 34-measure-ppl 37-eval 40-score 43-prep-upload 46-verify-upload \
+             49-upload-hf 52-serve-vllm 55-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
     done
+    bash -n "$0/gates.inc" || exit 1
     for s in "$0"/*-build-*.sh; do
       bash -n "$s" || exit 1
     done
     bash -n "$0/build-ppl-eval.inc" || exit 1
-    echo "validate OK (26 scripts)"' "$ROOT"
+    echo "validate OK (SDLC 9단계 스크립트)"' "$ROOT"
 fi
 
 # TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
@@ -95,21 +128,54 @@ fi
 if want_step quant; then
   for _t in $(echo "$_targets" | tr ',' ' '); do
     case "$_t" in
-      awq-w3) rq_step "22-awq-w3" "${_quant_cmd[@]}" ./22-quant-awq-w3.sh "$MODE" ;;
-      awq-w5) rq_step "25-awq-w5" "${_quant_cmd[@]}" ./25-quant-awq-w5.sh "$MODE" ;;
-      nvfp4-awq) rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./28-quant-nvfp4-awq.sh "$MODE" ;;
-      nvfp4-gptq) rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./31-quant-nvfp4-gptq.sh "$MODE" ;;
+      awq-w3)
+        rq_step "22-awq-w3" "${_quant_cmd[@]}" ./22-quant-awq-w3.sh "$MODE"
+        rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
+        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+      awq-w5)
+        rq_step "25-awq-w5" "${_quant_cmd[@]}" ./25-quant-awq-w5.sh "$MODE"
+        rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
+        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+      nvfp4-awq)
+        rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./28-quant-nvfp4-awq.sh "$MODE"
+        rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
+        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+      nvfp4-gptq)
+        rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./31-quant-nvfp4-gptq.sh "$MODE"
+        rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
+        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
     esac
   done
 fi
 
-want_step ppl && rq_step "34-ppl" ./34-measure-ppl.sh "$MODE" "$_eval_targets"
+if want_step ppl; then
+  rq_step "34-ppl" ./34-measure-ppl.sh "$MODE" "$_eval_targets"
+  rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
+  # Stage 6 게이트: PPL이 유한하고 수용 기준(Δ) 판정과 일치하는지 확인한다.
+  for _t in $(echo "$_targets" | tr ',' ' '); do
+    rq_step "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$MODE/$_t.json" "$_t"
+  done
+fi
 if want_step eval; then
   rq_step "37-eval" ./37-eval.sh "$MODE" "$_eval_targets"
   rq_step "40-score" ./40-score.sh "$MODE"
+  rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
+  # Stage 7 게이트: 응답이 실제로 생성되었는지 확인한다(빈 응답은 다음 단계로 안 넘어간다).
+  for _t in $(echo "$_eval_targets" | tr ',' ' '); do
+    rq_step "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$_t.jsonl"
+  done
 fi
-want_step prep && rq_step "43-prep" ./43-prep-upload.sh "$MODE" "$_targets"
+if want_step prep; then
+  rq_step "43-prep" ./43-prep-upload.sh "$MODE" "$_targets"
+  rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
+fi
+
+# Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 46이 필요하므로 기본 경로 밖).
+if want_step_explicit verify; then
+  rq_step "46-verify" ./46-verify-upload.sh "$MODE" "$_targets"
+  rq_step "gate-release" rq_gate_release "$MODE"
+fi
 
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---

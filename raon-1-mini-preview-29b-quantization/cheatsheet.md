@@ -5,6 +5,10 @@
 ./10-setup.sh
 uv run hf auth login
 
+# 1. 수용 기준 (Stage 1) — config/acceptance.toml을 검증해 계약 스냅샷을 만든다
+./07-acceptance.sh smoke
+./07-acceptance.sh full
+
 # 1. calib (smoke 8 / full 256)
 ./13-prep-calibration.sh smoke
 ./13-prep-calibration.sh full
@@ -27,6 +31,10 @@ RQ_TARGETS=all ./31-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 ./34-measure-ppl.sh smoke
 ./34-measure-ppl.sh smoke nvfp4-gptq,nvfp4-awq
 
+# 게이트 (run-{smoke,full}.sh가 자동 호출 — 수동으로 확인할 때)
+bash -c 'source config/common.env smoke; source gates.inc; rq_gate_quant "$RQ_MODELS/raon-nvfp4-awq-smoke" nvfp4-pack-quantized'
+bash -c 'source config/common.env smoke; source gates.inc; rq_gate_ppl "$RQ_OUTPUTS/ppl-smoke/nvfp4-awq.json" nvfp4-awq'
+
 # 5. eval + score (백엔드: auto = vLLM → 커스텀 아키텍처 미지원 시 transformers)
 ./37-eval.sh smoke nvfp4-gptq
 ./40-score.sh smoke
@@ -44,6 +52,11 @@ DRY_RUN=1 ./49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검�
 ./52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1
 ./55-infer-examples.sh 3             # 터미널2
 ./58-serve-infer-all.sh smoke 3      # 순회
+
+# 8. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / 배포 후 서빙 검증
+python 61-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
+python 64-verify-serving.py --mode smoke   # logs/55.*.log → outputs/serve-smoke.json
+STEPS=verify ./run-smoke.sh                # 46-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   10-16,19,{22|25|28|31}-40-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh

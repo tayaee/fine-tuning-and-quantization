@@ -4,26 +4,36 @@
 > → PPL 게이트 → vLLM eval → 업로드·서빙.
 > 30B 플랜(65 결과 159~190행) 대비 VRAM 참고: BF16 서빙 32~36GB, AWQ 18~20GB.
 > 베이스가 MXFP8이라 4종 전부 이중양자화 전제 (FP8 타깃 제외됨).
+> SDLC 정의(9단계·게이트·증빙)는 `docs/SDLC.md` 참고.
 
-## Stage
+## Stage (9단계)
 
 ```
-[0. 환경 10-setup] → [1. calib 13-prep] → [2. compat 16-check] → [3. dequant 19]
-  → [4. PTQ 22·25·28·31] → [5. PPL 34] → [6. eval 37·40] → [7. 배포 49·52·55·58]
+[0. 환경 10-setup] → [1. 수용기준 07-acceptance] → [2. calib 13-prep] → [3. compat 16-check]
+  → [4. dequant 19] → [5. PTQ 22·25·28·31] → [6. PPL 34] → [7. eval 37·40]
+  → [8. 릴리스·배포 43·46·49·52·55·58]
 ```
 
-| Stage | 스크립트 | 입력 → 출력 |
-|---|---|---|
-| 0. 환경 | `10-setup.sh` | env sync + HF gated 로그인 + GPU/NVFP4 가능 점검 |
-| 1. calib | `13-prep-calibration.sh [smoke\|full]` | HF 한국어 혼합 → `datasets/raon-calibration-<N>.jsonl` (`text` chat-formatted) |
-| 2. compat | `16-compat-check.sh` | trust_remote_code 로드, expert 타깃, MoE 제외층, SM≥10, vLLM 버전 |
-| 3. dequant | `19-dequant-mxfp8.sh` | MXFP8 repo → `models/raon-bf16` (22~31·34·37의 입력, 1회) |
-| 4. PTQ | `22-awq-w3` `25-awq-w5` `28-nvfp4-awq` `31-nvfp4-gptq` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) |
-| 5. PPL | `34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard |
-| 6. eval | `37-eval.sh` + `40-score.sh` | vLLM(커스텀 아키텍처 미지원 시 transformers 폴백) 벤치마크 생성 + 완결율·KMMLU-redux/GSM8K/HumanEval 정확도 리포트 |
-| 7. 모델카드 | `43-prep-upload.sh [smoke\|full]` | 압축 포맷 검증 + 누락 custom_code 보충 + `README.md`(YAML frontmatter·양자화 사양·벤치표) + `outputs/prep-upload-<mode>.json` |
-| 7b. 업로드감사 | `46-verify-upload.sh [smoke\|full]` | BF16 상류·압축 포맷·샤드 인덱스·모델 용량(GB)·vLLM/transformers 설정·PPL/벤치 지표·README 전수 감사 (`outputs/verify-upload-<mode>.json`) |
-| 8. 배포 | `49-upload-hf.sh`, `52-serve-vllm.sh`, `55-infer-examples.sh`, `58-serve-infer-all.sh` | `tayaee/Raon-1-mini-preview-<target>` 업로드(전담), TP=2 서빙 순회 |
+| Stage | 스크립트 | 입력 → 출력 | Exit 게이트 |
+|---|---|---|---|
+| 0. 환경 | `10-setup.sh` | env sync + HF gated 로그인 + GPU/NVFP4 가능 점검 | stamp(uv.lock 해시 + 핀 버전) |
+| 1. 수용기준 | `07-acceptance.sh [smoke\|full]` | `config/acceptance.toml` → `outputs/acceptance-<mode>.json` | 계약 스키마 정상(타깃 4종 기준 존재) |
+| 2. calib | `13-prep-calibration.sh [smoke\|full]` | HF 한국어 혼합 → `datasets/raon-calibration-<N>.jsonl` (`text` chat-formatted) | 산출물 존재·최신 |
+| 3. compat | `16-compat-check.sh` | trust_remote_code 로드, expert 타깃, MoE 제외층, SM≥10, vLLM 버전 | stamp(probe 해시 + GPU cc + 버전) |
+| 4. dequant | `19-dequant-mxfp8.sh` | MXFP8 repo → `models/raon-bf16` (22~31·34·37의 입력, 1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
+| 5. PTQ | `22-awq-w3` `25-awq-w5` `28-nvfp4-awq` `31-nvfp4-gptq` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
+| 6. PPL | `34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
+| 7. eval | `37-eval.sh` + `40-score.sh` | vLLM(커스텀 아키텍처 미지원 시 transformers 폴백) 벤치마크 + 완결율·정확도 | **gate-eval**: 응답 1줄 이상 |
+| 8. 릴리스·배포 | `43-prep-upload` → `46-verify-upload` → `49-upload-hf` → `52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
+
+> 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)과 용량 범위는
+> 코드 하드코딩이 아니라 `config/acceptance.toml`(Stage 1)이 단일 소스다.
+
+## 단계 원장 · 릴리스 노트
+
+- 원장: `outputs/stage-ledger-<mode>.json` (각 단계의 status/artifact/verdict, 타깃별 집계)
+- 릴리스 노트: `python 61-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
+  (원장 + 수용 기준 + 실측 지표 대조표)
 
 ## smoke/full 스케일 (`config/common.env`)
 

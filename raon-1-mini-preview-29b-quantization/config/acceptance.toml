@@ -1,0 +1,47 @@
+# config/acceptance.toml — Stage 1 산출물: 수용 기준의 단일 소스 (SSOT)
+#
+# 9단계 SDLC의 1단계(요구사항·수용 기준)를 코드로 옮긴 파일이다.
+# 이 값이 바뀌면 34-measure-ppl.py(Δ 판정) · 46-verify-upload.py(용량 범위) ·
+# 43-prep-upload.py(모델 카드) · 61-release-notes.py(릴리스 노트)가 함께 따라간다.
+# 스키마 검증: 07-acceptance.py (sdlc.acceptance_errors)
+#
+# 판정 규칙 (base 대비 ΔPPL):
+#   Δ < ppl_delta_warn  → Accept
+#   Δ < ppl_delta_max  → Conditional
+#   Δ >= ppl_delta_max → Discard
+#
+# TOML을 쓴 이유: python 3.12 표준 tomllib로 읽혀 별도 의존성이 없다
+# (uv.lock을 건드리지 않아 10-setup 스탬프가 무효화되지 않는다).
+
+version = 1
+
+# 타깃별 수용 기준 --------------------------------------------------
+[targets.awq-w3]
+quant_format = "pack-quantized"
+size_gb = [14.0, 26.0]
+ppl_delta_warn = 0.3
+ppl_delta_max = 1.0
+
+[targets.awq-w5]
+quant_format = "pack-quantized"
+size_gb = [20.0, 35.0]
+ppl_delta_warn = 0.3
+ppl_delta_max = 1.0
+
+[targets.nvfp4-awq]
+quant_format = "nvfp4-pack-quantized"
+size_gb = [15.0, 28.0]
+ppl_delta_warn = 0.3
+ppl_delta_max = 1.0
+
+[targets.nvfp4-gptq]
+quant_format = "nvfp4-pack-quantized"
+size_gb = [15.0, 28.0]
+ppl_delta_warn = 0.3
+ppl_delta_max = 1.0
+
+# 릴리스 게이트 (Stage 8) ---------------------------------------------
+[gates.release]
+require_model_card = true      # 43-prep-upload이 만든 README.md 존재·비어있지 않음
+require_metrics = true         # PPL summary + eval score.json 존재
+require_finite_ppl = true      # PPL 값이 유한수

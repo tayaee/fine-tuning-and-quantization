@@ -18,7 +18,7 @@
 # 주의: wrapper는 config/common.env를 source한 *뒤에* 이 파일을 source한다.
 #       (common.env의 EXIT 트랩을 이 파일이 대체한다.)
 
-BPE_STEPS_DEFAULT="setup,calib,compat,dequant,quant,ppl,eval"
+BPE_STEPS_DEFAULT="setup,acceptance,calib,compat,dequant,quant,ppl,eval"
 BPE_T0=$(date +%s)
 BPE_TIMING=""
 
@@ -47,59 +47,31 @@ rq_bpe_step() {
   _dt=$(( $(date +%s) - _t0 ))
   rq_log "step done: $name elapsed=${_dt}s rc=$_rc"
   printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "$mode" "$name" "$_dt" "$_rc" >>"$timing"
+  # SDLC 9단계 원장 기록(실패도 기록).
+  local _stage _sid _sname _st _tgt
+  _stage="$(rq_stage_of "$name")"
+  if [ -n "$_stage" ]; then
+    _sid="${_stage%% *}"; _sname="${_stage##* }"
+    if [ "$_rc" -eq 0 ]; then _st=pass; else _st=fail; fi
+    _tgt="$(rq_target_of "$name")"
+    if [ -n "$_tgt" ]; then
+      rq_stage_target "$_sid" "$_sname" "$_st" "$_tgt" "$name"
+    else
+      rq_stage_record "$_sid" "$_sname" "$_st" "$name"
+    fi
+  fi
   return "$_rc"
 }
 
-# 게이트 1 — 양자화 산출물 계약(dense 폴백·미보정 global_scale 차단).
-# quant_common.verify_compressed_output는 32/33/35/36 스크립트 내부에서도 호출되지만,
+# 게이트는 gates.inc의 공용 구현을 쓴다(9단계 SDLC의 단계 간 계약).
+#   rq_gate_acceptance : Stage 1 계약(수용 기준) 유효성
+#   rq_gate_quant      : 양자화 산출물 계약(dense 폴백·미보정 global_scale 차단)
+#   rq_gate_ppl        : PPL 유한값 + 수용 기준 판정 일치
+#   rq_gate_eval       : eval 응답 생성 여부
+#   rq_gate_release    : 모델카드·지표·업로드 전 감사(Stage 8)
+# quant_common.verify_compressed_output는 양자화 스크립트 내부에서도 호출되지만,
 # 그 검사는 "새로 빌드할 때"만 걸린다. freshness로 건너뛴 기존 산출물이
-# 오염돼 있으면(=이번에 재빌드하지 않았어도) 여기서 잡아낸다.
-rq_bpe_gate_quant() {
-  local model_dir="$1" fmt="$2"
-  ( set -x; cd "$RQ_ROOT" && uv run python -c '
-import sys
-from quant_common import verify_compressed_output
-try:
-    verify_compressed_output(sys.argv[1], sys.argv[2])
-except Exception as e:
-    print("FAIL: %s" % e, file=sys.stderr)
-    raise SystemExit(1)
-' "$model_dir" "$fmt" )
-}
-
-# 게이트 2 — PPL 측정값 유효성. NaN/미측정이면 '오염된 모델'을 eval에 흘려보내지 않는다.
-# (34-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
-rq_bpe_gate_ppl() {
-  local f="$1"
-  if [ ! -f "$f" ]; then
-    echo "FAIL: $f 없음 — PPL 미측정(유효 토큰 0/NaN). 양자화 산출물이 오염됐을 가능성" >&2
-    return 1
-  fi
-  ( set -x; uv run python -c '
-import json, math, sys
-d = json.load(open(sys.argv[1]))
-ppl = d.get("ppl")
-if ppl is None or not math.isfinite(float(ppl)):
-    raise SystemExit("FAIL: %s ppl=%r (비유한 값)" % (sys.argv[1], ppl))
-print("PPL OK %s ppl=%s n=%s seq_len=%s" % (sys.argv[1], ppl, d.get("n"), d.get("seq_len")))
-' "$f" )
-}
-
-# 게이트 3 — eval 응답 생성 여부(빈 파일이면 모델이 아무것도 못 냈다).
-rq_bpe_gate_eval() {
-  local f="$1"
-  if [ ! -s "$f" ]; then
-    echo "FAIL: $f 없음/빈 파일 — eval 응답 미생성" >&2
-    return 1
-  fi
-  local n
-  n=$(wc -l <"$f")
-  if [ "${n:-0}" -lt 1 ]; then
-    echo "FAIL: $f 라인 0 — eval 응답 미생성" >&2
-    return 1
-  fi
-  echo "eval OK $f lines=$n"
-}
+# 오염돼 있으면(=이번에 재빌드하지 않았어도) 게이트가 잡아낸다.
 
 rq_bpe_done() {
   rq_log "build-ppl-eval end rc=${RQ_RC:-0} total=$(( $(date +%s) - BPE_T0 ))s (timing: ${BPE_TIMING:-none})"
@@ -143,6 +115,12 @@ rq_bpe_main() {
   if [ "${SKIP_SETUP:-0}" != 1 ] && rq_bpe_want_step setup; then
     rq_bpe_step "$mode" "$BPE_TIMING" "10-setup" ./10-setup.sh
   fi
+  # Stage 1 — 수용 기준(07-acceptance). 게이트의 판정 기준이 여기서 정해진다.
+  if rq_bpe_want_step acceptance; then
+    rq_bpe_step "$mode" "$BPE_TIMING" "07-acceptance" ./07-acceptance.sh "$mode"
+    rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$mode.json"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-acceptance" rq_gate_acceptance "$mode"
+  fi
   if rq_bpe_want_step calib; then
     rq_bpe_step "$mode" "$BPE_TIMING" "13-calib" ./13-prep-calibration.sh "$mode"
   fi
@@ -154,19 +132,23 @@ rq_bpe_main() {
   fi
   if rq_bpe_want_step quant; then
     rq_bpe_step "$mode" "$BPE_TIMING" "${qscript%.sh}" "${quant_cmd[@]}" "./$qscript" "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "gate-quant" rq_bpe_gate_quant "$model_dir" "$qformat"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-quant" rq_gate_quant "$model_dir" "$qformat"
+    rq_stage_target 5 quant pass "$target" "$model_dir"
   fi
   if rq_bpe_want_step ppl; then
     rq_bpe_step "$mode" "$BPE_TIMING" "34-ppl" ./34-measure-ppl.sh "$mode" "$eval_targets"
-    rq_bpe_step "$mode" "$BPE_TIMING" "gate-ppl" rq_bpe_gate_ppl "$RQ_OUTPUTS/ppl-$mode/$target.json"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$mode/$target.json" "$target"
+    rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
   fi
   if rq_bpe_want_step eval; then
     rq_bpe_step "$mode" "$BPE_TIMING" "37-eval" ./37-eval.sh "$mode" "$eval_targets"
-    rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_bpe_gate_eval "$RQ_OUTPUTS/eval-$mode/$target.jsonl"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$mode/$target.jsonl"
     rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./40-score.sh "$mode"
+    rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
     rq_bpe_step "$mode" "$BPE_TIMING" "43-prep" ./43-prep-upload.sh "$mode" "$target"
+    rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then
     rq_bpe_step "$mode" "$BPE_TIMING" "46-verify" ./46-verify-upload.sh "$mode" "$target"
