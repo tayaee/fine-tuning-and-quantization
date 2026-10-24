@@ -1,4 +1,4 @@
-"""tests/test_verify_upload.py — 57-verify-upload.py 단위 테스트.
+"""tests/test_verify_upload.py — 46-verify-upload.py 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_verify_upload.py
@@ -32,8 +32,8 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("56-prep-upload.py")
-ver = _load_script("57-verify-upload.py")
+prep = _load_script("43-prep-upload.py")
+ver = _load_script("46-verify-upload.py")
 
 CUSTOM_CFG_PY = "class Raon1MiniConfig:\n    pass\n"
 CUSTOM_MOD_PY = (
@@ -285,6 +285,23 @@ def test_rejects_readme_with_missing_metric_dashes(ws):
     assert rep["ok"] is False
     assert rep["checks"]["readme"] is False
     assert any("결측치" in e for e in rep["errors"])
+
+
+def test_rejects_zero_or_garbage_input_global_scale(ws):
+    mdir = _make_valid_workspace(ws, "nvfp4-awq", "full")
+    prep.run("full", "nvfp4-awq")
+    p = "model.layers.1.moe.experts.0.gate_proj"
+    tensors = {
+        f"{p}.weight_packed": torch.zeros((4, 4), dtype=torch.uint8),
+        f"{p}.weight_scale": torch.ones((4, 1), dtype=torch.float8_e4m3fn),
+        f"{p}.weight_global_scale": torch.ones((1,), dtype=torch.float32),
+        f"{p}.input_global_scale": torch.zeros((1,), dtype=torch.float32),
+        "lm_head.weight": torch.ones((8, 4), dtype=torch.bfloat16),
+    }
+    save_file(tensors, str(mdir / "model-00001-of-00001.safetensors"))
+    rep = ver.verify_target("full", "nvfp4-awq")
+    assert rep["ok"] is False
+    assert any("global_scale" in e for e in rep["errors"])
 
 
 def _main() -> int:

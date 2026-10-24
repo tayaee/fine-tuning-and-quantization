@@ -56,31 +56,35 @@ if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
   rq_step "10-setup" ./10-setup.sh
 fi
 
-want_step calib && rq_step "12-calib" ./12-prep-calibration.sh "$MODE"
-want_step compat && rq_step "20-compat" ./20-compat-check.sh "$MODE"
+want_step calib && rq_step "13-calib" ./13-prep-calibration.sh "$MODE"
+want_step compat && rq_step "16-compat" ./16-compat-check.sh "$MODE"
 
-want_step dequant && rq_step "30-dequant" ./30-dequant-mxfp8.sh "$MODE"
+want_step dequant && rq_step "19-dequant" ./19-dequant-mxfp8.sh "$MODE"
 
 if want_step validate; then
   rq_step "validate-helps" bash -c '
-    for s in 30-dequant-mxfp8 32-quant-awq-w5 33-quant-awq-w3 35-quant-nvfp4-awq 36-quant-nvfp4-gptq \
-             48-measure-ppl 50-eval 54-score 56-prep-upload 58-upload-hf; do
+    for s in 19-dequant-mxfp8 25-quant-awq-w5 22-quant-awq-w3 28-quant-nvfp4-awq 31-quant-nvfp4-gptq \
+             34-measure-ppl 37-eval 40-score 43-prep-upload 49-upload-hf; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in 48-measure-ppl 50-eval 54-score 56-prep-upload 58-upload-hf 60-serve-vllm 62-infer-examples; do
+    for s in 34-measure-ppl 37-eval 40-score 43-prep-upload 49-upload-hf 52-serve-vllm 55-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
     done
-    echo "validate OK (17 scripts)"' "$ROOT"
+    for s in "$0"/*-build-*.sh; do
+      bash -n "$s" || exit 1
+    done
+    bash -n "$0/build-ppl-eval.inc" || exit 1
+    echo "validate OK (26 scripts)"' "$ROOT"
 fi
 
 # TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
 _targets="${TARGETS:-all}"
 case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
-# base(30-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
+# base(19-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
 _eval_targets="base,$_targets"
 
 # 양자화만 CPU 강제(QUANT_CPU_ONLY=1): env로 자식 프로세스에만 빈 값을 넘겨
-# 48-ppl/50-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
+# 34-ppl/37-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then
   _quant_cmd=(env CUDA_VISIBLE_DEVICES=)
   rq_log "QUANT_CPU_ONLY=1 — 양자화 단계만 GPU 숨김, PPL/eval은 GPU 사용"
@@ -91,25 +95,25 @@ fi
 if want_step quant; then
   for _t in $(echo "$_targets" | tr ',' ' '); do
     case "$_t" in
-      awq-w3) rq_step "33-awq-w3" "${_quant_cmd[@]}" ./33-quant-awq-w3.sh "$MODE" ;;
-      awq-w5) rq_step "32-awq-w5" "${_quant_cmd[@]}" ./32-quant-awq-w5.sh "$MODE" ;;
-      nvfp4-awq) rq_step "35-nvfp4-awq" "${_quant_cmd[@]}" ./35-quant-nvfp4-awq.sh "$MODE" ;;
-      nvfp4-gptq) rq_step "36-nvfp4-gptq" "${_quant_cmd[@]}" ./36-quant-nvfp4-gptq.sh "$MODE" ;;
+      awq-w3) rq_step "22-awq-w3" "${_quant_cmd[@]}" ./22-quant-awq-w3.sh "$MODE" ;;
+      awq-w5) rq_step "25-awq-w5" "${_quant_cmd[@]}" ./25-quant-awq-w5.sh "$MODE" ;;
+      nvfp4-awq) rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./28-quant-nvfp4-awq.sh "$MODE" ;;
+      nvfp4-gptq) rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./31-quant-nvfp4-gptq.sh "$MODE" ;;
       *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
     esac
   done
 fi
 
-want_step ppl && rq_step "48-ppl" ./48-measure-ppl.sh "$MODE" "$_eval_targets"
+want_step ppl && rq_step "34-ppl" ./34-measure-ppl.sh "$MODE" "$_eval_targets"
 if want_step eval; then
-  rq_step "50-eval" ./50-eval.sh "$MODE" "$_eval_targets"
-  rq_step "54-score" ./54-score.sh "$MODE"
+  rq_step "37-eval" ./37-eval.sh "$MODE" "$_eval_targets"
+  rq_step "40-score" ./40-score.sh "$MODE"
 fi
-want_step prep && rq_step "56-prep" ./56-prep-upload.sh "$MODE" "$_targets"
+want_step prep && rq_step "43-prep" ./43-prep-upload.sh "$MODE" "$_targets"
 
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---
-# ./58-upload-hf.sh full              # smoke는 업로드하지 않음
-# ./60-serve-vllm.sh smoke nvfp4-gptq  # 터미널1 (상주)
-# ./62-infer-examples.sh 3            # 터미널2
-# ./64-serve-infer-all.sh smoke 3     # 전 타깃 순회
+# ./49-upload-hf.sh full              # smoke는 업로드하지 않음
+# ./52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1 (상주)
+# ./55-infer-examples.sh 3            # 터미널2
+# ./58-serve-infer-all.sh smoke 3     # 전 타깃 순회

@@ -8,6 +8,27 @@ rq_repro_echo
 
 rq_log "repo=$REPO_ROOT rq_root=$RQ_ROOT infra=$INFRA python=$(python3 --version 2>&1) uv=$(uv --version 2>&1)"
 rq_log "pins: BASE_MODEL=$BASE_MODEL BASE_REVISION=${BASE_REVISION:-(floating, 첫 다운로드 후 고정)}"
+
+# 동시 build(8종 wrapper 병렬 실행)가 venv를 동시에 변조하지 않게 한다.
+# lock은 .venv를 포함한 저장소 단위로 잡는다(먼저 들어온 쪽이 setup, 나머지는 대기→skip).
+rq_lock "$RQ_ROOT"
+
+# 이미 준비된 환경이면 건너뛴다 (build 8종이 매번 uv sync/pip install을 반복하지 않도록).
+# 판정 기준: uv.lock 해시 + 설치된 핀 버전(llmcompressor/compressed-tensors).
+STAMP="$RQ_ROOT/.venv/.rq-setup-stamp"
+_llm_ver="$(uv pip show llmcompressor 2>/dev/null | awk '/^Version:/{print $2}')"
+_ct_ver="$(uv pip show compressed-tensors 2>/dev/null | awk '/^Version:/{print $2}')"
+_uvlock_sha="$(sha256sum "$RQ_ROOT/uv.lock" 2>/dev/null | awk '{print $1}')"
+if [ "${FORCE:-0}" != 1 ] \
+  && rq_stamp_ok "$STAMP" uvlock "$_uvlock_sha" \
+  && rq_stamp_ok "$STAMP" llmcompressor "$_llm_ver" \
+  && rq_stamp_ok "$STAMP" compressed_tensors "$_ct_ver"; then
+  rq_log "skip: env already ready (llmcompressor=$_llm_ver compressed-tensors=$_ct_ver uv.lock=${_uvlock_sha:0:12})"
+  echo ---- result ----
+  (set -x; ls -lh "$RQ_DATASETS/")
+  exit 0
+fi
+
 if [ -n "${UV_MIN:-}" ]; then
   _uvv="$(uv --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
   if [ -n "$_uvv" ] && [ "$(printf '%s\n%s\n' "$UV_MIN" "$_uvv" | sort -V | head -n 1)" != "$UV_MIN" ]; then
@@ -46,6 +67,12 @@ nvidia-smi -L 2>/dev/null || echo "-> no nvidia-smi, check on DGX OS"
 (set -x; "$VENV_BIN/python" -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.device_count())" 2>/dev/null || true)
 
 rq_log "OK. shared=$RQ_SHARED (compare ls on spark1/spark2)"
+
+# 다음 build가 setup을 건너뛸 수 있도록 준비 상태를 기록한다.
+_llm_ver="$(uv pip show llmcompressor 2>/dev/null | awk '/^Version:/{print $2}')"
+_ct_ver="$(uv pip show compressed-tensors 2>/dev/null | awk '/^Version:/{print $2}')"
+rq_stamp_write "$STAMP" uvlock "$_uvlock_sha" llmcompressor "$_llm_ver" compressed_tensors "$_ct_ver"
+rq_log "setup stamp -> $STAMP"
 
 echo ---- result ----
 (set -x; ls -lh "$RQ_DATASETS/")

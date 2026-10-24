@@ -9,10 +9,10 @@
 
 | # | 스크립트 | 타깃 | 레시피 (llm-compressor) | 서빙 `--quantization` | 비고 |
 |---|---|---|---|---|---|
-| 33 | `33-quant-awq-w3` | `awq-w3` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
-| 32 | `32-quant-awq-w5` | `awq-w5` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
-| 35 | `35-quant-nvfp4-awq` | `nvfp4-awq` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
-| 36 | `36-quant-nvfp4-gptq` | `nvfp4-gptq` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
+| 22 | `22-quant-awq-w3` | `awq-w3` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
+| 25 | `25-quant-awq-w5` | `awq-w5` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
+| 28 | `28-quant-nvfp4-awq` | `nvfp4-awq` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
+| 31 | `31-quant-nvfp4-gptq` | `nvfp4-gptq` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
 
 출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-full`).
 업로드명: `tayaee/Raon-1-mini-preview-<target>[-smoke]` (상세 `output-models-tree.txt`).
@@ -31,7 +31,7 @@ Raon은 한국어 대화·thinking 모델이므로 GSM8K 영어 슬라이스 재
 | `HuggingFaceH4/ultrachat_200k` | 영어 유지 (소량) | NVFP4 스킬 기본값, EN 보존용 |
 | `eouya2/KGuard-Korean-MoE-Calibration-v1` | MoE 특화 대안 (24,576 한국어 calib) | MoE expert routing 관찰 포함, 대안 |
 
-기본 혼합 (`12-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
+기본 혼합 (`13-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
 full = KoAlpaca 128 + ultrachat-ko 64 + ultrachat-en 64 (seq 2048).
 chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
@@ -39,12 +39,17 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 ```bash
 ./10-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
-./12-prep-calibration.sh smoke      # calib jsonl 생성
-./20-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
-./30-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
+./13-prep-calibration.sh smoke      # calib jsonl 생성
+./16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
+./19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
 ./run-smoke.sh                       # 첫 실행=파이프라인 테스트 (5분 목표)
 PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
 ./run-full.sh                        # full 4종 (밤샘 권장)
+
+# 단일 타깃만 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
+./10-16,19,28-40-build-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
+./10-16,19,28-40-build-full-nvfp4-awq.sh   # full  × nvfp4-awq
+# 게이트: quant 직후 패킹 계약·global_scale, PPL 직후 유한값 검증 → 실패 시 즉시 중단
 ```
 
 상세: `PROCEDURE.md`, 명령 모음: `cheatsheet.md`.
@@ -52,8 +57,8 @@ PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
 ## 알려진 위험 (스캐폴딩 시점 미검증)
 
 0. **베이스가 MXFP8 (2026-10-22 실측)**: 메인 repo 텐서가 F8_E4M3 9216 + 스케일.
-   llmcompressor가 기양자화 모델을 거부하므로 `30-dequant-mxfp8`으로 BF16 복원 후 PTQ.
-   복원본(`raon-bf16`)이 48·50의 base 기준. 복원 수치 검증은 30 스크립트 내장.
+   llmcompressor가 기양자화 모델을 거부하므로 `19-dequant-mxfp8`으로 BF16 복원 후 PTQ.
+   복원본(`raon-bf16`)이 34·37의 base 기준. 복원 수치 검증은 19 스크립트 내장.
 1. **custom_code MoE 지원 미검증**: RDA/MLA/MoE-128expert 구조에 AWQModifier/GPTQModifier가
    그대로 동작하는지 smoke 첫 실행으로 확인. gate/router/lm_head는 양자화 제외.
    expert linear가 `Raon1MiniRoutedLinear` 서브클래스라 transformers FP8 교체는 미적용

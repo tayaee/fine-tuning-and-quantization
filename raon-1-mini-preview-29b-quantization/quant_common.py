@@ -1,5 +1,5 @@
 """quant_common.py — 양자화 스크립트(32/33/34/35/36) 공용 헬퍼.
-캘리브레이션 텍스트 로딩 단일 정의. 12-prep-calibration이 chat template 적용済み
+캘리브레이션 텍스트 로딩 단일 정의. 13-prep-calibration이 chat template 적용済み
 `{"text": ...}` jsonl을 만들므로 로더는 text를 그대로 읽는다 (구 GSM8K source/target
 형식도 호환 유지).
 각 스크립트는 `uv run $RQ_ROOT/<nn>-quant-*.py` 로 실행되며 스크립트 디렉토리가
@@ -105,6 +105,33 @@ def _scan_shard_dtypes(model_dir) -> tuple[dict[str, set[str]], dict[str, int], 
     return dtypes, counts, len(shards)
 
 
+def _verify_global_scale_values(model_dir, *, has_input_scale: bool) -> None:
+    """전역 스케일(F32 스칼라)이 미보정(0/음수/NaN/Inf/쓰레기값) 상태로 저장됐는지 검사한다."""
+    from pathlib import Path
+
+    import torch
+    from safetensors import safe_open
+
+    bad: list[str] = []
+    for shard in sorted(Path(model_dir).glob("*.safetensors")):
+        with safe_open(shard, framework="pt") as f:
+            for name in f.keys():  # noqa: SIM118
+                if not name.endswith(("weight_global_scale", "input_global_scale")):
+                    continue
+                t = f.get_tensor(name).float()
+                if not bool(torch.isfinite(t).all()):
+                    bad.append(f"{name}=non-finite")
+                elif (has_input_scale or name.endswith("input_global_scale")) and bool(
+                    (t <= 0).any() or (t >= 1e10).any()
+                ):
+                    bad.append(f"{name}={float(t.flatten()[0]):.3e}")
+    if bad:
+        raise RuntimeError(
+            f"{model_dir}: 비정상/미보정 global_scale {len(bad)}개 (예: {bad[:3]})"
+            " — MoE 캘리브레이션 누락 가능성"
+        )
+
+
 def _weights_symmetric(qc: dict) -> bool:
     """config_groups 전체가 대칭 가중치 양자화인지 (QuantizationArgs 기본값 True).
     하나라도 weights.symmetric=False면 비대칭(zero_point 정상 잔존)."""
@@ -174,6 +201,10 @@ def verify_compressed_output(model_dir, expected_format: str) -> dict:
             raise RuntimeError(f"{model_dir}: weight_global_scale 텐서 없음 — {fmt}는 F32 전역 스케일 필수")
         if gscale != {"F32"}:
             raise RuntimeError(f"weight_global_scale dtype={sorted(gscale)} != [F32]")
+        iscale = dtypes.get("input_global_scale")
+        if iscale and iscale != {"F32"}:
+            raise RuntimeError(f"input_global_scale dtype={sorted(iscale)} != [F32]")
+        _verify_global_scale_values(model_dir, has_input_scale=bool(iscale))
     if contract.forbid_zero_point and "weight_zero_point" in dtypes:
         raise RuntimeError(f"{model_dir}: weight_zero_point 잔존 — {fmt}는 대칭 전용 (vLLM 로드 불가)")
     if _weights_symmetric(qc) and "weight_zero_point" in dtypes:
@@ -271,12 +302,12 @@ def allow_trusted_remote_code() -> None:
 def load_calib_texts(calib: int, calib_file: str | None = None) -> list[str]:
     """캘리브레이션 jsonl 앞 `calib`줄을 텍스트로 반환.
     `{"text"}` 우선, 없으면 구 형식 source/target 결합.
-    파일 부재·행 부족 시 명시 종료 (12-prep-calibration.sh로 생성).
+    파일 부재·행 부족 시 명시 종료 (13-prep-calibration.sh로 생성).
     """
     calib_file = calib_file or os.environ.get("CALIB_FILE", DEFAULT_CALIB_FILE)
     if not os.path.exists(calib_file):
         raise SystemExit(
-            f"missing calibration file: {calib_file} (run 12-prep-calibration.sh first)"
+            f"missing calibration file: {calib_file} (run 13-prep-calibration.sh first)"
         )
     texts = []
     with open(calib_file, encoding="utf-8") as f:

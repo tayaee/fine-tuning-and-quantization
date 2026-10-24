@@ -4,21 +4,21 @@
 # smoke는 업로드하지 않음.
 
 smoke (CALIB_N=8, SEQ_LEN=512, EVAL_N=8, PPL_N=8 — 10분 목표)
-  base raon-bf16 (30-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
-  awq-w3 raon-awq-w3-smoke [33] (U) => tayaee/Raon-1-mini-preview-awq-w3-smoke
-  awq-w5 raon-awq-w5-smoke [32] (U) => tayaee/Raon-1-mini-preview-awq-w5-smoke
-  nvfp4-awq raon-nvfp4-awq-smoke [35] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-smoke
-  nvfp4-gptq raon-nvfp4-gptq-smoke [36] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke
+  base raon-bf16 (19-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
+  awq-w3 raon-awq-w3-smoke [22] (U) => tayaee/Raon-1-mini-preview-awq-w3-smoke
+  awq-w5 raon-awq-w5-smoke [25] (U) => tayaee/Raon-1-mini-preview-awq-w5-smoke
+  nvfp4-awq raon-nvfp4-awq-smoke [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-smoke
+  nvfp4-gptq raon-nvfp4-gptq-smoke [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke
 
 full (CALIB_N=256, SEQ_LEN=2048, EVAL_N=200, PPL_N=32 — 밤샘 권장)
-  base raon-bf16 (30-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
-  awq-w3 raon-awq-w3-full [33] (U) => tayaee/Raon-1-mini-preview-awq-w3
-  awq-w5 raon-awq-w5-full [32] (U) => tayaee/Raon-1-mini-preview-awq-w5
-  nvfp4-awq raon-nvfp4-awq-full [35] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq
-  nvfp4-gptq raon-nvfp4-gptq-full [36] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq
+  base raon-bf16 (19-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
+  awq-w3 raon-awq-w3-full [22] (U) => tayaee/Raon-1-mini-preview-awq-w3
+  awq-w5 raon-awq-w5-full [25] (U) => tayaee/Raon-1-mini-preview-awq-w5
+  nvfp4-awq raon-nvfp4-awq-full [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq
+  nvfp4-gptq raon-nvfp4-gptq-full [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq
 
 # 설계 결정
 # 1. full 업로드명은 무접미사, smoke는 -smoke. smoke는 절대 업로드하지 않으나
 #    만약의 오업로드가 full repo를 덮지 않도록 이름을 분리한다.
 # 2. 베이스 실명(Raon-1-mini-preview) 사용 — 축약형 raon은 로컬 경로에만.
-# 3. 60-serve의 --served-model-name도 업로드명과 동일 (64 순회 slug 일치).
+# 3. 52-serve의 --served-model-name도 업로드명과 동일 (58 순회 slug 일치).

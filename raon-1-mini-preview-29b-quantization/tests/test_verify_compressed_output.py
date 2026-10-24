@@ -268,6 +268,18 @@ def test_accepts_str_path():
         verify_compressed_output(str(d), NVFP4)
 
 
+def test_rejects_nvfp4_with_zero_or_uninitialized_input_global_scale():
+    """MoE expert 미캘리브레이션으로 input_global_scale이 0.0이나 쓰레기값이면 거부."""
+    t = _nvfp4_tensors()
+    t["model.layers.1.moe.experts.0.gate_proj.weight_global_scale"] = torch.ones(1, dtype=torch.float32)
+    t["model.layers.1.moe.experts.0.gate_proj.input_global_scale"] = torch.zeros(1, dtype=torch.float32)
+    with _model(fmt=NVFP4, tensors=t) as d, _rejects("global_scale"):
+        verify_compressed_output(d, NVFP4)
+    t["model.layers.1.moe.experts.0.gate_proj.input_global_scale"] = torch.tensor([-9.58e21], dtype=torch.float32)
+    with _model(fmt=NVFP4, tensors=t) as d, _rejects("global_scale"):
+        verify_compressed_output(d, NVFP4)
+
+
 def _main() -> int:
     failed = []
     for name, fn in sorted(globals().items()):
