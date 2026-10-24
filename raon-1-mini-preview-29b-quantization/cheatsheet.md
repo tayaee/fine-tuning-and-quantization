@@ -32,9 +32,11 @@ RQ_TARGETS=all ./36-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 ./54-score.sh smoke
 RQ_EVAL_BACKEND=transformers ./50-eval.sh smoke nvfp4-gptq
 
-# 6. 모델카드 (업로드 전 — README.md 생성 + 디렉터리 검증)
+# 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증)
 ./56-prep-upload.sh smoke
 ./56-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
+./57-verify-upload.sh smoke nvfp4-awq
+./57-verify-upload.sh full nvfp4-awq
 
 # 7. 업로드·서빙 (full만 업로드, 56-prep 산출물이 있어야 함)
 DRY_RUN=1 ./58-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증

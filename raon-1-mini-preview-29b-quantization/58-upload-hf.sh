@@ -14,6 +14,9 @@ else
 fi
 [ "${DRY_RUN:-0}" = 1 ] && DRY="--dry-run"
 rq_repro_echo
+if [ "${SKIP_VERIFY:-0}" != 1 ]; then
+  "$RQ_ROOT/57-verify-upload.sh" "$MODE" "$TARGETS"
+fi
 (set -x; uv run "$RQ_ROOT/58-upload-hf.py" --mode "$MODE" --targets "$TARGETS" $DRY)
 
 echo ---- result ----

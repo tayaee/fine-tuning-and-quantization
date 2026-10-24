@@ -22,6 +22,7 @@
 | 5. PPL | `48-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard |
 | 6. eval | `50-eval.sh` + `54-score.sh` | vLLM(커스텀 아키텍처 미지원 시 transformers 폴백) 벤치마크 생성 + 완결율·KMMLU-redux/GSM8K/HumanEval 정확도 리포트 |
 | 7. 모델카드 | `56-prep-upload.sh [smoke\|full]` | 압축 포맷 검증 + 누락 custom_code 보충 + `README.md`(YAML frontmatter·양자화 사양·벤치표) + `outputs/prep-upload-<mode>.json` |
+| 7b. 업로드감사 | `57-verify-upload.sh [smoke\|full]` | BF16 상류·압축 포맷·샤드 인덱스·모델 용량(GB)·vLLM/transformers 설정·PPL/벤치 지표·README 전수 감사 (`outputs/verify-upload-<mode>.json`) |
 | 8. 배포 | `58-upload-hf.sh`, `60-serve-vllm.sh`, `62-infer-examples.sh`, `64-serve-infer-all.sh` | `tayaee/Raon-1-mini-preview-<target>` 업로드(전담), TP=2 서빙 순회 |
 
 ## smoke/full 스케일 (`config/common.env`)
