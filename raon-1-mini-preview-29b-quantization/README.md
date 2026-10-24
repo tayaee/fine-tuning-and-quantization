@@ -42,6 +42,7 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 ./07-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
 ./13-prep-calibration.sh smoke      # calib jsonl 생성
 ./16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
+./36-prep-evalset.sh full             # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
 ./19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
 ./run-smoke.sh                       # 첫 실행=파이프라인 테스트 (5분 목표)
 PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
@@ -69,10 +70,12 @@ PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
 | 4 | 베이스 복원 | `models/raon-bf16` | - |
 | 5 | 양자화 | `models/raon-<target>-<mode>` | gate-quant |
 | 6 | PPL | `outputs/ppl-<mode>/<target>.json` | gate-ppl |
-| 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` | gate-eval |
+| 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` (표준 GSM8K) | gate-eval |
 | 8 | 릴리스·배포 | `outputs/release-notes-<mode>.md` | gate-release / gate-serving |
 
-- 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷의 단일 소스
+- 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K 허용폭의 단일 소스
+- 평가: **표준 GSM8K**(`openai/gsm8k` test, revision·seed 고정) — `36-prep-evalset.sh`가 생성
+- 모델 카드: **검사 1 PPL** + **검사 2 GSM8K** 두 표
 - 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
 - 증빙: `outputs/stage-ledger-<mode>.json` → `61-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`

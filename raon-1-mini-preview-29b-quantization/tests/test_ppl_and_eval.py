@@ -161,10 +161,25 @@ def test_summarize_only_does_not_load_models(tmp_out, monkeypatch):
 
 
 class _FakeTokenizer:
-    """AutoTokenizer.from_pretrained 대체 — callable + decode 둘 다 지원."""
+    """AutoTokenizer.from_pretrained 대체 — callable + decode 둘 다 지원.
+
+    배치(padding=True)면 좌측 패딩된 input_ids + attention_mask를 돌려준다.
+    """
+
+    pad_token_id = 0
+    eos_token = "<eos>"
+    padding_side = "right"
 
     def __call__(self, text, **kw):
-        return {"input_ids": torch.tensor([[1] * max(1, len(text.split()))])}
+        texts = [text] if isinstance(text, str) else list(text)
+        seqs = [[1] * max(1, len(t.split())) for t in texts]
+        width = max(len(sq) for sq in seqs)
+        ids = torch.zeros((len(seqs), width), dtype=torch.long)
+        mask = torch.zeros((len(seqs), width), dtype=torch.long)
+        for i2, sq in enumerate(seqs):
+            ids[i2, width - len(sq) :] = torch.tensor(sq, dtype=torch.long)
+            mask[i2, width - len(sq) :] = 1
+        return {"input_ids": ids, "attention_mask": mask}
 
     def decode(self, ids, **kw):
         return " 생성된답변" if len(ids) else ""
@@ -177,6 +192,7 @@ class _FakeModel:
 
     def __init__(self):
         self.eval_called = False
+        self.calls: list[dict] = []
 
     def eval(self):
         self.eval_called = True
@@ -184,8 +200,10 @@ class _FakeModel:
 
     def generate(self, input_ids, **kw):
         assert self.eval_called, "eval()을 먼저 호출해야 한다 (생성 모드)"
+        self.calls.append({"shape": tuple(input_ids.shape), "attention_mask": kw.get("attention_mask")})
         k = int(kw.get("max_new_tokens", 1))
-        return torch.cat([input_ids, torch.full((1, k), 2, dtype=input_ids.dtype)], dim=1)
+        b = input_ids.size(0)
+        return torch.cat([input_ids, torch.full((b, k), 2, dtype=input_ids.dtype)], dim=1)
 
 
 @pytest.fixture
@@ -196,7 +214,10 @@ def fake_transformers(monkeypatch):
     def fake_model(path, **kw):
         seen["model_kwargs"] = kw
         seen["path"] = path
-        return _FakeModel()
+        m = _FakeModel()
+        seen["model_obj"] = m
+        seen["model_calls"] = m.calls
+        return m
 
     def fake_tok(path, **kw):
         seen["tok_kwargs"] = kw
@@ -295,21 +316,38 @@ def test_load_prompts_slices_per_benchmark(tmp_out):
         assert sum(1 for r in rows if r["bench"] == b) == 2
 
 
-def test_load_prompts_falls_back_to_calib_file(tmp_out):
+def test_load_prompts_falls_back_to_calib_file_only_for_pseudo_bench(tmp_out):
+    """표준 벤치마크는 calib 폴백을 쓰지 않는다(레거시 의사 벤치 'smoke'만 허용)."""
     calib = tmp_out / "calib.jsonl"
     lines = [
         json.dumps(
             {
-                "text": f"<|im_start|>user\nq-{i}<|im_end|>\n<|im_start|>assistant\n<think></think>\n\nans-{i}<|im_end|>\n"
+                "text": f"user\nq-{i}\nassistant\n<think></think>\n\nans-{i}\n"
             }
         )
         for i in range(8)
     ]
     calib.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    rows = ev.load_prompts("smoke", 3, str(calib), list(BENCHES))
+    rows = ev.load_prompts("smoke", 3, str(calib), ["smoke"])
     assert len(rows) == 3
-    assert rows[0]["prompt"].endswith("<|im_start|>assistant\n<think></think>\n\n")
+    assert rows[0]["prompt"].endswith("assistant\n<think></think>\n\n")
     assert "ans-" not in rows[0]["prompt"]
+
+
+def test_load_prompts_fails_when_standard_prompts_missing(tmp_out):
+    """표준 GSM8K 프롬프트 파일이 없으면 실패한다(임의 표본 평가 금지)."""
+    with pytest.raises(SystemExit, match="36-prep-evalset"):
+        ev.load_prompts("smoke", 3, None, ["gsm8k"])
+
+
+def test_run_transformers_batches_with_left_padding(tmp_out, fake_transformers):
+    """배치 생성이 실제로 묶어서 호출되고 attention_mask가 전달된다."""
+    outs = ev.run_transformers("/models/raon-bf16", ["짧은", "조금 더 긴 프롬프트", "세 번째"], max_tokens=5, batch_size=3)
+    assert len(outs) == 3
+    assert fake_transformers["model_calls"], "generate 호출 기록이 남아야 한다"
+    call = fake_transformers["model_calls"][-1]
+    assert call["shape"][0] == 3, "3개 프롬프트가 한 배치로 호출되어야 한다"
+    assert call["attention_mask"] is not None, "attention_mask가 전달되어야 한다"
 
 
 def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):

@@ -25,7 +25,9 @@ from typing import Any
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 ALL_TARGETS = ["base", "awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-BENCHMARKS = ["kmmlu_redux", "gsm8k", "humaneval"]
+# 평가 벤치마크 = 표준 GSM8K (openai/gsm8k main/test).
+# 프롬프트는 36-prep-evalset.sh가 결정론적으로 만든다(수작업 표본 금지).
+BENCHMARKS = ["gsm8k"]
 QUANT_OF = {"nvfp4-awq": "compressed-tensors",
             "nvfp4-gptq": "compressed-tensors", "awq-w5": "compressed-tensors", "awq-w3": "compressed-tensors"}
 
@@ -163,11 +165,15 @@ def run_vllm(model_path: str, prompts: list[str], max_tokens: int, target: str =
         release_memory()
 
 
-def run_transformers(model_path: str, prompts: list[str], max_tokens: int) -> list[str]:
+def run_transformers(model_path: str, prompts: list[str], max_tokens: int, batch_size: int = 1) -> list[str]:
     """transformers 백엔드 — trust_remote_code + greedy decoding.
 
     입력 프롬프트를 토큰화해 길이를 기억하고, 생성 결과에서 그 이후 토큰만 디코드한다
     (프롬프트가 출력에 중복되지 않게).
+
+    batch_size > 1 이면 **왼쪽 패딩**으로 묶어 한 번에 생성한다.
+    왼쪽 패딩을 쓰는 이유: 생성 토큰이 항상 뒤에 붙으므로 새 토큰 구간이
+    `ids.size(1)`부터 시작해 행별로 입력 길이가 달라도 동일하게 잘라낼 수 있다.
     """
     import torch
 
@@ -179,15 +185,30 @@ def run_transformers(model_path: str, prompts: list[str], max_tokens: int) -> li
         model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
     )
     tok = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    if getattr(tok, "pad_token_id", None) is None and getattr(tok, "eos_token", None):
+        tok.pad_token = tok.eos_token
+    try:
+        tok.padding_side = "left"
+    except Exception:  # noqa: BLE001 — padding_side를 못 바꾸는 토크나이저는 단건 처리로 폴백
+        batch_size = 1
     model.eval()
+    bs = max(1, int(batch_size))
+    max_len = int(os.environ.get("EVAL_MAX_LEN", "4096"))
     texts: list[str] = []
     try:
-        for p in prompts:
-            enc = tok(p, return_tensors="pt", truncation=True, max_length=int(os.environ.get("EVAL_MAX_LEN", "4096")))
+        for start in range(0, len(prompts), bs):
+            chunk = prompts[start : start + bs]
+            enc = tok(chunk, return_tensors="pt", padding=bs > 1, truncation=True, max_length=max_len)
             ids = enc["input_ids"].to(model.device)
-            n_in = ids.size(1)
-            out = model.generate(ids, do_sample=False, max_new_tokens=max_tokens, use_cache=True)
-            texts.append(tok.decode(out[0][n_in:], skip_special_tokens=True))
+            mask = enc.get("attention_mask")
+            if mask is not None:
+                mask = mask.to(model.device)
+            out = model.generate(
+                ids, attention_mask=mask, do_sample=False, max_new_tokens=max_tokens, use_cache=True
+            )
+            gen = out[:, ids.size(1) :]
+            for row in gen:
+                texts.append(tok.decode(row, skip_special_tokens=True))
     finally:
         del model
         release_memory()
@@ -198,7 +219,8 @@ BACKEND = os.environ.get("RQ_EVAL_BACKEND", "auto")
 
 
 def generate(target: str, model_path: str, prompts: list[str], *, max_tokens: int | None = None,
-             tp: int | None = None, backend: str | None = None, on_fallback=None) -> list[str]:
+             tp: int | None = None, backend: str | None = None, on_fallback=None,
+             batch_size: int | None = None) -> list[str]:
     """backend로 생성. auto는 vLLM → (아키텍처 미지원 시) transformers 순."""
     backend = backend or BACKEND
     max_tokens = max_tokens or _default_max_tokens()
@@ -212,22 +234,31 @@ def generate(target: str, model_path: str, prompts: list[str], *, max_tokens: in
             print(f"[37-eval] vllm 미지원 → transformers 폴백: {e}")
             if on_fallback is not None:
                 on_fallback(str(e))
-    return run_transformers(model_path, prompts, max_tokens)
+    bs = batch_size if batch_size is not None else int(os.environ.get("EVAL_BATCH", "1"))
+    return run_transformers(model_path, prompts, max_tokens, bs)
 
 
 # ---------------------------------------------------------------- 프롬프트/산출물
 
 
+#: 캘리브레이션 텍스트에서 "assistant 응답 시작" 마커.
+#: 데이터 형식에 따라 ChatML 마커와 평문 마커가 함께 쓰인다 — 둘 다 처리해야 한다.
+#: (평문 마커만 보면 실제 캘리브 데이터의 응답 꼬리가 잘려나가지 않아
+#:  평가 프롬프트에 정답이 새어 들어갈 수 있다.)
+_STRIP_MARKERS = ("<|" + "im_start|>assistant\n", "assistant\n")
+
+
 def _strip_assistant_completion(text: str) -> str:
     """캘리브레이션 텍스트에 포함된 assistant 응답 꼬리를 잘라내 생성용 프롬프트만 남긴다."""
-    marker = "<|im_start|>assistant\n"
-    idx = text.find(marker)
-    if idx == -1:
-        return text
-    after = text[idx + len(marker) :]
-    if after.startswith("<think></think>\n\n"):
-        return text[: idx + len(marker)] + "<think></think>\n\n"
-    return text[: idx + len(marker)]
+    for marker in _STRIP_MARKERS:
+        idx = text.find(marker)
+        if idx == -1:
+            continue
+        after = text[idx + len(marker) :]
+        if after.startswith("<think></think>\n\n"):
+            return text[: idx + len(marker)] + "<think></think>\n\n"
+        return text[: idx + len(marker)]
+    return text
 
 
 def _read_all_texts(path: str) -> list[str]:
@@ -257,14 +288,19 @@ def _read_all_texts(path: str) -> list[str]:
 def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str]) -> list[dict]:
     """벤치별 프롬프트 {bench, prompt, gold} 목록.
 
-    1) outputs/eval-<mode>/prompts-<bench>.jsonl (정식 벤치 데이터)
-    2) 없으면 calib/eval 텍스트를 벤치 3종에 순환 배치 (smoke 스모크용)
+    1) outputs/eval-<mode>/prompts-<bench>.jsonl (정식 벤치 데이터 — 표준 GSM8K는
+       36-prep-evalset.sh가 만든 파일이다)
+    2) **정식 파일이 없으면 실패한다** — calib-tail 폴백은 표준 벤치마크가 아니라
+       임의 텍스트 평가라(수작업 표본) 표준 GSM8K 평가로는 쓰지 않는다.
+       단, 의사 벤치 "smoke"만 레거시 폴백을 허용한다.
     """
     outdir = OUTDIR(mode)
     rows: list[dict] = []
+    missing: list[str] = []
     for b in benchmarks:
         fp = os.path.join(outdir, f"prompts-{b}.jsonl")
         if not os.path.exists(fp):
+            missing.append(b)
             continue
         bench_rows: list[dict] = []
         with open(fp, encoding="utf-8") as f:
@@ -274,6 +310,10 @@ def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str
                     r.setdefault("bench", b)
                     bench_rows.append(r)
         rows.extend(bench_rows[:n] if n else bench_rows)
+    if missing and [b for b in missing if b != "smoke"]:
+        raise SystemExit(
+            f"bench 프롬프트 파일 없음: {missing} — ./36-prep-evalset.sh {mode} 로 먼저 준비하라"
+        )
     if rows:
         return rows
 
@@ -292,14 +332,16 @@ def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str
 
 
 def run_target(mode: str, target: str, backend: str | None, prompts: list[dict], *,
-               max_tokens: int | None = None, tp: int | None = None) -> int:
+               max_tokens: int | None = None, tp: int | None = None,
+               batch_size: int | None = None) -> int:
     """타겟 1개를 생성해 <target>.jsonl + bench/<bench>/<target>.jsonl 저장."""
     name = resolve(target, mode)
     if not os.path.exists(f"{name}/config.json"):
         hint = " (run 19-dequant-mxfp8.sh first)" if target == "base" else ""
         raise SystemExit(f"missing model: {name}{hint}")
     texts = [p["prompt"] for p in prompts]
-    outputs = generate(target, name, texts, max_tokens=max_tokens, tp=tp, backend=backend)
+    outputs = generate(target, name, texts, max_tokens=max_tokens, tp=tp, backend=backend,
+                       batch_size=batch_size)
 
     outdir = OUTDIR(mode)
     os.makedirs(outdir, exist_ok=True)
@@ -321,11 +363,13 @@ def run_target(mode: str, target: str, backend: str | None, prompts: list[dict],
     return len(prompts)
 
 
-def main(mode: str, target: str, n: int, tp: int, calib_file: str | None, backend: str | None, benchmarks: list[str]):
+def main(mode: str, target: str, n: int, tp: int, calib_file: str | None, backend: str | None,
+         benchmarks: list[str], batch_size: int | None = None):
     targets = ALL_TARGETS if target == "all" else [target]
     for t in targets:
         prompts = load_prompts(mode, n, calib_file, benchmarks)
-        run_target(mode, t, backend, prompts, max_tokens=_default_max_tokens(), tp=tp)
+        run_target(mode, t, backend, prompts, max_tokens=_default_max_tokens(), tp=tp,
+                   batch_size=batch_size)
 
 
 if __name__ == "__main__":
@@ -338,9 +382,12 @@ if __name__ == "__main__":
     ap.add_argument("--backend", default=None, choices=["auto", "vllm", "transformers"],
                     help="기본: $RQ_EVAL_BACKEND 또는 auto (vllm 미지원 시 transformers 폴백)")
     ap.add_argument("--max-tokens", type=int, default=None)
-    ap.add_argument("--benchmarks", default=",".join(BENCHMARKS), help="콤마 구분, 빈 값이면 단일 스모크 프롬프트")
+    ap.add_argument("--benchmarks", default=",".join(BENCHMARKS),
+                    help="콤마 구분 (기본: 표준 GSM8K). 36-prep-evalset.sh가 만든 prompts-<bench>.jsonl 사용")
+    ap.add_argument("--batch-size", type=int, dest="batch_size", default=None,
+                    help="transformers 생성 배치 크기 (기본 EVAL_BATCH, 1=단건)")
     a = ap.parse_args()
     d_n = int(os.environ.get("EVAL_N", "8" if a.mode == "smoke" else "200"))
     d_tp = int(os.environ.get("TP", "2"))
     _bench = [b for b in a.benchmarks.replace(" ", "").split(",") if b] or ["smoke"]
-    main(a.mode, a.target, a.n or d_n, a.tp or d_tp, a.calib_file, a.backend, _bench)
+    main(a.mode, a.target, a.n or d_n, a.tp or d_tp, a.calib_file, a.backend, _bench, a.batch_size)

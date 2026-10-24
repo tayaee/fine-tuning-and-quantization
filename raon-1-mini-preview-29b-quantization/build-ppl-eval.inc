@@ -141,9 +141,13 @@ rq_bpe_main() {
     rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
   fi
   if rq_bpe_want_step eval; then
+    if rq_bpe_want_step evalset; then
+      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./36-prep-evalset.sh "$mode"
+    fi
     rq_bpe_step "$mode" "$BPE_TIMING" "37-eval" ./37-eval.sh "$mode" "$eval_targets"
-    rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$mode/$target.jsonl"
     rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./40-score.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
+      "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
     rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then

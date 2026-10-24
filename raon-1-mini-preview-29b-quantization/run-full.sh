@@ -125,12 +125,14 @@ if want_step ppl; then
   done
 fi
 if want_step eval; then
+  # 표준 GSM8K 평가 세트 준비(36) — 37-eval의 입력. 결정론적이라 멱등.
+  want_step evalset && rq_step "36-evalset" ./36-prep-evalset.sh "$MODE"
   rq_step "37-eval" ./37-eval.sh "$MODE" "$_eval_targets"
   rq_step "40-score" ./40-score.sh "$MODE"
   rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
-  # Stage 7 게이트: 응답이 실제로 생성되었는지 확인한다(빈 응답은 다음 단계로 안 넘어간다).
+  # Stage 7 게이트: 응답이 실제로 생성되었는지 + 표준 GSM8K 정확도가 계약 범위인가.
   for _t in $(echo "$_eval_targets" | tr ',' ' '); do
-    rq_step "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$_t.jsonl"
+    rq_step "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$_t.jsonl" "$_t" "$MODE"
   done
 fi
 if want_step prep; then

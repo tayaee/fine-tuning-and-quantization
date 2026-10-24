@@ -85,9 +85,9 @@ def _metric_rows(data: dict) -> list[str]:
     rows = [
         (
             "| 타겟 | PPL | Δ vs bf16 | 판정 | 체크포인트(GB) | 수용 용량(GB) | "
-            "KMMLU-redux | GSM8K | HumanEval |"
+            "GSM8K (표준) |"
         ),
-        "| --- | ---: | ---: | --- | ---: | --- | ---: | ---: | ---: |",
+        "| --- | ---: | ---: | --- | ---: | --- | ---: |",
     ]
     base_ppl = (ppl.get("base") or {}).get("ppl")
     for t in QUANT_TARGETS:
@@ -102,11 +102,10 @@ def _metric_rows(data: dict) -> list[str]:
 
         rows.append(
             f"| {t} | {_num(p.get('ppl'))} | {_num(p.get('delta'))} | {p.get('verdict', '-')} | "
-            f"{_num(p.get('size_gb'), '-')} | {size_txt} | {_acc('kmmlu_redux')} | "
-            f"{_acc('gsm8k')} | {_acc('humaneval')} |"
+            f"{_num(p.get('size_gb'), '-')} | {size_txt} | {_acc('gsm8k')} |"
         )
     if base_ppl is not None:
-        rows.append(f"| base (bf16) | {_num(base_ppl)} | - | ref | - | - | - | - | - |")
+        rows.append(f"| base (bf16) | {_num(base_ppl)} | - | ref | - | - | - |")
     return rows
 
 

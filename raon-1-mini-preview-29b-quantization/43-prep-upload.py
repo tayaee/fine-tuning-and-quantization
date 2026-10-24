@@ -38,8 +38,9 @@ COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modelin
 REQUIRED_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json")
 # 원본 KRAFTON 레포에는 gated 동의 필드가 있다. 라이선스 요청이 아니므로 절대 복사하지 않는다.
 FORBIDDEN_FRONTMATTER = ("extra_gated_",)
-BENCH_LABELS = {"kmmlu_redux": "KMMLU-redux", "gsm8k": "GSM8K", "humaneval": "HumanEval"}
-BENCH_ORDER = ("kmmlu_redux", "gsm8k", "humaneval")
+# 표준 GSM8K 단일 벤치 (36-prep-evalset.sh가 만든 openai/gsm8k test 샘플)
+BENCH_LABELS = {"gsm8k": "GSM8K"}
+BENCH_ORDER = ("gsm8k",)
 
 # 타겟별 on-disk 포맷과 README에 박을 양자화 사양
 SPECS: dict[str, dict] = {
@@ -116,6 +117,53 @@ def _fmt(value, digits: int = 2, dash: str = "—") -> str:
     return str(value)
 
 
+def _gsm8k_acc_n(scores: dict, target: str) -> tuple[float | None, str]:
+    """표준 GSM8K (정확도, "정답/전체")."""
+    sc = (scores.get(target) or {}).get("benchmarks") or {}
+    row = sc.get("gsm8k") or {}
+    acc = row.get("acc")
+    n = row.get("n")
+    if acc is None or not n:
+        return None, "-"
+    return acc, f"{int(round(float(acc) * int(n)))}/{int(n)}"
+
+
+def _gsm8k_acc(scores: dict, target: str) -> float | None:
+    acc, _ = _gsm8k_acc_n(scores, target)
+    return acc
+
+
+def _gsm8k_verdict(acc: float | None, base_acc: float | None, drop_max: float) -> str:
+    """base 대비 정확도 하락이 허용폭 이내면 PASS."""
+    if acc is None:
+        return "-"
+    if base_acc is None:
+        return "n/a"
+    return "PASS" if (float(base_acc) - float(acc)) <= float(drop_max) else "FAIL"
+
+
+def _acceptance_target_spec(target: str) -> dict:
+    try:
+        from sdlc import load_acceptance, target_spec
+
+        return target_spec(load_acceptance(), target)
+    except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기본값
+        return {"ppl_delta_warn": 0.3, "ppl_delta_max": 1.0, "gsm8k_acc_drop_max": 0.02}
+
+
+def _evalset_meta(mode: str) -> str:
+    """평가 세트 매니페스트 한 줄 요약 (데이터셋·리비전·시드·표본수)."""
+    path = Path(SHARED) / "outputs" / f"eval-{mode}" / f"evalset-{mode}.json"
+    if not path.is_file():
+        return "evalset 매니페스트 없음"
+    try:
+        m = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "evalset 매니페스트 판독 실패"
+    rev = str(m.get("revision", ""))[:12]
+    return f"{m.get('dataset')}@{rev}, seed={m.get('seed')}, n={m.get('written_n')}"
+
+
 def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[str]:
     """Stage 1 수용 기준(acceptance.toml) vs 실측 대조표(모델 카드용)."""
     try:
@@ -160,20 +208,36 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
     """HuggingFace 모델 카드 전체를 만든다 (요구사항 2.1-3)."""
     spec = SPECS[target]
-    rows = ["base", *ALL_TARGETS]
-    header = ("| Model | WikiText-2 PPL | Δ vs bf16 | "
-              + " | ".join(f"{BENCH_LABELS[b]} ({b})" for b in BENCH_ORDER) + " |")
-    sep = "| --- | ---: | ---: | " + " | ".join("---:" for _ in BENCH_ORDER) + " |"
-    lines_table = [header, sep]
-    for r in rows:
-        p = (ppl.get(r) or {}).get("ppl")
-        delta = (ppl.get(r) or {}).get("delta")
-        sc = (scores.get(r) or {}).get("benchmarks") or {}
-        accs = [_fmt((sc.get(b) or {}).get("acc")) for b in BENCH_ORDER]
-        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
-        lines_table.append(f"| {name} | {_fmt(p, 3)} | {_fmt(delta)} | " + " | ".join(accs) + " |")
-
+    _spec = _acceptance_target_spec(target)
+    ppl_delta_warn = _spec.get("ppl_delta_warn", 0.3)
+    ppl_delta_max = _spec.get("ppl_delta_max", 1.0)
+    gsm8k_drop = _spec.get("gsm8k_acc_drop_max", 0.02)
+    gsm8k_meta = _evalset_meta(mode)
     acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb)
+    rows = ["base", *ALL_TARGETS]
+    # 검사 1 — PPL (in-domain perplexity, base 대비 Δ + 판정)
+    ppl_table = [
+        "| Model | PPL | Δ vs bf16 | 판정 |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    # 검사 2 — GSM8K (표준 테스트셋 정확도)
+    gsm_table = [
+        "| Model | GSM8K 정확도 | 정답/전체 | 판정 |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    base_acc = _gsm8k_acc(scores, "base")
+    for r in rows:
+        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
+        pr = ppl.get(r) or {}
+        ppl_table.append(
+            f"| {name} | {_fmt(pr.get('ppl'), 3)} | {_fmt(pr.get('delta'))} | {pr.get('verdict', '-')} |"
+        )
+        acc, cnt = _gsm8k_acc_n(scores, r)
+        gsm_table.append(
+            f"| {name} | {_fmt(acc, 3)} | {cnt} | {_gsm8k_verdict(acc, base_acc, gsm8k_drop)} |"
+        )
+
+
     tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
     fm = [
         "---",
@@ -219,12 +283,22 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 
 {chr(10).join(acceptance_rows)}
 
-## 성능 비교
+## 검사 1 — PPL (in-domain Perplexity)
 
-WikiText-2 PPL은 in-domain 캘리브레이션 텍스트 기준이며, 나머지는 37-eval/40-score가
-산출한 정확도입니다. **굵게** 표시된 행이 이 저장소에 올라간 모델입니다.
+캘리브레이션 텍스트 기준 in-domain PPL. base(bf16) 대비 Δ로 판정합니다
+(`Δ < {ppl_delta_warn}` Accept, `< {ppl_delta_max}` Conditional, 이상 Discard —
+기준은 `config/acceptance.toml`). **굵게** 표시된 행이 이 저장소에 올라간 모델입니다.
 
-{chr(10).join(lines_table)}
+{chr(10).join(ppl_table)}
+
+## 검사 2 — GSM8K (표준 테스트셋 정확도)
+
+표준 GSM8K(`openai/gsm8k`, main/test) 표본에 대한 정확도입니다.
+프롬프트는 `36-prep-evalset.sh`가 결정론적으로 만들고(`{gsm8k_meta}`),
+37-eval/40-score가 생성·채점합니다. 판정은 base 대비 하락 허용폭
+(`{gsm8k_drop}`) 이내면 PASS입니다.
+
+{chr(10).join(gsm_table)}
 
 ## 사용법 — transformers
 

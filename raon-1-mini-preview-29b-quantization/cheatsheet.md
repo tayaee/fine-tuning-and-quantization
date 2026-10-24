@@ -35,7 +35,13 @@ RQ_TARGETS=all ./31-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_quant "$RQ_MODELS/raon-nvfp4-awq-smoke" nvfp4-pack-quantized'
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_ppl "$RQ_OUTPUTS/ppl-smoke/nvfp4-awq.json" nvfp4-awq'
 
+# 4.5 표준 GSM8K 평가 세트 (36) — 프롬프트+매니페스트(결정론, 멱등)
+./36-prep-evalset.sh smoke
+./36-prep-evalset.sh full                # GSM8K_N=0 이면 표준 테스트셋 전체 1319
+GSM8K_N=300 EVAL_N=200 ./36-prep-evalset.sh full   # 표본 300 중 200문제만 풀기
+
 # 5. eval + score (백엔드: auto = vLLM → 커스텀 아키텍처 미지원 시 transformers)
+#    EVAL_BATCH=8 로 배치 생성(표준 GSM8K 실측에 필수)
 ./37-eval.sh smoke nvfp4-gptq
 ./40-score.sh smoke
 RQ_EVAL_BACKEND=transformers ./37-eval.sh smoke nvfp4-gptq

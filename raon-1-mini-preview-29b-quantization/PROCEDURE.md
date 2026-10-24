@@ -23,11 +23,16 @@
 | 4. dequant | `19-dequant-mxfp8.sh` | MXFP8 repo → `models/raon-bf16` (22~31·34·37의 입력, 1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 5. PTQ | `22-awq-w3` `25-awq-w5` `28-nvfp4-awq` `31-nvfp4-gptq` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
 | 6. PPL | `34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
-| 7. eval | `37-eval.sh` + `40-score.sh` | vLLM(커스텀 아키텍처 미지원 시 transformers 폴백) 벤치마크 + 완결율·정확도 | **gate-eval**: 응답 1줄 이상 |
+| 6.5 평가세트 | `36-prep-evalset.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
+| 7. eval | `36-prep-evalset.sh` → `37-eval.sh` + `40-score.sh` | **표준 GSM8K**(`openai/gsm8k` test) 프롬프트 결정론 생성 → 생성·채점(완결율·정확도) | **gate-eval**: 응답 1줄 이상 + GSM8K 정확도가 계약 범위 |
 | 8. 릴리스·배포 | `43-prep-upload` → `46-verify-upload` → `49-upload-hf` → `52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
-> 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)과 용량 범위는
-> 코드 하드코딩이 아니라 `config/acceptance.toml`(Stage 1)이 단일 소스다.
+> 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
+> GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
+> `config/acceptance.toml`(Stage 1)이 단일 소스다.
+>
+> **평가는 표준 GSM8K만** 쓴다(`openai/gsm8k` main/test, revision 고정, seed 고정).
+> 프롬프트는 `36-prep-evalset.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
 
 ## 단계 원장 · 릴리스 노트
 

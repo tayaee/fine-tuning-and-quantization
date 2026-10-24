@@ -39,6 +39,34 @@ ppl_delta_max  = 1.0    # Δ < 1.0 → Conditional, 이상 → Discard
 TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이 없다**
 (`uv.lock`을 건드리지 않으므로 10-setup 스탬프가 무효화되지 않는다).
 
+## 1-1. Stage 7 — 표준 GSM8K 평가 (측정 프로토콜)
+
+평가 입력은 **표준 벤치마크만** 쓴다. 프롬프트는 `36-prep-evalset.sh`가 만든다.
+
+| 항목 | 값 |
+|---|---|
+| 데이터셋 | `openai/gsm8k`, config `main`, **test split** (1319문제) |
+| 리비전 | `740312add88f781978c0658806c59bc2815b9866` (고정) |
+| 샘플링 | `random.Random(seed)` — seed `20261024` 고정, `GSM8K_N`(0=전체) |
+| 프롬프트 | Raon chat template(`user\n…\nassistant\n<think></think>\n\n`) + `#### <number>` 지시 |
+| gold | 데이터셋 정답의 `#### N` (콤마 제거) |
+| 재현성 | `outputs/eval-<mode>/evalset-<mode>.json`에 데이터셋·리비전·seed·n·**sha256** 기록 |
+| 생성 | `37-eval.py --batch-size` (기본 `EVAL_BATCH=8`, 좌측 패딩) |
+
+**배치 생성 주의**: 배치가 바뀌면 어휘는 달라질 수 있고(패딩/배치 모양에 따른 수치 차이),
+**채점 결과도 달라질 수 있다** — 실측 20문제 대조에서 bs=1 19/20, bs=8 20/20(1문제 차이).
+따라서 **base와 양자화본은 반드시 같은 프로토콜**(동일 배치 크기·동일 max_new_tokens)로
+재야 비교가 공정하다. 허용폭 2%p는 n=200 기준 약 1σ 수준이니 표본 수와 함께 해석한다.
+
+## 1-2. 모델 카드의 두 검사
+
+`43-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
+
+| 검사 | 지표 | 기준 | 출처 |
+|---|---|---|---|
+| 검사 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `34-measure-ppl.sh` |
+| 검사 2 — GSM8K | 표준 테스트셋 정확도 | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `37-eval.sh` + `40-score.sh` |
+
 ## 2. 게이트 (단계 간 계약)
 
 게이트 구현은 `gates.inc` 하나에 있고, `run-{smoke,full}.sh`와
@@ -49,7 +77,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | gate-acceptance | `rq_gate_acceptance` | 기준 없이 진행 (Stage 1 산출물 누락) |
 | gate-quant | `rq_gate_quant` | dense 폴백·미보정 `global_scale`(MoE 캘리브레이션 누락) |
 | gate-ppl | `rq_gate_ppl` | NaN/미측정 PPL, 기준과 어긋난 verdict |
-| gate-eval | `rq_gate_eval` | 응답 0건(모델이 아무것도 못 냄) |
+| gate-eval | `rq_gate_eval` | 응답 0건(모델이 아무것도 못 냄), GSM8K 정확도가 계약 허용폭 초과 |
 | gate-release | `rq_gate_release` | 모델카드/지표/업로드 전 감사 미통과 |
 | gate-serving | `rq_gate_serving` | 서빙 실패 (로그 미수행은 skip) |
 

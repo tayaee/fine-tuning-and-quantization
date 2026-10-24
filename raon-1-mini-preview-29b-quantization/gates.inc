@@ -103,9 +103,9 @@ PY
   )
 }
 
-# --- 게이트 3: eval 응답 생성 여부 (빈 파일이면 모델이 아무것도 못 냈다) -----
+# --- 게이트 3: eval 응답 생성 여부 + 표준 GSM8K 정확도 계약 대조 ---------------
 rq_gate_eval() {
-  local f="$1"
+  local f="$1" target="${2:-}" mode="${3:-$MODE}"
   if [ ! -s "$f" ]; then
     echo "FAIL: $f 없음/빈 파일 — eval 응답 미생성" >&2
     return 1
@@ -117,6 +117,33 @@ rq_gate_eval() {
     return 1
   fi
   echo "eval OK $f lines=$n"
+  # 표준 GSM8K 정확도: base 대비 하락이 수용 기준 허용폭 이내인가.
+  [ -n "$target" ] || return 0
+  local score="$RQ_OUTPUTS/eval-$mode/score.json"
+  [ -f "$score" ] || { echo "SKIP: $score 없음 — GSM8K 정확도 대조 생략"; return 0; }
+  ( set -x; rq_py - "$score" "$target" <<'PY'
+import json, sys
+from sdlc import load_acceptance, target_spec
+
+score = json.load(open(sys.argv[1]))
+target = sys.argv[2]
+base = ((score.get("base") or {}).get("benchmarks") or {}).get("gsm8k") or {}
+cur = ((score.get(target) or {}).get("benchmarks") or {}).get("gsm8k") or {}
+if base.get("acc") is None or cur.get("acc") is None:
+    print("SKIP: GSM8K 정확도 비교 데이터 없음 (base=%s %s=%s)" % (base.get("acc"), target, cur.get("acc")))
+    raise SystemExit(0)
+spec = target_spec(load_acceptance(), target)
+drop_max = float(spec.get("gsm8k_acc_drop_max", 0.02))
+drop = float(base["acc"]) - float(cur["acc"])
+if drop > drop_max:
+    raise SystemExit(
+        "FAIL: GSM8K 정확도 하락 %.3f > 허용폭 %.3f (base=%.3f %s=%.3f, n=%s)"
+        % (drop, drop_max, float(base["acc"]), target, float(cur["acc"]), cur.get("n"))
+    )
+print("GSM8K OK %s acc=%.3f (base=%.3f, 하락 %.3f <= %.3f, n=%s)"
+      % (target, float(cur["acc"]), float(base["acc"]), drop, drop_max, cur.get("n")))
+PY
+  )
 }
 
 # --- 게이트 4: Stage 8 릴리스 준비 (모델카드 + 지표 + 업로드 전 감사) ---------

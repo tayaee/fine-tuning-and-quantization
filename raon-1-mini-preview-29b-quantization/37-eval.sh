@@ -15,7 +15,9 @@ target_model() {
     *) echo "$RQ_MODELS/raon-$1-$MODE" ;;
   esac
 }
-rq_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=$VLLM_GPU_MEM_UTIL backend=$RQ_EVAL_BACKEND"
+# 평가 벤치(기본: 표준 GSM8K). 36-prep-evalset.sh가 prompts-<bench>.jsonl을 만든다.
+BENCHES="${EVAL_BENCHMARKS:-gsm8k}"
+rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES batch=${EVAL_BATCH:-1} gpu_mem_util=$VLLM_GPU_MEM_UTIL backend=$RQ_EVAL_BACKEND"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
 # `all`을 명시 목록으로 펴야 한다: 그대로 넘기면 37-eval.py --target all이 29B 모델
 # 5개를 한 프로세스에서 로드해 GPU/통합 메모리를 다 먹는다 (34-measure-ppl.sh와 동일).
@@ -32,11 +34,17 @@ done
 for t in $_ts; do
   out="$RQ_OUTPUTS/eval-$MODE/$t.jsonl"
   m="$(target_model "$t")"
-  if [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${FORCE:-0}" != 1 ] && rq_fresh "$out" "$m/config.json"; then
+  # freshness 입력에 프롬프트 파일을 넣는다: 평가 세트가 바뀌면 측정값도 무효다.
+  _pf=()
+  for _b in $(echo "$BENCHES" | tr ',' ' '); do
+    _pf+=("$RQ_OUTPUTS/eval-$MODE/prompts-$_b.jsonl")
+  done
+  if [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${FORCE:-0}" != 1 ] && rq_fresh "$out" "$m/config.json" "${_pf[@]}"; then
     rq_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
   [ -f "$m/config.json" ] || { rq_log "missing model: $m (run 19-dequant-mxfp8.sh first)"; exit 1; }
-  (set -x; uv run "$RQ_ROOT/37-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP" --backend "$RQ_EVAL_BACKEND")
+  (set -x; uv run "$RQ_ROOT/37-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP" \
+     --backend "$RQ_EVAL_BACKEND" --benchmarks "$BENCHES" --batch-size "${EVAL_BATCH:-1}")
 done
 
 echo ---- result ----
