@@ -8,7 +8,9 @@ OUT="$RQ_MODELS/raon-awq-w5-$MODE"
 rq_lock "$OUT"
 : "${RQ_SRC:=$RQ_MODELS/raon-bf16}"
 rq_require "$CALIB_FILE" "$RQ_SRC/config.json"
-if [ -f "$OUT/config.json" ] && rq_fresh "$OUT/config.json" "$CALIB_FILE"; then
+if [ -f "$OUT/config.json" ] \
+  && ! grep -q '"format":[[:space:]]*"dense"' "$OUT/config.json" \
+  && rq_fresh "$OUT/config.json" "$CALIB_FILE" "$RQ_SRC/config.json" "$RQ_ROOT/32-quant-awq-w5.py"; then
   rq_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -l "$OUT")

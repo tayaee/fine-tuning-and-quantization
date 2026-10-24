@@ -55,4 +55,13 @@ check_call 33-quant-awq-w3.py PACK_QUANTIZED || fail=1
 check_call 35-quant-nvfp4-awq.py NVFP4_PACK_QUANTIZED || fail=1
 check_call 36-quant-nvfp4-gptq.py NVFP4_PACK_QUANTIZED || fail=1
 
+# 4. PTQ 쉘 래퍼 4종: dense 폴백 디렉터리나 재생성된 raon-bf16을 fresh로 건너뛰지 않음
+for sh in 32-quant-awq-w5.sh 33-quant-awq-w3.sh 35-quant-nvfp4-awq.sh 36-quant-nvfp4-gptq.sh; do
+  grep -q '"dense"' "$ROOT/$sh" || { echo "FAIL: $sh fresh-skip이 format:dense를 거부하지 않음"; fail=1; }
+  grep -q 'rq_fresh "\$OUT/config.json" "\$CALIB_FILE" "\$RQ_SRC/config.json"' "$ROOT/$sh" \
+    || { echo "FAIL: $sh rq_fresh가 \$RQ_SRC/config.json(raon-bf16)을 확인하지 않음"; fail=1; }
+  bash -n "$ROOT/$sh" || { echo "FAIL: $sh bash -n"; fail=1; }
+done
+echo "OK: PTQ .sh 4종 fresh-skip 가드 (dense 거부 + raon-bf16 타임스탬프 연동)"
+
 exit $fail
