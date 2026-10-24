@@ -171,6 +171,9 @@ def run_transformers(model_path: str, prompts: list[str], max_tokens: int) -> li
     """
     import torch
 
+    from quant_common import patch_unified_memory_info
+
+    patch_unified_memory_info()
     _ensure_transformers()
     model = AutoModelForCausalLM.from_pretrained(
         model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True

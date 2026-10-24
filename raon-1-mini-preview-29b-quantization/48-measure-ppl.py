@@ -89,6 +89,10 @@ def ppl_of(model_name: str, texts: list[str], seq: int) -> float:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    from quant_common import patch_unified_memory_info
+
+    patch_unified_memory_info()
+
     @torch.no_grad()
     def _run() -> float:
         kw = {"trust_remote_code": True}
