@@ -159,7 +159,8 @@ def measure_targets(mode: str, n: int, targets: str | None, seq: int, outdir: st
     targets에 base가 없더라도 디렉터리에 캐시된 base.json이 있으면 판정 기준으로 쓴다.
     """
     os.makedirs(outdir, exist_ok=True)
-    texts = load_calib_texts(n)
+    calib_file = os.environ.get("CALIB_FILE") or f"{SHARED}/datasets/raon-calibration-{8 if mode == 'smoke' else 256}.jsonl"
+    texts = load_calib_texts(n, calib_file)
     measured: set[str] = set()
     for t in parse_targets(targets):
         name = resolve(t, mode)

@@ -17,11 +17,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest  # pyright: ignore[reportMissingImports] — venv pytest(설치됨)
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from tests._compat import pytest, run_standalone
 
 
 def _load_script(name: str):
@@ -294,6 +295,23 @@ def test_load_prompts_slices_per_benchmark(tmp_out):
         assert sum(1 for r in rows if r["bench"] == b) == 2
 
 
+def test_load_prompts_falls_back_to_calib_file(tmp_out):
+    calib = tmp_out / "calib.jsonl"
+    lines = [
+        json.dumps(
+            {
+                "text": f"<|im_start|>user\nq-{i}<|im_end|>\n<|im_start|>assistant\n<think></think>\n\nans-{i}<|im_end|>\n"
+            }
+        )
+        for i in range(8)
+    ]
+    calib.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rows = ev.load_prompts("smoke", 3, str(calib), list(BENCHES))
+    assert len(rows) == 3
+    assert rows[0]["prompt"].endswith("<|im_start|>assistant\n<think></think>\n\n")
+    assert "ans-" not in rows[0]["prompt"]
+
+
 def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):
     monkeypatch.setattr(ev, "generate", lambda *a, **k: ["out-1", "out-2"])
     monkeypatch.setattr(ev, "resolve", lambda target, mode: str(tmp_out / "models" / target))
@@ -424,8 +442,10 @@ def test_score_ignores_bench_subdirectory(tmp_out):
     (outdir / "bench").mkdir(parents=True)
     (outdir / "bench" / "gsm8k").mkdir(parents=True)
     (outdir / "base.jsonl").write_text(json.dumps({"prompt": "q", "output": "x"}) + "\n", encoding="utf-8")
+    (outdir / "prompts-gsm8k.jsonl").write_text(json.dumps({"prompt": "q", "gold": "42"}) + "\n", encoding="utf-8")
     (outdir / "bench" / "gsm8k" / "base.jsonl").write_text(json.dumps({"prompt": "q", "output": "y"}) + "\n", encoding="utf-8")
     rows = sc.score("smoke")
+    assert set(rows) == {"base"}
     assert rows["base"]["n"] == 1
 
 
@@ -433,23 +453,7 @@ def test_score_ignores_bench_subdirectory(tmp_out):
 
 
 def _main() -> int:
-    failed = []
-    for name, fn in sorted(globals().items()):
-        if not name.startswith("test_") or not callable(fn):
-            continue
-        # 픽스처가 필요한 테스트는 단독 러너에서 건너뛴다
-        if fn.__code__.co_argcount:
-            print(f"SKIP {name} (fixture 필요 — pytest로 실행)")
-            continue
-        try:
-            fn()
-        except Exception as e:  # noqa: BLE001
-            failed.append((name, e))
-            print(f"FAIL {name}: {type(e).__name__}: {e}")
-        else:
-            print(f"PASS {name}")
-    print(f"\n{len(failed)} failed")
-    return 1 if failed else 0
+    return run_standalone(globals())
 
 
 if __name__ == "__main__":

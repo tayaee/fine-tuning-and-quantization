@@ -90,7 +90,7 @@ def score(mode: str) -> dict:
     outdir = OUTDIR(mode)
     rows: dict[str, dict] = {}
     for name in sorted(os.listdir(outdir)) if os.path.isdir(outdir) else []:
-        if not name.endswith(".jsonl"):  # 최상위만 — bench/ 하위는 동일 응답의 상세 사본
+        if not name.endswith(".jsonl") or name.startswith("prompts-"):  # 최상위만 — prompts-*/bench/ 제외
             continue
         fp = os.path.join(outdir, name)
         with open(fp, encoding="utf-8") as f:

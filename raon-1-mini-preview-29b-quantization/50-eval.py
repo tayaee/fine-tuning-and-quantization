@@ -58,7 +58,7 @@ def _ensure_transformers() -> None:
 
 
 def _default_max_tokens() -> int:
-    return int(os.environ.get("EVAL_MAX_TOKENS", "1024"))
+    return int(os.environ.get("EVAL_MAX_TOKENS", "256"))
 
 
 def release_memory() -> None:
@@ -215,6 +215,42 @@ def generate(target: str, model_path: str, prompts: list[str], *, max_tokens: in
 # ---------------------------------------------------------------- 프롬프트/산출물
 
 
+def _strip_assistant_completion(text: str) -> str:
+    """캘리브레이션 텍스트에 포함된 assistant 응답 꼬리를 잘라내 생성용 프롬프트만 남긴다."""
+    marker = "<|im_start|>assistant\n"
+    idx = text.find(marker)
+    if idx == -1:
+        return text
+    after = text[idx + len(marker) :]
+    if after.startswith("<think></think>\n\n"):
+        return text[: idx + len(marker)] + "<think></think>\n\n"
+    return text[: idx + len(marker)]
+
+
+def _read_all_texts(path: str) -> list[str]:
+    """JSONL 파일에서 가능한 모든 텍스트 행을 읽는다 (행 수 상한 검사 없이 전체 반환)."""
+    if not os.path.exists(path):
+        raise SystemExit(f"missing calibration/eval file: {path} (run 12-prep-calibration.sh first)")
+    texts: list[str] = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            r = json.loads(line)
+            if "text" in r:
+                texts.append(_strip_assistant_completion(r["text"]))
+            elif "prompt" in r:
+                texts.append(r["prompt"])
+            else:
+                src = r.get("source", "")
+                src = src[0] if isinstance(src, list) else src
+                texts.append(str(src))
+    if not texts:
+        raise SystemExit(f"empty calibration/eval file: {path}")
+    return texts
+
+
 def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str]) -> list[dict]:
     """벤치별 프롬프트 {bench, prompt, gold} 목록.
 
@@ -238,14 +274,15 @@ def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str
     if rows:
         return rows
 
-    from quant_common import load_calib_texts
-
     eval_file = os.environ.get("EVAL_FILE", f"{SHARED}/datasets/raon-eval.jsonl")
     if os.path.exists(eval_file):
-        texts = load_calib_texts(10**9, eval_file)
+        texts = _read_all_texts(eval_file)
         print(f"eval_src={eval_file}")
     else:
-        texts = load_calib_texts(10**9, calib_file)[-n:] if n else load_calib_texts(10**9, calib_file)
+        default_calib = f"{SHARED}/datasets/raon-calibration-{8 if mode == 'smoke' else 256}.jsonl"
+        cfile = calib_file or os.environ.get("CALIB_FILE") or default_calib
+        all_texts = _read_all_texts(cfile)
+        texts = all_texts[-n:] if n else all_texts
         print("eval_src=calib-tail (전용 eval 파일 없음, 12 뒤쪽 슬라이스)")
     picked = texts[:n] if n else texts
     return [{"bench": benchmarks[i % len(benchmarks)], "prompt": t, "gold": None} for i, t in enumerate(picked)]
