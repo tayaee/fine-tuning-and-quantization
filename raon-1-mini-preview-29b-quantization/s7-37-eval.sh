@@ -37,10 +37,18 @@ for t in $_ts; do
   m="$(target_model "$t")"
   # freshness 입력에 프롬프트 파일을 넣는다: 평가 세트가 바뀌면 측정값도 무효다.
   _pf=()
+  _missing_bench=""
   for _b in $(echo "$BENCHES" | tr ',' ' '); do
     _pf+=("$RQ_OUTPUTS/eval-$MODE/prompts-$_b.jsonl")
+    # 파일이 새것이어도 요청한 벤치 응답이 없으면 신선하지 않다(일부 벤치만 돌린 결과).
+    if [ -f "$out" ] && ! grep -q "\"bench\": \"$_b\"" "$out"; then
+      _missing_bench="${_missing_bench:+$_missing_bench,}$_b"
+    fi
   done
-  if [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${FORCE:-0}" != 1 ] && rq_fresh "$out" "$m/config.json" "${_pf[@]}"; then
+  if [ -n "$_missing_bench" ]; then
+    rq_log "stale: $out has no rows for bench(es) $_missing_bench"
+  fi
+  if [ -z "$_missing_bench" ] && [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${FORCE:-0}" != 1 ] && rq_fresh "$out" "$m/config.json" "${_pf[@]}"; then
     rq_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
   [ -f "$m/config.json" ] || { rq_log "missing model: $m (run s4-19-dequant-mxfp8.sh first)"; exit 1; }

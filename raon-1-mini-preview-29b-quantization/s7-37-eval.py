@@ -345,6 +345,21 @@ def build_row(p: dict, output: str) -> dict:
     return row
 
 
+def preserved_rows(main_path: str, regenerated: set[str]) -> list[dict]:
+    """기존 <target>.jsonl에서 이번에 다시 생성하지 않는 벤치의 행만 돌려준다."""
+    if not os.path.exists(main_path):
+        return []
+    kept: list[dict] = []
+    with open(main_path, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            if r.get("bench", "smoke") not in regenerated:
+                kept.append(r)
+    return kept
+
+
 def run_target(mode: str, target: str, backend: str | None, prompts: list[dict], *,
                max_tokens: int | None = None, tp: int | None = None,
                batch_size: int | None = None) -> int:
@@ -362,6 +377,9 @@ def run_target(mode: str, target: str, backend: str | None, prompts: list[dict],
     for b in {p.get("bench", "smoke") for p in prompts}:
         os.makedirs(os.path.join(outdir, "bench", b), exist_ok=True)
     main_path = os.path.join(outdir, f"{target}.jsonl")
+    # 이번 실행에 없는 벤치의 기존 응답은 보존한다 — 일부 벤치만 다시 돌렸을 때
+    # (예: EVAL_BENCHMARKS=kmmluko,format) 다른 벤치 응답이 사라지면 채점·카드가 비게 된다.
+    kept = preserved_rows(main_path, {p.get("bench", "smoke") for p in prompts})
     detail: dict[str, list] = {}
     with open(main_path, "w", encoding="utf-8") as f:
         for p, o in zip(prompts, outputs):
@@ -369,11 +387,15 @@ def run_target(mode: str, target: str, backend: str | None, prompts: list[dict],
             row = build_row(p, o)
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
             detail.setdefault(b, []).append(row)
+        for row in kept:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
     for b, rows in detail.items():
         with open(os.path.join(outdir, "bench", b, f"{target}.jsonl"), "w", encoding="utf-8") as f:
             for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
-    print(f"[{mode}/{target}] n={len(prompts)} backend={backend or BACKEND} -> {main_path}")
+    kept_benches = sorted({r.get("bench", "smoke") for r in kept})
+    print(f"[{mode}/{target}] n={len(prompts)} backend={backend or BACKEND} -> {main_path}"
+          + (f" (kept {len(kept)} rows of {kept_benches})" if kept else ""))
     return len(prompts)
 
 

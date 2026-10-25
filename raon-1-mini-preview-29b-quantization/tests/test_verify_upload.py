@@ -281,7 +281,7 @@ def test_rejects_readme_with_missing_metric_dashes(ws):
     readme = (mdir / "README.md").read_text(encoding="utf-8")
     # Model 컬럼 = 정식 HF repo id (full → 접미사 없음)
     readme = readme.replace(
-        "| **tayaee/Raon-1-mini-preview-nvfp4-awq** | 6.650 | 0.15 |",
+        "| **tayaee/Raon-1-mini-preview-nvfp4-awq** | 6.650 | 0.150 |",
         "| **tayaee/Raon-1-mini-preview-nvfp4-awq** | — | — |",
     )
     (mdir / "README.md").write_text(readme, encoding="utf-8")

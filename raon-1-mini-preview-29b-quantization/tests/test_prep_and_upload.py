@@ -216,7 +216,35 @@ def test_prep_requires_metrics_unless_allowed(workspace):
     assert (d / "README.md").is_file()
 
 
-def test_prep_writes_manifest(workspace):
+def test_prep_requires_gsm8k_accuracy_unless_allowed(workspace):
+    """issue-21: score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 거부한다(Check 2가 빈다)."""
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _write_metrics(workspace, "smoke")
+    fp = workspace / "outputs" / "eval-smoke" / "score.json"
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    for t in ("base", "nvfp4-awq"):
+        data[t]["benchmarks"] = {"kmmluko": {"n": 10, "acc": 0.5}}
+    fp.write_text(json.dumps(data), encoding="utf-8")
+    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=False)
+    assert report["ok"] is False
+    errs = " ".join(report["errors"])
+    assert "no GSM8K accuracy for 'base'" in errs and "no GSM8K accuracy for 'nvfp4-awq'" in errs
+    assert not (d / "README.md").is_file()
+    assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
+
+
+def test_prep_readme_ppl_delta_has_three_decimals(workspace):
+    """issue-21: PPL delta는 소수 셋째 자리까지 (-0.001이 -0.00으로 뭉개지지 않게)."""
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _write_metrics(workspace, "smoke")
+    fp = workspace / "outputs" / "ppl-smoke" / "summary.json"
+    data = json.loads(fp.read_text(encoding="utf-8"))
+    data["nvfp4-awq"].update({"ppl": 8.1090, "delta": -0.0010078, "verdict": "Accept"})
+    fp.write_text(json.dumps(data), encoding="utf-8")
+    assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
+    readme = (d / "README.md").read_text(encoding="utf-8")
+    assert "| PPL delta vs base | < " in readme and "| -0.001 | Accept |" in readme
+    assert "-0.00 |" not in readme
     _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
     _write_metrics(workspace, "smoke")
     manifest = prep.run("smoke", "nvfp4-awq", allow_missing_metrics=True)

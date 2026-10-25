@@ -366,6 +366,29 @@ def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):
     assert (outdir / "bench" / "gsm8k" / "base.jsonl").is_file()
 
 
+def test_eval_partial_bench_run_keeps_other_bench_rows(tmp_out, monkeypatch):
+    """issue-21: 일부 벤치만 다시 생성해도 다른 벤치 응답이 <target>.jsonl에서 사라지지 않는다."""
+    monkeypatch.setattr(ev, "resolve", lambda target, mode: str(tmp_out / "models" / target))
+    (tmp_out / "models" / "base").mkdir(parents=True)
+    (tmp_out / "models" / "base" / "config.json").write_text("{}", encoding="utf-8")
+    outdir = Path(ev.OUTDIR("smoke"))
+
+    monkeypatch.setattr(ev, "generate", lambda *a, **k: ["g-old"])
+    ev.run_target("smoke", "base", "auto", [{"bench": "gsm8k", "prompt": "q", "gold": "1"}])
+    monkeypatch.setattr(ev, "generate", lambda *a, **k: ["k1", "f1"])
+    ev.run_target("smoke", "base", "auto", [{"bench": "kmmluko", "prompt": "k", "gold": "A"},
+                                           {"bench": "format", "prompt": "f", "case": "c1"}])
+    rows = [json.loads(line) for line in (outdir / "base.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert sorted(r["bench"] for r in rows) == ["format", "gsm8k", "kmmluko"]
+
+    # 같은 벤치를 다시 돌리면 교체된다(중복 누적 금지)
+    monkeypatch.setattr(ev, "generate", lambda *a, **k: ["g-new"])
+    ev.run_target("smoke", "base", "auto", [{"bench": "gsm8k", "prompt": "q", "gold": "1"}])
+    rows = [json.loads(line) for line in (outdir / "base.jsonl").read_text(encoding="utf-8").splitlines()]
+    gsm = [r["output"] for r in rows if r["bench"] == "gsm8k"]
+    assert gsm == ["g-new"] and len(rows) == 3
+
+
 # ================================================================ end-to-end 체인 (issue-4 §4)
 
 

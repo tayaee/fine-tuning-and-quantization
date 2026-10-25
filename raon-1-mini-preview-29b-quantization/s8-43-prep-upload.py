@@ -269,11 +269,11 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float, checks: 
         "| --- | --- | --- | --- |",
         (
             f"| PPL delta vs base | < {spec.get('ppl_delta_max')} (Conditional limit) | "
-            f"{_fmt(delta)} | {verdict or 'n/a'} |"
+            f"{_fmt(delta, 3)} | {verdict or 'n/a'} |"
         ),
         (
             f"| PPL delta (warning line) | < {spec.get('ppl_delta_warn')} (Accept limit) | "
-            f"{_fmt(delta)} | {'Accept' if verdict == 'Accept' else 'n/a'} |"
+            f"{_fmt(delta, 3)} | {'Accept' if verdict == 'Accept' else 'n/a'} |"
         ),
         f"| Checkpoint size (GB) | {lo} ~ {hi} | {size_gb} | {size_ok} |",
         (
@@ -365,7 +365,7 @@ def _check_tables(
     for r in rows:
         pr = ppl.get(r) or {}
         ppl_table.append(
-            f"| {_name(r)} | {_fmt(pr.get('ppl'), 3)} | {_fmt(pr.get('delta'))} | {pr.get('verdict', '-')} |"
+            f"| {_name(r)} | {_fmt(pr.get('ppl'), 3)} | {_fmt(pr.get('delta'), 3)} | {pr.get('verdict', '-')} |"
         )
         acc, cnt = _gsm8k_acc_n(scores, r)
         gsm_table.append(
@@ -658,6 +658,15 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
             report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s6-34-measure-ppl first)")
         if target not in scores:
             report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-37-eval/s7-40-gsm8k first)")
+        else:
+            # score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 카드의 Check 2가 빈다
+            # (일부 벤치만 다시 생성한 경우). base도 있어야 하락폭을 판정할 수 있다.
+            for r in ("base", target):
+                if _gsm8k_acc(scores, r) is None:
+                    report["errors"].append(
+                        f"no GSM8K accuracy for '{r}' in outputs/eval-{mode}/score.json "
+                        f"(rerun: EVAL_BENCHMARKS=gsm8k ./s7-37-eval.sh {mode} {r} && ./s7-40-gsm8k.sh {mode})"
+                    )
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])
     for bad in FORBIDDEN_FRONTMATTER:
