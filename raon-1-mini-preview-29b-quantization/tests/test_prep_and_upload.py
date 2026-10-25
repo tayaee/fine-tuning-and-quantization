@@ -10,6 +10,7 @@ README.md 모델 카드와 업로드 사전 검증만 확인한다.
 
 import importlib.util
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -188,9 +189,15 @@ def test_prep_generates_readme_with_required_sections(workspace):
                 "Apache"):
         assert tok in readme, f"README에 '{tok}' 없음"
     assert "extra_gated" not in readme, "원본 KRAFTON gated 필드를 복사하면 안 된다"
-    # 검사 2종(PPL/GSM8K) 표가 있어야 한다
-    assert "## 검사 1 — PPL" in readme, "PPL 검사 절 없음"
-    assert "## 검사 2 — GSM8K" in readme, "GSM8K 검사 절 없음"
+    # 검사 2종(PPL/GSM8K) 표가 있어야 한다 (영문 카드)
+    assert "## Check 1 - PPL" in readme, "PPL check section missing"
+    assert "## Check 2 - GSM8K" in readme, "GSM8K check section missing"
+    assert "## Quantization spec" in readme, "quantization spec section missing"
+    assert "## Acceptance criteria (Stage 1 contract)" in readme, "acceptance section missing"
+    # 모델 카드는 업로드되는 산출물 → 전부 영어여야 한다
+    ko = re.compile(r"[가-힣]")
+    korean_lines = [ln for ln in readme.splitlines() if ko.search(ln)]
+    assert not korean_lines, f"README must be fully English, found: {korean_lines[:3]}"
     # 기준선(base) 수치와 현재 모델 수치가 표에 함께 있어야 한다
     assert "8.11" in readme and "8.42" in readme
     for b in BENCHES:

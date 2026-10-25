@@ -46,25 +46,25 @@ BENCH_ORDER = ("gsm8k",)
 SPECS: dict[str, dict] = {
     "awq-w5": {
         "format": PACK_QUANTIZED, "tags": ["w5a16", "gptq"],
-        "algorithm": "GPTQ (AWQ smoothing 후)", "precision": "W5A16",
+        "algorithm": "GPTQ (after AWQ smoothing)", "precision": "W5A16",
         "bits": "5-bit int", "group_size": "group_size=64, symmetric=False",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
     "awq-w3": {
         "format": PACK_QUANTIZED, "tags": ["w3a16", "gptq"],
-        "algorithm": "GPTQ (AWQ smoothing 후)", "precision": "W3A16",
+        "algorithm": "GPTQ (after AWQ smoothing)", "precision": "W3A16",
         "bits": "3-bit int", "group_size": "group_size=64, symmetric=False",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
     "nvfp4-awq": {
         "format": NVFP4_PACK_QUANTIZED, "tags": ["nvfp4", "w4a4", "awq"],
-        "algorithm": "NVFP4 (AWQ smoothing 후)", "precision": "W4A4 (FP8 동적 활성 스케일)",
+        "algorithm": "NVFP4 (after AWQ smoothing)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
     "nvfp4-gptq": {
         "format": NVFP4_PACK_QUANTIZED, "tags": ["nvfp4", "w4a4", "gptq"],
-        "algorithm": "NVFP4 (GPTQ)", "precision": "W4A4 (FP8 동적 활성 스케일)",
+        "algorithm": "NVFP4 (GPTQ)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
@@ -73,9 +73,10 @@ SPECS: dict[str, dict] = {
 # 카드에 박히는 값이 파이프라인이 만든 값과 어긋나면 안 되므로 환경변수를 따른다.
 CALIB_NOTE = (
     f"{os.environ.get('CALIB_N', '256')} samples, "
-    f"seq_len {os.environ.get('SEQ_LEN', '2048')} (in-domain, GSM8K 계열 한국어 혼합)"
+    f"seq_len {os.environ.get('SEQ_LEN', '2048')} "
+    "(in-domain corpus: Korean instruction data mixed with English chat data)"
 )
-IGNORE_NOTE = "`lm_head`, `mlp.gate`, `self_attn`, `shared_experts` (BF16 유지)"
+IGNORE_NOTE = "`lm_head`, `mlp.gate`, `self_attn`, `shared_experts` (kept in BF16)"
 
 
 def MODELS_DIR(mode: str) -> str:
@@ -155,11 +156,11 @@ def _evalset_meta(mode: str) -> str:
     """평가 세트 매니페스트 한 줄 요약 (데이터셋·리비전·시드·표본수)."""
     path = Path(SHARED) / "outputs" / f"eval-{mode}" / f"evalset-{mode}.json"
     if not path.is_file():
-        return "evalset 매니페스트 없음"
+        return "evalset manifest not found"
     try:
         m = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return "evalset 매니페스트 판독 실패"
+        return "evalset manifest could not be read"
     rev = str(m.get("revision", ""))[:12]
     return f"{m.get('dataset')}@{rev}, seed={m.get('seed')}, n={m.get('written_n')}"
 
@@ -171,7 +172,7 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[
 
         data = load_acceptance()
     except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기준 표를 생략
-        return ["_수용 기준 파일(config/acceptance.toml)이 없어 대조표를 생성하지 않았습니다._"]
+        return ["_Acceptance contract file (config/acceptance.toml) not found - comparison table omitted._"]
     spec = target_spec(data, target)
     row = (ppl or {}).get(target) or {}
     delta = row.get("delta")
@@ -186,19 +187,19 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[
     if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
         size_ok = "PASS" if float(lo) <= float(size_gb) <= float(hi) else "FAIL"
     rows = [
-        "| 기준 항목 | 기준값 | 실측 | 판정 |",
+        "| Criterion | Threshold | Measured | Verdict |",
         "| --- | --- | --- | --- |",
         (
-            f"| ΔPPL (base 대비) | < {spec.get('ppl_delta_max')} (Conditional 상한) | "
+            f"| PPL delta vs base | < {spec.get('ppl_delta_max')} (Conditional limit) | "
             f"{_fmt(delta)} | {verdict or 'n/a'} |"
         ),
         (
-            f"| ΔPPL 경고선 | < {spec.get('ppl_delta_warn')} (Accept 상한) | "
+            f"| PPL delta (warning line) | < {spec.get('ppl_delta_warn')} (Accept limit) | "
             f"{_fmt(delta)} | {'Accept' if verdict == 'Accept' else 'n/a'} |"
         ),
-        f"| 체크포인트 용량(GB) | {lo} ~ {hi} | {size_gb} | {size_ok} |",
+        f"| Checkpoint size (GB) | {lo} ~ {hi} | {size_gb} | {size_ok} |",
         (
-            f"| 저장 포맷 | `{spec.get('quant_format')}` | `{SPECS[target]['format']}` | "
+            f"| Storage format | `{spec.get('quant_format')}` | `{SPECS[target]['format']}` | "
             f"{'PASS' if spec.get('quant_format') == SPECS[target]['format'] else 'FAIL'} |"
         ),
     ]
@@ -217,12 +218,12 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     rows = ["base", *ALL_TARGETS]
     # 검사 1 — PPL (in-domain perplexity, base 대비 Δ + 판정)
     ppl_table = [
-        "| Model | PPL | Δ vs bf16 | 판정 |",
+        "| Model | PPL | Delta vs bf16 | Verdict |",
         "| --- | ---: | ---: | --- |",
     ]
     # 검사 2 — GSM8K (표준 테스트셋 정확도)
     gsm_table = [
-        "| Model | GSM8K 정확도 | 정답/전체 | 판정 |",
+        "| Model | GSM8K accuracy | Correct / Total | Verdict |",
         "| --- | ---: | ---: | --- |",
     ]
     base_acc = _gsm8k_acc(scores, "base")
@@ -257,68 +258,71 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 
 # {BASE_MODEL} — {target} ({mode})
 
-`{BASE_MODEL}`의 **{target}** 양자화 모델입니다. 가중치만 {spec['precision']}로 낮췄고
-활성화·정규화 레이어는 BF16 그대로 유지했습니다. `compressed-tensors`
-(`{spec['format']}`) 포맷이므로 `transformers`의 `AutoModelForCausalLM`로 바로 로드됩니다.
+This is a **{target}** quantized version of `{BASE_MODEL}`. Only the weights are
+compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
+The checkpoint is stored in the `compressed-tensors` format (`{spec['format']}`), so it
+loads directly with `transformers`' `AutoModelForCausalLM`.
 
-## 양자화 사양
+## Quantization spec
 
-| 항목 | 값 |
+| Item | Value |
 | --- | --- |
 | Base model | `{BASE_MODEL}` |
 | Base revision | `{BASE_REVISION}` |
-| 양자화 알고리즘 | {spec['algorithm']} |
-| 가중치 정밀도 | {spec['precision']} |
-| 비트폭 | {spec['bits']} |
-| 그룹 크기 | {spec['group_size']} |
-| 양자화 제외 레이어 | {IGNORE_NOTE} |
-| 캘리브레이션 | {CALIB_NOTE} |
-| 체크포인트 용량 | {size_gb} GB |
-| 저장 포맷 | `{spec['format']}` |
+| Quantization algorithm | {spec['algorithm']} |
+| Weight precision | {spec['precision']} |
+| Bit width | {spec['bits']} |
+| Group size | {spec['group_size']} |
+| Layers left unquantized | {IGNORE_NOTE} |
+| Calibration | {CALIB_NOTE} |
+| Checkpoint size | {size_gb} GB |
+| Storage format | `{spec['format']}` |
 
-## 수용 기준 (Stage 1 계약) 대비 판정
+## Acceptance criteria (Stage 1 contract)
 
-수용 기준은 `config/acceptance.toml`에 정의된 파이프라인 계약입니다.
-아래 표는 그 계약과 실측값의 대조 결과입니다.
+The acceptance criteria are the pipeline contract defined in `config/acceptance.toml`.
+The table below contrasts that contract with the measured values.
 
 {chr(10).join(acceptance_rows)}
 
-## 검사 1 — PPL (in-domain Perplexity)
+## Check 1 - PPL (in-domain perplexity)
 
-캘리브레이션 텍스트 기준 in-domain PPL. base(bf16) 대비 Δ로 판정합니다
-(`Δ < {ppl_delta_warn}` Accept, `< {ppl_delta_max}` Conditional, 이상 Discard —
-기준은 `config/acceptance.toml`). **굵게** 표시된 행이 이 저장소에 올라간 모델입니다.
+In-domain perplexity measured on the calibration corpus. The verdict is based on the
+delta against the bf16 base model (`delta < {ppl_delta_warn}` Accept,
+`< {ppl_delta_max}` Conditional, otherwise Discard; thresholds from
+`config/acceptance.toml`). The **bold** row is the model published in this repository.
 
 {chr(10).join(ppl_table)}
 
-## 검사 2 — GSM8K (표준 테스트셋 정확도)
+## Check 2 - GSM8K (standard test set accuracy)
 
-표준 GSM8K(`openai/gsm8k`, main/test) 표본에 대한 정확도입니다.
-프롬프트는 `s7-36-prep-evalset.sh`가 결정론적으로 만들고(`{gsm8k_meta}`),
-s7-37-eval/s7-40-score가 생성·채점합니다. 판정은 base 대비 하락 허용폭
-(`{gsm8k_drop}`) 이내면 PASS입니다.
+Accuracy on a deterministic sample of the standard GSM8K test set
+(`openai/gsm8k`, main/test). The prompts are generated deterministically by
+`s7-36-prep-evalset.sh` ({gsm8k_meta}) and scored by s7-37-eval / s7-40-score.
+The verdict is PASS when the accuracy drop against the base model stays within
+`{gsm8k_drop}`.
 
 {chr(10).join(gsm_table)}
 
-## 사용법 — transformers
+## Usage - transformers
 
 ```python
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_id = "{target}"  # 또는 공개된 이 repo
+model_id = "{target}"  # or the published repo id below
 tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
     model_id, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
 )
-messages = [{{"role": "user", "content": "2+2는?"}}]
+messages = [{{"role": "user", "content": "What is 2+2?"}}]
 inputs = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(model.device)
 print(tok.decode(model.generate(inputs, max_new_tokens=256)[0], skip_special_tokens=True))
 ```
 
-## 사용법 — vLLM
+## Usage - vLLM
 
-Raon-1-mini 계열은 커스텀 아키텍처라 KRAFTON의 vLLM 포크가 필요합니다.
+The Raon-1-mini family uses a custom architecture, so the KRAFTON vLLM fork is required.
 
 ```bash
 vllm serve {target} \\
@@ -327,12 +331,12 @@ vllm serve {target} \\
   --tensor-parallel-size 2
 ```
 
-## 라이선스 및 출처
+## License and source
 
-- Apache License 2.0. 이 저장소의 코드는 Apache-2.0으로 배포됩니다.
-- 베이스 모델: [{BASE_MODEL}](https://huggingface.co/{BASE_MODEL}) (rev `{BASE_REVISION}`), Apache-2.0.
-- 원본 KRAFTON 저장소는 접근이 게이트되어 있으나, 이 저장소는 그 요청을 재게이트하지 않습니다.
-  베이스 모델 라이선스(`apache-2.0`)의 조건은 그대로 적용됩니다.
+- Apache License 2.0. The code in this repository is distributed under Apache-2.0.
+- Base model: [{BASE_MODEL}](https://huggingface.co/{BASE_MODEL}) (rev `{BASE_REVISION}`), Apache-2.0.
+- The original KRAFTON repository is access-gated; this repository does not re-gate it.
+  The base model license terms (`apache-2.0`) still apply.
 """
 
 
@@ -344,7 +348,7 @@ def _copy_missing_custom_code(d: Path, copied: list) -> list:
             continue
         s = src / name
         if not s.is_file():
-            raise RuntimeError(f"{d}: {name} 누락이고 보충 원본도 없음 ({s})")
+            raise RuntimeError(f"{d}: {name} is missing and no source is available to copy it from ({s})")
         shutil.copy(s, d / name)
         copied.append(name)
     return copied
@@ -355,7 +359,7 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
     report: dict = {"target": target, "mode": mode, "ok": False, "errors": [], "copied": [], "size_gb": None}
     d = model_dir(mode, target)
     if not (d / "config.json").is_file():
-        report["errors"].append(f"{d}: config.json 없음 — 모델 디렉터리 미생성 (run the quant step first)")
+        report["errors"].append(f"{d}: config.json missing - model directory not created (run the quantization step first)")
         return report
 
     # 1) 누락 custom code 보충 (verify_compressed_output도 custom_code를 요구하므로 먼저)
@@ -374,21 +378,21 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
     # 3) 필수 파일 확인
     for name in REQUIRED_FILES:
         if not (d / name).is_file():
-            report["errors"].append(f"{d}: {name} 없음 — 업로드 시 로드 불가")
+            report["errors"].append(f"{d}: {name} missing - the model cannot be loaded after upload")
 
     # 4) 지표 → 모델 카드
     ppl = _ppl_summary(mode)
     scores = _eval_scores(mode)
     if not allow_missing_metrics:
         if target not in ppl:
-            report["errors"].append(f"outputs/ppl-{mode}/summary.json에 '{target}' 측정값 없음 (run s6-34-measure-ppl first)")
+            report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s6-34-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"outputs/eval-{mode}/score.json에 '{target}' 결과 없음 (run s7-37-eval/s7-40-score first)")
+            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-37-eval/s7-40-score first)")
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])
     for bad in FORBIDDEN_FRONTMATTER:
         if bad in readme.split("---", 2)[1]:
-            report["errors"].append(f"frontmatter에 금지 필드 '{bad}' 포함")
+            report["errors"].append(f"frontmatter contains a forbidden field '{bad}'")
     if report["errors"]:
         return report
     (d / "README.md").write_text(readme, encoding="utf-8")
@@ -414,7 +418,7 @@ def run(mode: str, targets: str | list | None = None, allow_missing_metrics: boo
     ts = _parse_targets(targets)
     unknown = [t for t in ts if t not in SPECS]
     if unknown:
-        raise SystemExit(f"unknown target(s): {unknown} (허용: {ALL_TARGETS})")
+        raise SystemExit(f"unknown target(s): {unknown} (allowed: {ALL_TARGETS})")
     reports = {t: prepare_target(mode, t, allow_missing_metrics) for t in ts}
     manifest = {
         "mode": mode,

@@ -1,0 +1,18 @@
+{
+  "issue": 16,
+  "started": "2026-10-24T21:00:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T21:05:00-04:00",
+        "loc_added": 118,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "s8-43 모델 카드 전량 영문화 + s8-46 필수섹션 정합 + 회귀 가드(한글 0줄) 추가"
+}

@@ -35,7 +35,7 @@ grep -q 'prompts-\$_b.jsonl' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.s
 echo "OK: s7-37-eval 표준 GSM8K + 배치 생성"
 
 # 3. s8-43-prep-upload.py 카드 2종 검사
-for tok in '검사 1 — PPL' '검사 2 — GSM8K' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do
+for tok in '## Check 1 - PPL' '## Check 2 - GSM8K' '## Quantization spec' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do
   grep -qF -- "$tok" "$ROOT/s8-43-prep-upload.py" || { echo "FAIL: s8-43-prep-upload.py에 '$tok' 없음"; fail=1; }
 done
 echo "OK: 모델 카드 검사 2종(PPL·GSM8K)"
