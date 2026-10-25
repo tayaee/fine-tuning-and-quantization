@@ -42,8 +42,8 @@ s<stage>-##-<slug>.{sh,py}
 | 7 | 평가 | `s7-36-prep-evalset.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-score.{sh,py}` |
 | 8 | 릴리스·배포 | `s8-43-prep-upload.{sh,py}` … `s8-64-verify-serving.py` |
 
-빌드 wrapper(`10-16,19,X-40-build-*.sh`)는 **Stage를 넘나드는** 진입점이라 접두사를 붙이지
-않는다(파일명 자체가 스텝 나열이다).
+빌드 wrapper(`s0-s7-build-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는 진입점이라
+`s0-s7-` 접두사를 쓴다(카드·감사·업로드 등 Stage 8은 `STEPS=prep,verify`로 선택).
 
 ## 1. Stage 1 — 수용 기준 (Acceptance Criteria)
 
@@ -61,7 +61,7 @@ ppl_delta_max  = 1.0    # Δ < 1.0 → Conditional, 이상 → Discard
 ```
 
 TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이 없다**
-(`uv.lock`을 건드리지 않으므로 10-setup 스탬프가 무효화되지 않는다).
+(`uv.lock`을 건드리지 않으므로 s0-10-setup 스탬프가 무효화되지 않는다).
 
 ## 1-1. Stage 7 — 표준 GSM8K 평가 (측정 프로토콜)
 
@@ -84,7 +84,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ## 1-2. 모델 카드의 두 검사
 
-`43-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
+`s8-43-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
 
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|

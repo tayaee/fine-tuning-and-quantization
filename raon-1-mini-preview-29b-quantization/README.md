@@ -9,10 +9,10 @@
 
 | # | 스크립트 | 타깃 | 레시피 (llm-compressor) | 서빙 `--quantization` | 비고 |
 |---|---|---|---|---|---|
-| 22 | `22-quant-awq-w3` | `awq-w3` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
-| 25 | `25-quant-awq-w5` | `awq-w5` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
-| 28 | `28-quant-nvfp4-awq` | `nvfp4-awq` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
-| 31 | `31-quant-nvfp4-gptq` | `nvfp4-gptq` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
+| 22 | `s5-22-quant-awq-w3` | `awq-w3` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
+| 25 | `s5-25-quant-awq-w5` | `awq-w5` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
+| 28 | `s5-28-quant-nvfp4-awq` | `nvfp4-awq` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
+| 31 | `s5-31-quant-nvfp4-gptq` | `nvfp4-gptq` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
 
 출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-full`).
 업로드명: `tayaee/Raon-1-mini-preview-<target>[-smoke]` (상세 `output-models-tree.txt`).
@@ -50,8 +50,8 @@ PIPELINE_TEST=0 TARGETS=all ./run-smoke.sh   # smoke 4종 실측
 TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 
 # 단일 타깃만 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
-./10-16,19,28-40-build-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
-./10-16,19,28-40-build-full-nvfp4-awq.sh   # full  × nvfp4-awq
+./s0-s7-build-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
+./s0-s7-build-full-nvfp4-awq.sh   # full  × nvfp4-awq
 # 게이트: quant 직후 패킹 계약·global_scale, PPL 직후 유한값 검증 → 실패 시 즉시 중단
 ```
 
@@ -84,7 +84,7 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 ## 알려진 위험 (스캐폴딩 시점 미검증)
 
 0. **베이스가 MXFP8 (2026-10-22 실측)**: 메인 repo 텐서가 F8_E4M3 9216 + 스케일.
-   llmcompressor가 기양자화 모델을 거부하므로 `19-dequant-mxfp8`으로 BF16 복원 후 PTQ.
+   llmcompressor가 기양자화 모델을 거부하므로 `s4-19-dequant-mxfp8`으로 BF16 복원 후 PTQ.
    복원본(`raon-bf16`)이 34·37의 base 기준. 복원 수치 검증은 19 스크립트 내장.
 1. **custom_code MoE 지원 미검증**: RDA/MLA/MoE-128expert 구조에 AWQModifier/GPTQModifier가
    그대로 동작하는지 smoke 첫 실행으로 확인. gate/router/lm_head는 양자화 제외.

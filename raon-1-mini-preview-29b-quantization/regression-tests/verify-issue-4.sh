@@ -84,7 +84,7 @@ for f in run-smoke.sh run-full.sh; do
   grep -q 's6-34-measure-ppl.sh "\$MODE" "\$_eval_targets"' "$ROOT/$f" \
     || { echo "FAIL: $f 가 TARGETS(=base 포함)를 34-ppl에 전달하지 않음"; fail=1; }
   grep -q 's7-37-eval.sh "\$MODE" "\$_eval_targets"' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 TARGETS(=base 포함)를 37-eval에 전달하지 않음"; fail=1; }
+    || { echo "FAIL: $f 가 TARGETS(=base 포함)를 s7-37-eval에 전달하지 않음"; fail=1; }
   grep -q 'QUANT_CPU_ONLY' "$ROOT/$f" || { echo "FAIL: $f 에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
   grep -q '_quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$ROOT/$f" \
     || { echo "FAIL: $f 가 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }

@@ -1,7 +1,7 @@
 """s7-37-eval.py — 벤치마크 프롬프트 생성 (vLLM 우선, transformers 폴백).
 입력: outputs/eval-<mode>/prompts-<bench>.jsonl (있으면) — 없으면 calib 파일 뒤 EVAL_N개.
 출력: outputs/eval-<mode>/<target>.jsonl ({bench, prompt, gold, output}).
-        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, 40-score는 최상위만 집계)
+        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, s7-40-score는 최상위만 집계)
 
 백엔드(요구사항 2):
   KRAFTON Raon-1-mini-preview는 자체 vllm 포크(krafton-ai/vllm@raon-1-mini-preview)를
@@ -231,7 +231,7 @@ def generate(target: str, model_path: str, prompts: list[str], *, max_tokens: in
         except Exception as e:  # 명시 backend면 그대로, auto면 조건부 폴백
             if backend == "vllm" or not is_unsupported_vllm_error(e):
                 raise
-            print(f"[37-eval] vllm 미지원 → transformers 폴백: {e}")
+            print(f"[s7-37-eval] vllm 미지원 → transformers 폴백: {e}")
             if on_fallback is not None:
                 on_fallback(str(e))
     bs = batch_size if batch_size is not None else int(os.environ.get("EVAL_BATCH", "1"))

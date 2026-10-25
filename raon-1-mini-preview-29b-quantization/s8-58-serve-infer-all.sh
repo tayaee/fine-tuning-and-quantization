@@ -1,6 +1,6 @@
 #!/bin/bash
 # s8-58-serve-infer-all.sh [mode] [n] — 전 타깃 순회 서빙+추론 (단일 터미널).
-# 모델마다: serve 기동 → 로딩 대기 → 55-infer-examples → logs/55.<slug>.log → kill.
+# 모델마다: serve 기동 → 로딩 대기 → s8-55-infer-examples → logs/55.<slug>.log → kill.
 # 29B 로드 감안: LOAD_TIMEOUT 기본 1200.
 # 사용: ./s8-58-serve-infer-all.sh smoke 3
 set -uo pipefail

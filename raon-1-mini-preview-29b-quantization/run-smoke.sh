@@ -6,7 +6,7 @@
 #   (setup → calib(2) → compat → validate, 5분 목표, 양자화 미실행).
 # 사용: ./run-smoke.sh
 #   PIPELINE_TEST=1 ./run-smoke.sh       # 빠른 점검 (양자화 제외)
-#   SKIP_SETUP=1 ./run-smoke.sh         # 10-setup 생략
+#   SKIP_SETUP=1 ./run-smoke.sh         # s0-10-setup 생략
 #   STEPS=setup,calib,compat ./run-smoke.sh  # 일부 스텝만
 # 스텝명: setup calib compat validate dequant quant ppl eval prep (기본 STEPS=all)
 # TARGETS: 양자화 타깃 부분집합 (콤마 구분). **미지정 시 가능한 값을 찍고 종료**(자동 전체 실행 금지). PPL/eval/prep/upload은 base를 앞에 붙여 측정한다.
@@ -144,7 +144,7 @@ fi
 _eval_targets="base,$_targets"
 
 # 양자화만 CPU 강제(QUANT_CPU_ONLY=1): env로 자식 프로세스에만 빈 값을 넘겨
-# 34-ppl/37-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
+# 34-ppl/s7-37-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then
   _quant_cmd=(env CUDA_VISIBLE_DEVICES=)
   rq_log "QUANT_CPU_ONLY=1 — 양자화 단계만 GPU 숨김, PPL/eval은 GPU 사용"
@@ -185,7 +185,7 @@ if want_step ppl; then
   done
 fi
 if want_step eval; then
-  # 표준 GSM8K 평가 세트 준비(36) — 37-eval의 입력. 결정론적이라 멱등.
+  # 표준 GSM8K 평가 세트 준비(36) — s7-37-eval의 입력. 결정론적이라 멱등.
   want_step evalset && rq_step "36-evalset" ./s7-36-prep-evalset.sh "$MODE"
   rq_step "37-eval" ./s7-37-eval.sh "$MODE" "$_eval_targets"
   rq_step "40-score" ./s7-40-score.sh "$MODE"

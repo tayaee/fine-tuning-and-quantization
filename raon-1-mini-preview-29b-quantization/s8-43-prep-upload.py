@@ -295,7 +295,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 
 표준 GSM8K(`openai/gsm8k`, main/test) 표본에 대한 정확도입니다.
 프롬프트는 `s7-36-prep-evalset.sh`가 결정론적으로 만들고(`{gsm8k_meta}`),
-37-eval/40-score가 생성·채점합니다. 판정은 base 대비 하락 허용폭
+s7-37-eval/s7-40-score가 생성·채점합니다. 판정은 base 대비 하락 허용폭
 (`{gsm8k_drop}`) 이내면 PASS입니다.
 
 {chr(10).join(gsm_table)}
@@ -381,9 +381,9 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
     scores = _eval_scores(mode)
     if not allow_missing_metrics:
         if target not in ppl:
-            report["errors"].append(f"outputs/ppl-{mode}/summary.json에 '{target}' 측정값 없음 (run 34-measure-ppl first)")
+            report["errors"].append(f"outputs/ppl-{mode}/summary.json에 '{target}' 측정값 없음 (run s6-34-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"outputs/eval-{mode}/score.json에 '{target}' 결과 없음 (run 37-eval/40-score first)")
+            report["errors"].append(f"outputs/eval-{mode}/score.json에 '{target}' 결과 없음 (run s7-37-eval/s7-40-score first)")
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])
     for bad in FORBIDDEN_FRONTMATTER:

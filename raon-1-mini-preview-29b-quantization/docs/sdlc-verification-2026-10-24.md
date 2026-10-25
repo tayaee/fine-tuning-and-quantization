@@ -34,7 +34,7 @@ raon-nvfp4-awq-smoke: 비정상/미보정 global_scale 267개
 > 이 결함은 `run-{smoke,full}.sh` 경로에 게이트가 없어서 end-to-end로 드러나지 않았다.
 > 게이트를 경로에 연결한 뒤(issue-7) 즉시 검출 가능한 상태가 됐다.
 
-## 3. `46-verify-upload` 오탐(감사 스크립트 결함)
+## 3. `s8-46-verify-upload` 오탐(감사 스크립트 결함)
 
 릴리스 게이트를 실제 돌리니 compliant 모델이 실패했다:
 
@@ -58,13 +58,13 @@ config.json: vLLM/생성 필수 필드 'pad_token_id' 누락
 
 | 대상 | 1회차 | 2회차 | 비고 |
 |---|---|---|---|
-| `10-16,19,28-40-build-smoke-nvfp4-awq.sh` | **3s** | **2s** | 전 단계 skip + 게이트 3종 통과 |
-| `10-16,19,28-40-build-full-nvfp4-awq.sh` | 3211s | **2s** | 1회차는 캘리브 재생성 → 양자화 무효화 cascade(아래) |
+| `s0-s7-build-smoke-nvfp4-awq.sh` | **3s** | **2s** | 전 단계 skip + 게이트 3종 통과 |
+| `s0-s7-build-full-nvfp4-awq.sh` | 3211s | **2s** | 1회차는 캘리브 재생성 → 양자화 무효화 cascade(아래) |
 | (2026-10-24 재측정) smoke / full | 2s / 3s | **2s / 2s** | 표준 GSM8K 평가 도입 후에도 즉시 종료 유지 |
 
 full 1회차가 53분 걸린 이유(정상적 재작업):
 `13-calib`이 캘리브 세트를 **재생성**했다(스크립트 mtime이 데이터보다 최신 — 개명 커밋의 부작용).
-캘리브 데이터는 양자화의 입력이므로 `28-quant-nvfp4-awq`의 freshness가 깨져
+캘리브 데이터는 양자화의 입력이므로 `s5-28-quant-nvfp4-awq`의 freshness가 깨져
 **양자화(2176s) → PPL(341s) → eval(655s)** 이 순차 재실행됐다.
 2회차부터는 캘리브·양자화·측정 모두 최신이라 전부 skip → **2초**.
 
@@ -85,7 +85,7 @@ full 1회차가 53분 걸린 이유(정상적 재작업):
 gate-quant      verify_compressed_output OK      1s
 34-ppl          skip (산출물 > 모델 config.json)  0s
 gate-ppl        PPL OK + 수용 기준 판정 일치      0s
-37-eval         skip (산출물 > 모델 config.json)  0s
+s7-37-eval         skip (산출물 > 모델 config.json)  0s
 gate-eval       eval OK (9 lines)                0s
 40-score        재집계                            0s
 ```
@@ -105,7 +105,7 @@ gate-eval       eval OK (9 lines)                0s
 수집 비용(재수집): 양자화 smoke 1190s / full 2227s · PPL smoke 947s / full 1029s ·
 eval smoke ~1130s / full ~1650s · dequant 958s.
 
-Stage 8 릴리스 게이트 실측: `43-prep-upload`·`46-verify-upload` smoke/full 모두 `ok=true`,
+Stage 8 릴리스 게이트 실측: `s8-43-prep-upload`·`s8-46-verify-upload` smoke/full 모두 `ok=true`,
 `rq_gate_release` 통과. 모델 카드에 "수용 기준(Stage 1 계약) 대비 판정" 표가 실측과 함께 박힘.
 
 ## 7. 판정 원칙 (코드 고정)

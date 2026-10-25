@@ -1,7 +1,7 @@
 # build-ppl-eval.inc — 단일 (mode × target) "빌드 → PPL → eval" 공유 엔진.
 #
 # wrapper 8종이 이 파일을 source하고 rq_bpe_main을 호출한다:
-#   10-16,19,{22|25|28|31}-40-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
+#   s0-s7-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
 # run-{smoke,full}.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전이다.
 #
 # 스텝(기본 STEPS):
@@ -11,7 +11,7 @@
 # 환경변수:
 #   STEPS=quant,ppl        실행할 스텝만 (기본: setup,calib,compat,dequant,quant,ppl,eval)
 #   FORCE=1                freshness 무시(강제 재계산)
-#   SKIP_SETUP=1           10-setup 생략
+#   SKIP_SETUP=1           s0-10-setup 생략
 #   QUANT_CPU_ONLY=1       양자화만 GPU 숨김(PPL/eval은 GPU)
 #   CALIB_N/PPL_N/EVAL_N   규모 오버라이드(config/common.env와 동일 규약)
 #
@@ -144,7 +144,7 @@ rq_bpe_main() {
     if rq_bpe_want_step evalset; then
       rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./s7-36-prep-evalset.sh "$mode"
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "37-eval" ./s7-37-eval.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s7-37-eval" ./s7-37-eval.sh "$mode" "$eval_targets"
     rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./s7-40-score.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"

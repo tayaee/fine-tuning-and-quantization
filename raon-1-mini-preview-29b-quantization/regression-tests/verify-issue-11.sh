@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # verify-issue-11.sh — issue-11(표준 GSM8K 평가 + 카드 2종 검사 + 배치 생성) 승인 기준 기계 검증
-#   1. 36-prep-evalset.{py,sh} 존재(+실행 권한) + 표준 GSM8K 매니페스트 계약
+#   1. s7-36-prep-evalset.{py,sh} 존재(+실행 권한) + 표준 GSM8K 매니페스트 계약
 #   2. s7-37-eval.py: BENCHMARKS=gsm8k 단일, 정식 프롬프트 필수, 배치 생성 지원
 #   3. s8-43-prep-upload.py: 카드에 검사1(PPL)/검사2(GSM8K) 두 표 + GSM8K 판정
 #   4. acceptance.toml: gsm8k_acc_drop_max
@@ -12,7 +12,7 @@ fail=0
 PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
-# 1. 36-prep-evalset
+# 1. s7-36-prep-evalset
 for f in s7-36-prep-evalset.py s7-36-prep-evalset.sh; do
   [ -f "$ROOT/$f" ] || { echo "FAIL: $f 없음"; fail=1; }
 done

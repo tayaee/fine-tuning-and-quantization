@@ -33,7 +33,7 @@ def repo_name(target: str, mode: str) -> str:
 def check_ready(target: str, mode: str) -> str | None:
     """업로드 전제 조건 확인 → 로컬 모델 디렉터리 경로 반환.
 
-    모델이 없으면 None(조용히 SKIP), README가 없으면 SystemExit — 43-prep-upload을
+    모델이 없으면 None(조용히 SKIP), README가 없으면 SystemExit — s8-43-prep-upload을
     먼저 돌리라는 안내와 함께 즉시 중단한다 (빈 README는 업로드해도 허브에서 깨진다).
     """
     local = f"{MODELS_DIR(mode)}/raon-{target}-{mode}"

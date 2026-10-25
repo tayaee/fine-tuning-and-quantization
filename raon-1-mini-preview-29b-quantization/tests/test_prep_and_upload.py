@@ -39,7 +39,7 @@ up = _load_script("s8-49-upload-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"
-# 표준 GSM8K 단일 벤치 (37-eval이 표준 GSM8K만 평가)
+# 표준 GSM8K 단일 벤치 (s7-37-eval이 표준 GSM8K만 평가)
 BENCHES = ("gsm8k",)
 
 
@@ -231,7 +231,7 @@ def test_prep_manifest_fails_when_target_failed(workspace):
     assert manifest["targets"]["nvfp4-awq"]["errors"]
 
 
-# ---------------------------------------------------------------- 49-upload-hf
+# ---------------------------------------------------------------- s8-49-upload-hf
 
 
 def test_repo_name_keeps_smoke_suffix():

@@ -18,8 +18,8 @@
 > (0=환경, 1=수용기준, 2=데이터, 3=호환성, 4=복원, 5=양자화, 6=PPL, 7=평가, 8=배포),
 > `##`은 그 Stage 안에서의 스텝 번호(실행 순서), `<slug>`은 작업 이름이다.
 > 예) `s5-28-quant-nvfp4-awq.sh` = 5단계(양자화)의 28번 스텝.
-> 빌드 wrapper(`10-16,19,X-40-build-*.sh`)는 Stage를 넘나드는 진입점이라 접두사 없이
-> 파일명 자체가 스텝 나열이다.
+> 빌드 wrapper(`s0-s7-build-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는
+> 진입점이므로 `s0-s7-` 접두사를 쓴다(Stage 8의 카드·감사·업로드는 `STEPS=prep,verify`로 선택).
 
 | Stage | 스크립트 | 입력 → 출력 | Exit 게이트 |
 |---|---|---|---|
@@ -32,7 +32,7 @@
 | 6. PPL | `s6-34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
 | 6.5 평가세트 | `s7-36-prep-evalset.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
 | 7. eval | `s7-36-prep-evalset.sh` → `s7-37-eval.sh` + `s7-40-score.sh` | **표준 GSM8K**(`openai/gsm8k` test) 프롬프트 결정론 생성 → 생성·채점(완결율·정확도) | **gate-eval**: 응답 1줄 이상 + GSM8K 정확도가 계약 범위 |
-| 8. 릴리스·배포 | `43-prep-upload` → `46-verify-upload` → `49-upload-hf` → `52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
+| 8. 릴리스·배포 | `s8-43-prep-upload` → `s8-46-verify-upload` → `s8-49-upload-hf` → `s8-52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
@@ -69,17 +69,17 @@ TARGETS=all ./run-full.sh               # 4종 전부
 | 실행순 | awq-w3 → awq-w5 → nvfp4-awq → nvfp4-gptq (알파벳순) | 동일 (밤샘 권장) |
 | 2노드 분할 | `TARGETS=awq-w3,awq-w5` (spark1) + `TARGETS=nvfp4-awq,nvfp4-gptq` (spark2), `STEPS=dequant,quant`로 양쪽 실행 후 1곳에서 `STEPS=ppl,eval` | 동일 분할 (`MODE=full`) |
 
-## 단일 타깃 실행 (`*-build-*.sh`)
+## 단일 타깃 실행 (`s0-s7-build-*.sh`)
 
 `run-{smoke,full}.sh`의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 진입점 8종.
-**파일명 앞 숫자 = 실행되는 스텝 번호** (10-setup·13-calib·16-compat·19-dequant·<quant>·34-ppl·37-eval·40-score):
+**파일명 앞 숫자 = 실행되는 스텝 번호** (s0-10-setup·s2-13-calib·s3-16-compat·s4-19-dequant·s5-<quant>·s6-34-ppl·s7-37-eval·s7-40-score):
 
 | 파일 | 스텝 번호 | 양자화 스크립트 |
 |---|---|---|
-| `10-16,19,25-40-build-{smoke,full}-awq-w5.sh` | 10-16, 19, 25-40 | 25-quant-awq-w5 |
-| `10-16,19,22-40-build-{smoke,full}-awq-w3.sh` | 10-16, 19, 22-40 | 22-quant-awq-w3 |
-| `10-16,19,28-40-build-{smoke,full}-nvfp4-awq.sh` | 10-16, 19, 28-40 | 28-quant-nvfp4-awq |
-| `10-16,19,31-40-build-{smoke,full}-nvfp4-gptq.sh` | 10-16, 19, 31-40 | 31-quant-nvfp4-gptq |
+| `s0-s7-build-{smoke,full}-awq-w5.sh` | 0~7 (setup~eval) | s5-25-quant-awq-w5 |
+| `s0-s7-build-{smoke,full}-awq-w3.sh` | 0~7 (setup~eval) | s5-22-quant-awq-w3 |
+| `s0-s7-build-{smoke,full}-nvfp4-awq.sh` | 0~7 (setup~eval) | s5-28-quant-nvfp4-awq |
+| `s0-s7-build-{smoke,full}-nvfp4-gptq.sh` | 0~7 (setup~eval) | s5-31-quant-nvfp4-gptq |
 
 (engine: `build-ppl-eval.inc`)
 
@@ -104,12 +104,12 @@ timing은 `logs/timing-build-<mode>.log`에(run-*.sh와 별도 파일).
 | 스텝 | lock | freshness/stamp | 동시 실행 시 |
 |---|---|---|---|
 | 10-setup | `rq_lock $RQ_ROOT` (venv 변조 직렬화) | stamp `.venv/.rq-setup-stamp` (uv.lock 해시 + llmcompressor/compressed-tensors 버전) | 1번만 `uv sync`·`uv pip install`, 2번째는 skip (0.1s) |
-| 13-prep-calibration | `rq_lock $RQ_DATASETS` | `rq_fresh` (calib jsonl vs 스크립트 mtime) | 1번만 생성, 2번째는 skip |
+| s2-13-prep-calibration | `rq_lock $RQ_DATASETS` | `rq_fresh` (calib jsonl vs 스크립트 mtime) | 1번만 생성, 2번째는 skip |
 | 16-compat-check | `rq_lock $RQ_OUTPUTS/compat` | stamp `outputs/compat.stamp` (probe 해시 + GPU cc + llmcompressor/vllm 버전) | 1번만 probe(119s), 2번째는 skip + 마지막 리포트 재생 |
 | 19-dequant | `rq_lock $OUT` | `rq_fresh` (+ config.json mtime + shim grep) | 1번만 복원(999s), 2번째는 skip |
 | 32/33/35/36 quant | `rq_lock $OUT` (타깃별) | `rq_fresh` | 타깃이 다르면 동시 실행 가능, 같으면 직렬+skip |
 | 34-measure-ppl | `rq_lock $RQ_OUTPUTS/ppl-$MODE` | 타깃별 `rq_fresh` | 직렬(29B 모델 동시 로드 방지) |
-| 37-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |
+| s7-37-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |
 | 40-score | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | 37-eval과 같은 lock → jsonl 쓰는 중엔 대기 |
 
 stamp는 `FORCE=1`로 무시된다. GPU/라이브러리 버전이 바뀌면 stamp가 불일치해

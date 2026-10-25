@@ -56,7 +56,7 @@ def tmp_out(monkeypatch):
         shutil.rmtree(d, ignore_errors=True)
 
 
-# ================================================================ 34-measure-ppl
+# ================================================================ s6-34-measure-ppl
 
 
 def test_parse_targets_accepts_comma_and_space(tmp_out, monkeypatch):
@@ -157,7 +157,7 @@ def test_summarize_only_does_not_load_models(tmp_out, monkeypatch):
     assert summary["awq-w5"]["verdict"] == "Accept"
 
 
-# ================================================================ 37-eval
+# ================================================================ s7-37-eval
 
 
 class _FakeTokenizer:
@@ -336,7 +336,7 @@ def test_load_prompts_falls_back_to_calib_file_only_for_pseudo_bench(tmp_out):
 
 def test_load_prompts_fails_when_standard_prompts_missing(tmp_out):
     """표준 GSM8K 프롬프트 파일이 없으면 실패한다(임의 표본 평가 금지)."""
-    with pytest.raises(SystemExit, match="36-prep-evalset"):
+    with pytest.raises(SystemExit, match="s7-36-prep-evalset"):
         ev.load_prompts("smoke", 3, None, ["gsm8k"])
 
 
@@ -372,7 +372,7 @@ def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):
 def test_run_transformers_to_score_json_chain(tmp_out, monkeypatch, fake_transformers):
     """합성 CausalLM → run_transformers → 벤치 JSONL → s7-40-score → score.json.
 
-    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 40-score가 읽어
+    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 s7-40-score가 읽어
     산출물의 정확한 Bench 이름으로 score.json에 정확도를 남기는지까지 확인한다.
     """
     mdir = tmp_out / "models" / "base"
@@ -428,7 +428,7 @@ def test_auto_fallback_to_transformers_chain(tmp_out, monkeypatch, fake_transfor
     assert sc.score("smoke")["base"]["n"] == 1
 
 
-# ================================================================ 40-score
+# ================================================================ s7-40-score
 
 
 def test_score_answer_kmmlu():

@@ -53,7 +53,7 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
 ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-# 평가 벤치 = 표준 GSM8K 단일 (37-eval이 표준 GSM8K만 평가한다)
+# 평가 벤치 = 표준 GSM8K 단일 (s7-37-eval이 표준 GSM8K만 평가한다)
 BENCH_ORDER = ("gsm8k",)
 ROUTED_LINEAR_MARKER = "return nn.Linear(in_features, out_features, bias=False)"
 MOE_CALIB_MARKER = "get_calibrate_all_experts_flag"
@@ -751,7 +751,7 @@ def run(
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if not all_ok:
         failed = [t for t, r in reports.items() if not r["ok"]]
-        raise SystemExit(f"46-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
+        raise SystemExit(f"s8-46-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
     return summary
 
 

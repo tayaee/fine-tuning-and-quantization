@@ -19,7 +19,7 @@ for tok in 'version = 1' '[targets.awq-w3]' '[targets.awq-w5]' '[targets.nvfp4-a
 done
 echo "OK: config/acceptance.toml 존재 + 4타깃 기준 + gates.release"
 
-# 2. 07-acceptance
+# 2. s1-07-acceptance
 for f in s1-07-acceptance.py s1-07-acceptance.sh sdlc.py; do
   [ -f "$ROOT/$f" ] || { echo "FAIL: $f 없음"; fail=1; }
 done

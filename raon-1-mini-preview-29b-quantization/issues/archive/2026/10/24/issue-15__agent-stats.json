@@ -1,0 +1,18 @@
+{
+  "issue": 15,
+  "started": "2026-10-24T20:10:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T20:15:00-04:00",
+        "loc_added": 96,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "빌드 wrapper 8종 개명(10-16,19,X-40-build-* → s0-s7-build-*) + 참조 33개 파일 갱신(실행 없음)"
+}

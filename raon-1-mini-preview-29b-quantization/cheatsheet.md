@@ -65,13 +65,13 @@ python s8-64-verify-serving.py --mode smoke   # logs/55.*.log → outputs/serve-
 STEPS=verify TARGETS=all ./run-smoke.sh    # 46-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
-#   10-16,19,{22|25|28|31}-40-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
-#   (파일명 앞 숫자 = 실행 스텝 번호: 10-setup·13-calib·16-compat·19-dequant·<quant>·34-ppl·37-eval·40-score)
-./10-16,19,28-40-build-smoke-nvfp4-awq.sh    # smoke × nvfp4-awq
-./10-16,19,28-40-build-full-nvfp4-awq.sh     # full  × nvfp4-awq
-STEPS=quant,ppl ./10-16,19,28-40-build-smoke-nvfp4-awq.sh      # 일부 스텝만
-STEPS=prep,verify ./10-16,19,28-40-build-smoke-nvfp4-awq.sh    # 모델카드(43)+감사(46)까지
-FORCE=1 ./10-16,19,28-40-build-smoke-nvfp4-awq.sh               # freshness 무시(강제 재계산)
+#   s0-s7-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
+#   (파일명 앞 숫자 = 실행 스텝 번호: s0-10-setup·s2-13-calib·s3-16-compat·s4-19-dequant·s5-<quant>·s6-34-ppl·s7-37-eval·s7-40-score)
+./s0-s7-build-smoke-nvfp4-awq.sh    # smoke × nvfp4-awq
+./s0-s7-build-full-nvfp4-awq.sh     # full  × nvfp4-awq
+STEPS=quant,ppl ./s0-s7-build-smoke-nvfp4-awq.sh      # 일부 스텝만
+STEPS=prep,verify ./s0-s7-build-smoke-nvfp4-awq.sh    # 모델카드(43)+감사(46)까지
+FORCE=1 ./s0-s7-build-smoke-nvfp4-awq.sh               # freshness 무시(강제 재계산)
 # 게이트: gate-quant(패킹 계약·global_scale) → gate-ppl(유한 PPL) → gate-eval(응답 생성)
 #        게이트 실패 시 즉시 중단 — NaN 모델을 eval에 흘려보내지 않는다.
 # 공유 접두(10/13/16/19)는 lock+freshness/stamp로 중복 실행이 자동 회피된다.

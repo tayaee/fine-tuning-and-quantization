@@ -14,7 +14,7 @@
 #   base 대비 하락 <= gsm8k_acc_drop_max → PASS (그 외 FAIL)
 #
 # TOML을 쓴 이유: python 3.12 표준 tomllib로 읽혀 별도 의존성이 없다
-# (uv.lock을 건드리지 않아 10-setup 스탬프가 무효화되지 않는다).
+# (uv.lock을 건드리지 않아 s0-10-setup 스탬프가 무효화되지 않는다).
 
 version = 1
 
@@ -49,6 +49,6 @@ gsm8k_acc_drop_max = 0.02
 
 # 릴리스 게이트 (Stage 8) ---------------------------------------------
 [gates.release]
-require_model_card = true      # 43-prep-upload이 만든 README.md 존재·비어있지 않음
+require_model_card = true      # s8-43-prep-upload이 만든 README.md 존재·비어있지 않음
 require_metrics = true         # PPL summary + eval score.json 존재
 require_finite_ppl = true      # PPL 값이 유한수

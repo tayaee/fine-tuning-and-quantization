@@ -1,5 +1,5 @@
 """quant_common.py — 양자화 스크립트(32/33/34/35/36) 공용 헬퍼.
-캘리브레이션 텍스트 로딩 단일 정의. 13-prep-calibration이 chat template 적용済み
+캘리브레이션 텍스트 로딩 단일 정의. s2-13-prep-calibration이 chat template 적용済み
 `{"text": ...}` jsonl을 만들므로 로더는 text를 그대로 읽는다 (구 GSM8K source/target
 형식도 호환 유지).
 각 스크립트는 `uv run $RQ_ROOT/<nn>-quant-*.py` 로 실행되며 스크립트 디렉토리가
