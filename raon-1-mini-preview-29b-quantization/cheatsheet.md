@@ -71,6 +71,8 @@ RQ_EVAL_BACKEND=transformers ./s7-37-eval.sh smoke nvfp4-gptq
 STEPS=serve ./run-smoke.sh   # 서빙 처리량 측정(s7-52, 서버가 떠 있어야)
 
 # 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증)
+#    - 모델 디렉터리 README.md = base + 그 모델 1개 비교 (Hub 업로드 대상)
+#    - models/README-<mode>.md      = 그 모드의 전체 양자화 버전 비교 리포트 (업로드 아님)
 ./s8-43-prep-upload.sh smoke
 ./s8-43-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
 ./s8-46-verify-upload.sh smoke nvfp4-awq

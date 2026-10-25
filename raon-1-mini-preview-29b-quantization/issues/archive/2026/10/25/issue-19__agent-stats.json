@@ -1,0 +1,18 @@
+{
+  "issue": 19,
+  "started": "2026-10-25T07:35:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "ts": "2026-10-25T08:05:00-04:00",
+        "loc_added": 259,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "모델 카드 = base+대상 1개 비교 / 전체 버전 비교는 models/README-<mode>.md 로 분리 + 업로드 전 감사 가드"
+}

@@ -79,6 +79,9 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 | 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` (GSM8K·KMMLU·형식) + `score.json`·`checks.json` | gate-eval / gate-kmmluko / gate-format |
 | 8 | 릴리스·배포 | `outputs/release-notes-<mode>.md` | gate-release / gate-serving |
 
+> 모델 카드는 **업로드 대상(repo 1개 = 모델 1개)** 기준이라 base + 그 모델만 비교한다.
+> 같은 모드의 **전체 양자화 버전 비교**는 `models/README-{smoke,full}.md`에 모인다.
+
 - 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K/KMMLU 허용폭·형식 통과율의 단일 소스
 - 평가: **5개 검사** — ① 표준 GSM8K(`openai/gsm8k` test, revision·seed 고정) ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) ③ 지시/형식 준수(고정 10케이스) ④ PPL(Stage 6) ⑤ 서빙 처리량
   - 프롬프트 생성: `s7-36-prep-gsm8k.sh` · `s7-43-prep-kmmluko.sh` · `s7-49-format.sh` (모두 결정론·멱등)

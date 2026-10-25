@@ -363,6 +363,56 @@ def test_prep_and_upload_accept_space_and_env_targets(workspace, monkeypatch, ca
     assert "Raon-1-mini-preview-nvfp4-awq" in out
 
 
+# ---------------------------------------------------------------- 카드 분리 (issue-19)
+
+
+def test_prep_readme_compares_base_and_target_only(workspace):
+    """모델 카드(업로드 산출물)는 base + 그 타겟 1개만 비교한다."""
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK)
+    _write_metrics(workspace, "smoke")
+    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    assert report["ok"] is True, report["errors"]
+    readme = (workspace / "models" / "raon-nvfp4-awq-smoke" / "README.md").read_text(encoding="utf-8")
+    # base 행과 대상 행은 있어야 한다
+    assert "| **bf16 (base)** |" in readme
+    assert "| **nvfp4-awq** |" in readme
+    # 다른 양자화 버전 행은 없어야 한다(업로드용 카드는 이 모델 1개만)
+    assert "| **awq-w5** |" not in readme
+    assert "| **awq-w3** |" not in readme
+    assert "| **nvfp4-gptq** |" not in readme
+
+
+def test_prep_writes_mode_summary_comparison(workspace):
+    """전체 양자화 버전 비교는 models/README-<mode>.md 로 빠진다."""
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK)
+    _write_metrics(workspace, "smoke")
+    prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    summary = workspace / "models" / "README-smoke.md"
+    assert summary.is_file(), "모드 요약 리포트가 안 생김"
+    text = summary.read_text(encoding="utf-8")
+    # 존재하는 양자화 버전이 모두 표에 있다
+    assert "| **nvfp4-awq** |" in text
+    assert "| **awq-w5** |" in text
+    assert "| **bf16 (base)** |" in text
+    # 모델 카드로 가는 링크
+    assert "raon-nvfp4-awq-smoke/README.md" in text
+    # 요약은 모델 카드가 아니다(HF frontmatter 없음)
+    assert not text.startswith("---")
+
+
+def test_summary_lists_only_existing_targets(workspace):
+    """존재하지 않는 타깃은 요약 표에 올라가지 않는다."""
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _write_metrics(workspace, "smoke")
+    prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    text = (workspace / "models" / "README-smoke.md").read_text(encoding="utf-8")
+    assert "**nvfp4-awq**" in text
+    assert "**awq-w5**" not in text
+    assert "**nvfp4-gptq**" not in text
+
+
 # ---------------------------------------------------------------- 단독 실행
 
 

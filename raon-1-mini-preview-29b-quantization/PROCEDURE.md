@@ -32,7 +32,7 @@
 | 6. PPL | `s6-34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
 | 6.5 평가세트 | `s7-36-prep-gsm8k.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
 | 7. eval | `s7-36-prep-gsm8k` · `s7-43-prep-kmmluko` · `s7-49-format` → `s7-37-eval` → `s7-40-gsm8k` · `s7-46-kmmluko` · `s7-49-format` · `s7-52-servebench` | **5개 검사**: ① 표준 GSM8K(영어 수학) ② 표준 한국어 KMMLU ③ 지시/형식 준수 ④ 서빙 처리량(Tier3) — 전부 결정론 생성 | **gate-eval** · **gate-kmmluko** · **gate-format**: 응답 생성 + 정확도/통과율 계약 대조 |
-| 8. 릴리스·배포 | `s8-43-prep-upload` → `s8-46-verify-upload` → `s8-49-upload-hf` → `s8-52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
+| 8. 릴리스·배포 | `s8-43-prep-upload` → `s8-46-verify-upload` → `s8-49-upload-hf` → `s8-52/55/58` | 모델카드 `README.md`(base+대상 1개) + `models/README-<mode>.md`(전체 버전 비교) + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라

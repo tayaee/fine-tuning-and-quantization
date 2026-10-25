@@ -275,8 +275,98 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float, checks: 
     return rows
 
 
+def _existing_targets(mode: str, ppl: dict, scores: dict) -> list[str]:
+    """이 모드에서 **존재하는** 양자화 버전(모델 디렉터리 또는 실측 지표가 있는 것)."""
+    out: list[str] = []
+    for t in ALL_TARGETS:
+        if model_dir(mode, t).is_dir() or t in ppl or t in scores:
+            out.append(t)
+    return out
+
+
+def _check_tables(
+    rows: list[str],
+    bold: set[str],
+    ppl: dict,
+    scores: dict,
+    checks: dict,
+    gsm8k_drop: float,
+) -> tuple[list[str], list[str], list[str], list[str], str]:
+    """검사 표 4종(PPL·GSM8K·KMMLU·형식 준수) + 서빙 성능 줄.
+
+    `rows`에 들어있는 모델만 표에 실린다 — 모델 카드는 base + 대상 1개,
+    요약 리포트는 base + 그 모드의 전체 양자화 버전.
+    """
+    def _name(r: str) -> str:
+        if r == "base":
+            return "**bf16 (base)**"
+        return f"**{r}**" if r in bold else r
+
+    ppl_table = [
+        "| Model | PPL | Delta vs bf16 | Verdict |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    gsm_table = [
+        "| Model | GSM8K accuracy | Correct / Total | Verdict |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    ko_table = [
+        "| Model | KMMLU accuracy | Correct / Total | Verdict |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    fmt_table = [
+        "| Model | Pass rate | Passed / Total | Failed cases | Verdict |",
+        "| --- | ---: | ---: | --- | --- |",
+    ]
+    for r in rows:
+        acc = _kmmluko_acc(checks, r)
+        cnt = ((checks.get("kmmluko") or {}).get("targets") or {}).get(r) or {}
+        n = cnt.get("n")
+        correct = round(float(acc) * float(n)) if (acc is not None and n) else None
+        ko_table.append(
+            f"| {_name(r)} | {_fmt(acc, 3)} | "
+            f"{'-' if correct is None else f'{correct}/{n}'} | "
+            f"{'ref' if r == 'base' else _kmmluko_contract_verdict(checks, r)} |"
+        )
+    for r in rows:
+        row = (((checks.get("format") or {}).get("targets") or {}).get(r)) or {}
+        rate = row.get("pass_rate")
+        passed = round((rate or 0) * (row.get("n") or 0))
+        fmt_table.append(
+            f"| {_name(r)} | {_fmt(rate, 3)} | {passed}/{row.get('n', '-')} | "
+            f"{', '.join(row.get('failed') or []) or '-'} | "
+            f"{'ref' if r == 'base' else _format_contract_verdict(checks, r)} |"
+        )
+    base_acc = _gsm8k_acc(scores, "base")
+    for r in rows:
+        pr = ppl.get(r) or {}
+        ppl_table.append(
+            f"| {_name(r)} | {_fmt(pr.get('ppl'), 3)} | {_fmt(pr.get('delta'))} | {pr.get('verdict', '-')} |"
+        )
+        acc, cnt = _gsm8k_acc_n(scores, r)
+        gsm_table.append(
+            f"| {_name(r)} | {_fmt(acc, 3)} | {cnt} | "
+            f"{'ref' if r == 'base' else _gsm8k_verdict(acc, base_acc, gsm8k_drop)} |"
+        )
+    sb = checks.get("servebench") or {}
+    if sb.get("ok"):
+        serve_lines = (
+            f"| Model | Concurrency | Output tok/s (p50) | Request latency (p50) | Output tokens |\n"
+            f"| --- | ---: | ---: | ---: | ---: |\n"
+            f"| {sb.get('model', '-')} | {sb.get('concurrency', '-')} | {sb.get('tok_per_s_p50', '-')} | "
+            f"{sb.get('req_latency_s_p50', '-')} s | {sb.get('output_tokens_total', '-')} |\n"
+        )
+    else:
+        serve_lines = "_Not measured (no running server during the last run)._\n"
+    return ppl_table, gsm_table, ko_table, fmt_table, serve_lines
+
+
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
-    """HuggingFace 모델 카드 전체를 만든다 (요구사항 2.1-3)."""
+    """HuggingFace 모델 카드 (요구사항 2.1-3).
+
+    업로드되는 산출물이므로 **base + 이 모델 1개**만 비교한다.
+    (전체 양자화 버전 비교는 models/README-<mode>.md 요약 리포트에 있다)
+    """
     spec = SPECS[target]
     checks = _checks(mode)
     _spec = _acceptance_target_spec(target)
@@ -287,70 +377,10 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     format_min = _spec.get("format_pass_rate_min", 0.9)
     gsm8k_meta = _evalset_meta(mode)
     acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb, checks)
-    rows = ["base", *ALL_TARGETS]
-    # 검사 1 — PPL (in-domain perplexity, base 대비 Δ + 판정)
-    ppl_table = [
-        "| Model | PPL | Delta vs bf16 | Verdict |",
-        "| --- | ---: | ---: | --- |",
-    ]
-    # 검사 2 — GSM8K (표준 테스트셋 정확도)
-    gsm_table = [
-        "| Model | GSM8K accuracy | Correct / Total | Verdict |",
-        "| --- | ---: | ---: | --- |",
-    ]
-    # 검사 3 — 표준 한국어 KMMLU 정확도
-    ko_table = [
-        "| Model | KMMLU accuracy | Correct / Total | Verdict |",
-        "| --- | ---: | ---: | --- |",
-    ]
-    for r in rows:
-        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
-        acc = _kmmluko_acc(checks, r)
-        cnt = ((checks.get("kmmluko") or {}).get("targets") or {}).get(r) or {}
-        ko_table.append(
-            f"| {name} | {_fmt(acc, 3)} | {cnt.get('n', '-')} | "
-            f"{'ref' if r == 'base' else _kmmluko_contract_verdict(checks, r)} |"
-        )
-    # 검사 4 — 지시/형식 준수
-    fmt_table = [
-        "| Model | Pass rate | Passed / Total | Failed cases | Verdict |",
-        "| --- | ---: | ---: | --- | --- |",
-    ]
-    for r in rows:
-        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
-        row = (((checks.get("format") or {}).get("targets") or {}).get(r)) or {}
-        rate = row.get("pass_rate")
-        passed = round((rate or 0) * (row.get("n") or 0))
-        fmt_table.append(
-            f"| {name} | {_fmt(rate, 3)} | {passed}/{row.get('n', '-')} | "
-            f"{', '.join(row.get('failed') or []) or '-'} | "
-            f"{'ref' if r == 'base' else _format_contract_verdict(checks, r)} |"
-        )
-    # 서빙 성능 (측정됐을 때만)
-    sb = checks.get("servebench") or {}
-    serve_lines = ""
-    if sb.get("ok"):
-        serve_lines = (
-            f"| Model | Concurrency | Output tok/s (p50) | Request latency (p50) | Output tokens |\n"
-            f"| --- | ---: | ---: | ---: | ---: |\n"
-            f"| {sb.get('model', '-')} | {sb.get('concurrency', '-')} | {sb.get('tok_per_s_p50', '-')} | "
-            f"{sb.get('req_latency_s_p50', '-')} s | {sb.get('output_tokens_total', '-')} |\n"
-        )
-    else:
-        serve_lines = "_Not measured (no running server during the last run)._\n"
-
-    base_acc = _gsm8k_acc(scores, "base")
-    for r in rows:
-        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
-        pr = ppl.get(r) or {}
-        ppl_table.append(
-            f"| {name} | {_fmt(pr.get('ppl'), 3)} | {_fmt(pr.get('delta'))} | {pr.get('verdict', '-')} |"
-        )
-        acc, cnt = _gsm8k_acc_n(scores, r)
-        gsm_table.append(
-            f"| {name} | {_fmt(acc, 3)} | {cnt} | {_gsm8k_verdict(acc, base_acc, gsm8k_drop)} |"
-        )
-
+    rows = ["base", target]
+    ppl_table, gsm_table, ko_table, fmt_table, serve_lines = _check_tables(
+        rows, {target}, ppl, scores, checks, gsm8k_drop
+    )
 
     tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
     fm = [
@@ -480,6 +510,81 @@ vllm serve {target} \\
 """
 
 
+def summary_path(mode: str) -> Path:
+    """모드별 전체 비교 리포트 경로 (models/README-<mode>.md)."""
+    return Path(MODELS_DIR(mode)) / f"README-{mode}.md"
+
+
+def render_summary(mode: str, ppl: dict, scores: dict) -> str:
+    """모드의 **전체 양자화 버전 비교 리포트** → models/README-<mode>.md.
+
+    모델 카드(업로드 대상)는 base + 그 모델 1개만 비교한다. 여기서는
+    같은 모드의 모든 양자화 버전을 한 표에 모아 서로 비교한다.
+    """
+    checks = _checks(mode)
+    targets = _existing_targets(mode, ppl, scores)
+    rows = ["base", *targets]
+    _spec = _acceptance_target_spec(targets[0]) if targets else {}
+    gsm8k_drop = _spec.get("gsm8k_acc_drop_max", 0.02)
+    ppl_table, gsm_table, ko_table, fmt_table, serve_lines = _check_tables(
+        rows, set(targets), ppl, scores, checks, gsm8k_drop
+    )
+
+    spec_rows = [
+        "| Build | Algorithm | Precision | Bits | Group size | Storage format | Checkpoint (GB) | Model card |",
+        "| --- | --- | --- | --- | --- | --- | ---: | --- |",
+    ]
+    for t in targets:
+        sp = SPECS[t]
+        size = _dir_size_gb(model_dir(mode, t))
+        spec_rows.append(
+            f"| **{t}** | {sp['algorithm']} | {sp['precision']} | {sp['bits']} | {sp['group_size']} | "
+            f"`{sp['format']}` | {size} | `raon-{t}-{mode}/README.md` |"
+        )
+
+    return f"""# Quantization comparison - {BASE_MODEL} ({mode})
+
+Every quantized build of `{BASE_MODEL}` produced for the **{mode}** profile, compared
+against the bf16 base model. Base model: `{BASE_MODEL}` (rev `{BASE_REVISION}`),
+Apache-2.0.
+
+Each build is published as its own repository with its own model card that compares
+**the base model and that build only**. This file is the cross-version comparison and
+is not a model card for any single repository.
+
+## Quantized variants
+
+{chr(10).join(spec_rows)}
+
+## Check 1 - PPL (in-domain perplexity)
+
+{chr(10).join(ppl_table)}
+
+## Check 2 - GSM8K (standard test set accuracy)
+
+{chr(10).join(gsm_table)}
+
+## Check 3 - KMMLU (standard Korean benchmark)
+
+{chr(10).join(ko_table)}
+
+## Check 4 - Instruction and format compliance
+
+{chr(10).join(fmt_table)}
+
+## Serving performance
+
+{serve_lines}
+
+## License and source
+
+- Apache License 2.0.
+- Base model: [{BASE_MODEL}](https://huggingface.co/{BASE_MODEL}) (rev `{BASE_REVISION}`), Apache-2.0.
+- The original KRAFTON repository is access-gated; this repository does not re-gate it.
+  The base model license terms (`apache-2.0`) still apply.
+"""
+
+
 def _copy_missing_custom_code(d: Path, copied: list) -> list:
     """누락된 custom_code/*.jinja를 models/raon-bf16에서 복사 보충."""
     src = Path(BF16_DIR())
@@ -538,6 +643,14 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
     (d / "README.md").write_text(readme, encoding="utf-8")
     report["readme_bytes"] = len(readme.encode("utf-8"))
 
+    # 5) 모드 전체 비교 리포트 → models/README-<mode>.md (업로드 대상 아님)
+    summary = render_summary(mode, ppl, scores)
+    sp = summary_path(mode)
+    sp.parent.mkdir(parents=True, exist_ok=True)
+    sp.write_text(summary, encoding="utf-8")
+    report["summary_path"] = str(sp)
+    report["summary_bytes"] = len(summary.encode("utf-8"))
+
     report["ok"] = True
     return report
 
@@ -577,6 +690,9 @@ def run(mode: str, targets: str | list | None = None, allow_missing_metrics: boo
             print(f"OK {t}: readme={r['readme_bytes']}B size={r['size_gb']}GB copied={r['copied']}")
         else:
             print(f"FAIL {t}: {'; '.join(r['errors'])}")
+    if reports:
+        sp = summary_path(mode)
+        print(f"-> {sp} (전체 양자화 버전 비교 리포트)")
     print(f"-> {fp} (ok={manifest['ok']})")
     return manifest
 

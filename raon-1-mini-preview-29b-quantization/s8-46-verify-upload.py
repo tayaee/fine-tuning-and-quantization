@@ -568,6 +568,13 @@ def _check_readme(
         if any(c in ("—", "", "None", "nan") for c in cells):
             errors.append(f"{readme_fp}: 검사 표의 '**{target}**' 행에 미기입 결측치('—') 존재: {cells}")
 
+    # 모델 카드는 base + 이 타겟 1개만 비교한다 (전체 버전 비교는 models/README-<mode>.md)
+    for other in ALL_TARGETS:
+        if other == target:
+            continue
+        if re.search(rf"^\|\s*\*\*{re.escape(other)}\*\*\s*\|", text, re.MULTILINE):
+            errors.append(f"{readme_fp}: 다른 양자화 버전 행('**{other}**')이 포함됨 — 모델 카드는 base + 대상 1개만")
+
     return errors
 
 
@@ -692,6 +699,13 @@ def verify_target(
     if not rm_errs:
         report["checks"]["readme"] = True
     report["errors"].extend(rm_errs)
+
+    # 9) 모드 전체 비교 리포트(models/README-<mode>.md) 존재 확인
+    sp = Path(MODELS_DIR(mode)) / f"README-{mode}.md"
+    if not sp.is_file():
+        report["errors"].append(f"{sp}: 파일 없음 (s8-43-prep-upload.sh 먼저 실행)")
+    elif sp.stat().st_size < 500:
+        report["errors"].append(f"{sp}: 내용이 너무 짧음 ({sp.stat().st_size} bytes)")
 
     report["ok"] = len(report["errors"]) == 0 and all(report["checks"].values())
     return report

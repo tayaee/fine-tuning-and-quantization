@@ -19,7 +19,7 @@
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
 | 7 | 벤치마크 평가 | `s7-37-eval.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
-| 8 | 릴리스·배포 | `s8-43-prep-upload.sh` → `s8-46-verify-upload.sh` → `s8-49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
+| 8 | 릴리스·배포 | `s8-43-prep-upload.sh` → `s8-46-verify-upload.sh` → `s8-49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`(base+대상 1개), `models/README-<mode>.md`(전체 버전 비교), `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
 
 ## 0. 파일 명명 규칙
 
