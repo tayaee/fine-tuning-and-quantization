@@ -4,7 +4,7 @@
 #   (기본)    : s7-37-eval.sh가 생성한 응답을 검사해 pass_rate를 산출한다
 # 결과: outputs/eval-<mode>/checks.json 의 "format" 섹션.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 shift || true   # 첫 인자(mode)를 소비한다 — 남은 인자가 --prepare인지 본다
 rq_repro_echo
 rq_banner "s7-49-format" "Stage 7/9 - instruction/format compliance suite (language, JSON, markers, length, bullets)"

@@ -4,7 +4,7 @@
 # base 대비 하락 허용폭(acceptance.toml의 kmmluko_acc_drop_max)과 대조한다.
 # 결과: outputs/eval-<mode>/checks.json 의 "kmmluko" 섹션.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-46-kmmluko" "Stage 7/9 - score the standard Korean KMMLU check and judge it against the acceptance contract"
 

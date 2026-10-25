@@ -3,7 +3,7 @@
 # 이미 떠 있는 OpenAI-호환 서버(s8-52-serve-vllm.sh)에 요청을 보내 TTFT와 출력 tok/s를 잰다.
 # 서버가 없으면 skip(사유 기록). 결과: outputs/eval-<mode>/servebench-<mode>.json
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-52-servebench" "Stage 7/9 - measure serving throughput (TTFT, output tokens/s) against a running server"
 

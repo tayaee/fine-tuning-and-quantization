@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # s3-16-compat-check.sh — 양자화 전제조건 점검. 32~36 실행 전 필수.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s3-16-compat-check" "Stage 3/9 - pre-flight compatibility check (custom arch load, expert targets, SM>=10, vLLM/transformers versions)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV

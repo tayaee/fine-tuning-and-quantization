@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # s7-40-gsm8k.sh [smoke|full] — eval 스모크 집계.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-40-gsm8k" "Stage 7/9 - aggregate eval outputs into outputs/eval-<mode>/score.json"
 # s7-37-eval.sh와 같은 lock — 동시 score가 eval jsonl을 쓰는 중을 읽는 것을 막는다

@@ -3,7 +3,7 @@
 # 전제: s8-43-prep-upload.sh가 README.md를 만들어 둔 상태여야 한다 (없으면 즉시 중단).
 #   DRY_RUN=1 ./s8-49-upload-hf.sh full          # 네트워크 없이 준비 상태만 검증
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 DRY=""
 if [ "${2:-}" = "--dry-run" ]; then
   TARGETS="${TARGETS:-all}"

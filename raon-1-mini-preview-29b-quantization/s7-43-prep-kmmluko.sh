@@ -4,7 +4,7 @@
 # outputs/eval-<mode>/prompts-kmmluko.jsonl 을 만든다. 생성은 s7-37-eval.sh, 채점은 s7-46-kmmluko.sh.
 # 환경변수: KMMLU_N(표본 수, 기본 40) · KMMLU_SUBJECTS(과목 목록) · KMMLU_SEED
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-43-prep-kmmluko" "Stage 7/9 - build the standard Korean KMMLU evaluation set (HAERAE-HUB/KMMLU, deterministic sample)"
 

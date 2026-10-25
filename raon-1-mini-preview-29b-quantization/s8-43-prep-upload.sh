@@ -2,7 +2,7 @@
 # s8-43-prep-upload.sh [smoke|full] [targets] — 업로드 전 모델 디렉터리 검증 + README.md 생성.
 # s8-49-upload-hf.py(업로드 전담)가 요구하는 전제 조건을 여기서 만든다.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 TARGETS="${2:-${TARGETS:-all}}"
 : "${ALLOW_MISSING_METRICS:=0}"
 ALLOW_MISSING=""

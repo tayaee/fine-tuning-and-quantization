@@ -4,7 +4,7 @@
 # 이 스크립트는 Stage 1의 유일한 산출물 생성자이며, 이후 모든 게이트가 이 파일을 기준으로 삼는다.
 # 사용: ./s1-07-acceptance.sh smoke
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s1-07-acceptance" "Stage 1/9 - validate the acceptance contract (config/acceptance.toml) and write outputs/acceptance-<mode>.json"
 

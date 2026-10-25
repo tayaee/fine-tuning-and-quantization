@@ -4,7 +4,7 @@
 # outputs/eval-<mode>/prompts-gsm8k.jsonl + evalset-<mode>.json(매니페스트)를 만든다.
 # 사용: ./s7-36-prep-gsm8k.sh full        # GSM8K_N 환경변수로 표본 크기 지정(0=전체 1319)
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-36-prep-gsm8k" "Stage 7/9 - build the standard GSM8K evaluation set (openai/gsm8k test split, deterministic sample)"
 

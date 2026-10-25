@@ -115,7 +115,7 @@ timing은 `logs/timing-build-<mode>.log`에(run-*.sh와 별도 파일).
 | 32/33/35/36 quant | `rq_lock $OUT` (타깃별) | `rq_fresh` | 타깃이 다르면 동시 실행 가능, 같으면 직렬+skip |
 | 34-measure-ppl | `rq_lock $RQ_OUTPUTS/ppl-$MODE` | 타깃별 `rq_fresh` | 직렬(29B 모델 동시 로드 방지) |
 | s7-37-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |
-| 40-score | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | 37-eval과 같은 lock → jsonl 쓰는 중엔 대기 |
+| 40-gsm8k | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | 37-eval과 같은 lock → jsonl 쓰는 중엔 대기 |
 
 stamp는 `FORCE=1`로 무시된다. GPU/라이브러리 버전이 바뀌면 stamp가 불일치해
 자동으로 다시 검증된다.

@@ -2,7 +2,7 @@
 # s4-19-dequant-mxfp8.sh — MXFP8 베이스 → BF16 복원 (32/33/35/36의 선행 조건).
 # 출력: models/raon-bf16 (mode 독립, 1회).
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s4-19-dequant-mxfp8" "Stage 4/9 - restore the BF16 base model from the MXFP8 checkpoint (models/raon-bf16)"
 OUT="$RQ_MODELS/raon-bf16"

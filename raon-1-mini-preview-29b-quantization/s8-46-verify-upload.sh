@@ -2,7 +2,7 @@
 # s8-46-verify-upload.sh [smoke|full] [targets] — 업로드 전 모델·지표·README·vLLM 호환성 종합 감사.
 # s8-43-prep-upload.sh 실행 후, s8-49-upload-hf.sh 실행 전에 모든 산출물의 결함 여부를 전수 점검한다.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 TARGETS="${2:-${TARGETS:-all}}"
 : "${ALLOW_MISSING_METRICS:=0}"
 : "${ALLOW_DISCARD:=0}"

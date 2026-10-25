@@ -8,7 +8,7 @@
 #     SOURCE=hf ./s8-52-serve-vllm.sh full nvfp4-awq
 set -euo pipefail
 if [ $# -eq 0 ]; then
-  source "$(dirname "$0")/config/common.env" smoke
+  source "$(dirname "$0")/config/common.env" "${MODE:-smoke}"
   echo "[TP=$TP] copy & paste (terminal1):"
   for m in full smoke; do
     for t in base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq; do
@@ -17,7 +17,7 @@ if [ $# -eq 0 ]; then
   done
   exit 0
 fi
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 TARGET="${2:-nvfp4-gptq}"
 SOURCE="${SOURCE:-local}"
 PORT="${PORT:-8000}"

@@ -4,7 +4,7 @@
 # 순차 로드하면 GB10(128GB 통합 메모리)에서 두 번째 로드부터 OOM이 난다.
 # 프로세스 격리로 OS 메모리까지 100% 회수한 뒤 마지막에 캐시를 집계한다.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 N="${PPL_N:-8}"
 TARGETS="${2:-${TARGETS:-all}}"
 rq_repro_echo

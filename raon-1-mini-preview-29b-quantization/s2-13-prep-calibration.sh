@@ -2,7 +2,7 @@
 # s2-13-prep-calibration.sh [smoke|full] [n] [seed] — 한국어 혼합 → raon-calibration-<n>.jsonl.
 # smoke 기본 8 (10분 목표), full 기본 256.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 N="${2:-$CALIB_N}"
 SEED="${3:-42}"
 rq_repro_echo

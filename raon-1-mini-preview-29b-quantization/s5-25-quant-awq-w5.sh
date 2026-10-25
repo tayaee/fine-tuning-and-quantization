@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # s5-25-quant-awq-w5.sh [smoke|full] [calib] — 원본→AWQ-W5A16-g128.
 set -euo pipefail
-source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_banner "s5-25-quant-awq-w5" "Stage 5/9 - AWQ smoothing + GPTQ W5A16 quantization (models/raon-awq-w5-<mode>)"
 CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$RQ_DATASETS/raon-calibration-$CALIB.jsonl}"

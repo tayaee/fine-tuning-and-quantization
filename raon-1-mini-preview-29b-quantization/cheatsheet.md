@@ -1,5 +1,19 @@
 # cheatsheet — 자주 쓰는 명령 모음 (4종: nvfp4-gptq, nvfp4-awq, awq-w5, awq-w3)
 
+## 모드 지정 (smoke / full)
+
+모든 stage 스크립트는 **인자로 모드를 받는다**. 인자를 생략하면 환경변수 `MODE`를 보고,
+그것도 없으면 `smoke`다.
+
+```bash
+./s8-43-prep-upload.sh full              # 인자 우선
+MODE=full ./s8-43-prep-upload.sh         # 환경변수 (아무 인자 없이)
+MODE=full TARGETS=nvfp4-awq ./s8-43-prep-upload.sh   # 타깃도 함께
+```
+
+> `export MODE=full` 후 인자 없이 실행하면 **full**로 돈다.
+> (옛 wrapper는 `"${1:-smoke}"`로 환경변수를 덮어써서 항상 smoke였음 — issue-18에서 수정)
+
 ```bash
 # 0. 환경 (양 노드 1회) + gated 로그인
 ./s0-10-setup.sh
