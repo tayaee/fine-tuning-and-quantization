@@ -38,7 +38,7 @@ COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modelin
 REQUIRED_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json")
 # 원본 KRAFTON 레포에는 gated 동의 필드가 있다. 라이선스 요청이 아니므로 절대 복사하지 않는다.
 FORBIDDEN_FRONTMATTER = ("extra_gated_",)
-# 표준 GSM8K 단일 벤치 (s7-36-prep-evalset.sh가 만든 openai/gsm8k test 샘플)
+# 표준 GSM8K 단일 벤치 (s7-36-prep-gsm8k.sh가 만든 openai/gsm8k test 샘플)
 BENCH_LABELS = {"gsm8k": "GSM8K"}
 BENCH_ORDER = ("gsm8k",)
 
@@ -165,7 +165,64 @@ def _evalset_meta(mode: str) -> str:
     return f"{m.get('dataset')}@{rev}, seed={m.get('seed')}, n={m.get('written_n')}"
 
 
-def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[str]:
+def _checks(mode: str) -> dict:
+    """s7 검사 결과(checks.json): gsm8k 통계 · kmmluko · format · servebench."""
+    path = Path(SHARED) / "outputs" / f"eval-{mode}" / "checks.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _kmmluko_acc(checks: dict, target: str) -> float | None:
+    row = (((checks.get("kmmluko") or {}).get("targets") or {}).get(target)) or {}
+    return row.get("acc")
+
+
+def _format_rate(checks: dict, target: str) -> float | None:
+    row = (((checks.get("format") or {}).get("targets") or {}).get(target)) or {}
+    return row.get("pass_rate")
+
+
+def _gsm8k_drop(checks: dict, target: str) -> float | None:
+    d = ((checks.get("gsm8k") or {}).get("delta_vs_base") or {}).get(target)
+    return None if d is None else float(d)
+
+
+def _kmmluko_drop(checks: dict, target: str) -> float | None:
+    d = ((checks.get("kmmluko") or {}).get("delta_vs_base") or {}).get(target)
+    return None if d is None else float(d)
+
+
+def _gsm8k_contract_verdict(checks: dict, target: str) -> str:
+    return str(((checks.get("gsm8k") or {}).get("verdict") or {}).get(target, "-"))
+
+
+def _kmmluko_contract_verdict(checks: dict, target: str) -> str:
+    return str(((checks.get("kmmluko") or {}).get("verdict") or {}).get(target, "-"))
+
+
+def _format_contract_verdict(checks: dict, target: str) -> str:
+    """형식/지시 준수 판정 — 채점 결과(s7-49)의 verdict를 따른다.
+
+    verdict가 없으면(구 산출물) 계약 하한으로 직접 계산한다. 통과율이 있다는
+    이유만으로 PASS를 돌려주면 **가짜 통과**가 카드에 찍힌다.
+    """
+    v = ((checks.get("format") or {}).get("verdict") or {}).get(target)
+    if v:
+        return str(v)
+    row = (((checks.get("format") or {}).get("targets") or {}).get(target)) or {}
+    rate = row.get("pass_rate")
+    if rate is None:
+        return "-"
+    min_rate = float(row.get("pass_rate_min", 0.9))
+    return "PASS" if float(rate) >= min_rate else "FAIL"
+
+
+def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float, checks: dict) -> list[str]:
     """Stage 1 수용 기준(acceptance.toml) vs 실측 대조표(모델 카드용)."""
     try:
         from sdlc import load_acceptance, target_spec, verdict_for_delta
@@ -202,6 +259,18 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[
             f"| Storage format | `{spec.get('quant_format')}` | `{SPECS[target]['format']}` | "
             f"{'PASS' if spec.get('quant_format') == SPECS[target]['format'] else 'FAIL'} |"
         ),
+        (
+            f"| GSM8K accuracy drop vs base | <= {spec.get('gsm8k_acc_drop_max', 0.02)} | "
+            f"{_fmt(_gsm8k_drop(checks, target), 3)} | {_gsm8k_contract_verdict(checks, target)} |"
+        ),
+        (
+            f"| KMMLU (Korean) accuracy drop vs base | <= {spec.get('kmmluko_acc_drop_max', 0.03)} | "
+            f"{_fmt(_kmmluko_drop(checks, target), 3)} | {_kmmluko_contract_verdict(checks, target)} |"
+        ),
+        (
+            f"| Instruction/format compliance | >= {spec.get('format_pass_rate_min', 0.9)} | "
+            f"{_fmt(_format_rate(checks, target), 3)} | {_format_contract_verdict(checks, target)} |"
+        ),
     ]
     return rows
 
@@ -209,12 +278,15 @@ def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float) -> list[
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
     """HuggingFace 모델 카드 전체를 만든다 (요구사항 2.1-3)."""
     spec = SPECS[target]
+    checks = _checks(mode)
     _spec = _acceptance_target_spec(target)
     ppl_delta_warn = _spec.get("ppl_delta_warn", 0.3)
     ppl_delta_max = _spec.get("ppl_delta_max", 1.0)
     gsm8k_drop = _spec.get("gsm8k_acc_drop_max", 0.02)
+    kmmluko_drop = _spec.get("kmmluko_acc_drop_max", 0.03)
+    format_min = _spec.get("format_pass_rate_min", 0.9)
     gsm8k_meta = _evalset_meta(mode)
-    acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb)
+    acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb, checks)
     rows = ["base", *ALL_TARGETS]
     # 검사 1 — PPL (in-domain perplexity, base 대비 Δ + 판정)
     ppl_table = [
@@ -226,6 +298,47 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
         "| Model | GSM8K accuracy | Correct / Total | Verdict |",
         "| --- | ---: | ---: | --- |",
     ]
+    # 검사 3 — 표준 한국어 KMMLU 정확도
+    ko_table = [
+        "| Model | KMMLU accuracy | Correct / Total | Verdict |",
+        "| --- | ---: | ---: | --- |",
+    ]
+    for r in rows:
+        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
+        acc = _kmmluko_acc(checks, r)
+        cnt = ((checks.get("kmmluko") or {}).get("targets") or {}).get(r) or {}
+        ko_table.append(
+            f"| {name} | {_fmt(acc, 3)} | {cnt.get('n', '-')} | "
+            f"{'ref' if r == 'base' else _kmmluko_contract_verdict(checks, r)} |"
+        )
+    # 검사 4 — 지시/형식 준수
+    fmt_table = [
+        "| Model | Pass rate | Passed / Total | Failed cases | Verdict |",
+        "| --- | ---: | ---: | --- | --- |",
+    ]
+    for r in rows:
+        name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
+        row = (((checks.get("format") or {}).get("targets") or {}).get(r)) or {}
+        rate = row.get("pass_rate")
+        passed = round((rate or 0) * (row.get("n") or 0))
+        fmt_table.append(
+            f"| {name} | {_fmt(rate, 3)} | {passed}/{row.get('n', '-')} | "
+            f"{', '.join(row.get('failed') or []) or '-'} | "
+            f"{'ref' if r == 'base' else _format_contract_verdict(checks, r)} |"
+        )
+    # 서빙 성능 (측정됐을 때만)
+    sb = checks.get("servebench") or {}
+    serve_lines = ""
+    if sb.get("ok"):
+        serve_lines = (
+            f"| Model | Concurrency | Output tok/s (p50) | Request latency (p50) | Output tokens |\n"
+            f"| --- | ---: | ---: | ---: | ---: |\n"
+            f"| {sb.get('model', '-')} | {sb.get('concurrency', '-')} | {sb.get('tok_per_s_p50', '-')} | "
+            f"{sb.get('req_latency_s_p50', '-')} s | {sb.get('output_tokens_total', '-')} |\n"
+        )
+    else:
+        serve_lines = "_Not measured (no running server during the last run)._\n"
+
     base_acc = _gsm8k_acc(scores, "base")
     for r in rows:
         name = "**bf16 (base)**" if r == "base" else f"**{r}**" if r == target else r
@@ -298,11 +411,38 @@ delta against the bf16 base model (`delta < {ppl_delta_warn}` Accept,
 
 Accuracy on a deterministic sample of the standard GSM8K test set
 (`openai/gsm8k`, main/test). The prompts are generated deterministically by
-`s7-36-prep-evalset.sh` ({gsm8k_meta}) and scored by s7-37-eval / s7-40-score.
+`s7-36-prep-gsm8k.sh` ({gsm8k_meta}) and scored by s7-37-eval / s7-40-gsm8k.
 The verdict is PASS when the accuracy drop against the base model stays within
 `{gsm8k_drop}`.
 
 {chr(10).join(gsm_table)}
+
+## Check 3 - KMMLU (standard Korean benchmark)
+
+Accuracy on a deterministic sample of the standard Korean KMMLU benchmark
+(`HAERAE-HUB/KMMLU`, 4-option multiple choice, several subjects). The prompts are
+generated by `s7-43-prep-kmmluko.sh` and scored by `s7-46-kmmluko.sh`.
+The verdict is PASS when the accuracy drop against the base model stays within
+`{kmmluko_drop}`.
+
+{chr(10).join(ko_table)}
+
+## Check 4 - Instruction and format compliance
+
+A fixed suite of 10 cases checks whether the model follows the requested format:
+output language, JSON-only output, `#### N` markers, length limits, bullet lists,
+two-line reproduction, no preamble, and asking back on an empty question.
+The verdict is PASS when the pass rate stays at or above `{format_min}`.
+
+{chr(10).join(fmt_table)}
+
+## Serving performance
+
+Measured against a running OpenAI-compatible server (`s7-52-servebench.sh`).
+KRAFTON publishes throughput numbers for the base model, but on a different stack
+(vLLM 0.28.0 with an MXFP8 target), so they are directional context only.
+
+{serve_lines}
 
 ## Usage - transformers
 
@@ -387,7 +527,7 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
         if target not in ppl:
             report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s6-34-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-37-eval/s7-40-score first)")
+            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-37-eval/s7-40-gsm8k first)")
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])
     for bad in FORBIDDEN_FRONTMATTER:

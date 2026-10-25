@@ -175,6 +175,65 @@ PY
   )
 }
 
+# --- 게이트 4b: 표준 한국어 KMMLU 정확도 계약 대조 ---------------------------
+rq_gate_kmmluko() {
+  local mode="${1:-$MODE}" target="${2:-}"
+  local f="$RQ_OUTPUTS/eval-$mode/checks.json"
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s7-46-kmmluko.sh)"; return 0; }
+  [ -n "$target" ] || return 0
+  ( set -x; rq_py - "$f" "$target" <<'PY'
+import json, sys
+from sdlc import load_acceptance, target_spec
+
+data = json.load(open(sys.argv[1]))
+target = sys.argv[2]
+sec = (data.get("kmmluko") or {})
+targets = sec.get("targets") or {}
+base = (targets.get("base") or {}).get("acc")
+cur = (targets.get(target) or {}).get("acc")
+if base is None or cur is None:
+    print("SKIP: KMMLU 정확도 비교 데이터 없음 (base=%s %s=%s)" % (base, target, cur))
+    raise SystemExit(0)
+spec = target_spec(load_acceptance(), target)
+drop_max = float(spec.get("kmmluko_acc_drop_max", 0.03))
+drop = float(base) - float(cur)
+if drop > drop_max:
+    raise SystemExit("FAIL: KMMLU 정확도 하락 %.3f > 허용폭 %.3f (base=%.3f %s=%.3f)"
+                     % (drop, drop_max, float(base), target, float(cur)))
+print("KMMLU OK %s acc=%.3f (base=%.3f, 하락 %.3f <= %.3f)" % (target, float(cur), float(base), drop, drop_max))
+PY
+  )
+}
+
+# --- 게이트 4c: 지시/형식 준수 스위트 ---------------------------------------
+rq_gate_format() {
+  local mode="${1:-$MODE}" target="${2:-}"
+  local f="$RQ_OUTPUTS/eval-$mode/checks.json"
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s7-49-format.sh)"; return 0; }
+  [ -n "$target" ] || return 0
+  ( set -x; rq_py - "$f" "$target" <<'PY'
+import json, sys
+from sdlc import load_acceptance, target_spec
+
+data = json.load(open(sys.argv[1]))
+target = sys.argv[2]
+sec = (data.get("format") or {})
+targets = sec.get("targets") or {}
+row = targets.get(target) or {}
+rate = row.get("pass_rate")
+if rate is None:
+    print("SKIP: 형식 검사 결과 없음 (%s)" % target)
+    raise SystemExit(0)
+spec = target_spec(load_acceptance(), target)
+min_rate = float(spec.get("format_pass_rate_min", 0.9))
+if float(rate) < min_rate:
+    raise SystemExit("FAIL: 형식/지시 준수 통과율 %.3f < 하한 %.3f (실패 케이스: %s)"
+                     % (float(rate), min_rate, row.get("failed")))
+print("FORMAT OK %s pass_rate=%.3f >= %.3f" % (target, float(rate), min_rate))
+PY
+  )
+}
+
 # --- 게이트 5: 배포 후 서빙 검증 ---------------------------------------------
 # s8-64-verify-serving.py가 만든 outputs/serve-<mode>.json을 대조한다.
 # 서빙을 아직 하지 않았다면 "미수행"은 실패가 아니라 skip으로 본다(배포는 수동 단계).

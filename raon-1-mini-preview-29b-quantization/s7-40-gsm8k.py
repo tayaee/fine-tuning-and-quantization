@@ -1,10 +1,10 @@
-"""s7-40-score.py — eval 산출물 집계 (완결율 + 벤치마크별 정확도).
+"""s7-40-gsm8k.py — eval 산출물 집계 (완결율 + 벤치마크별 정확도).
 입력: outputs/eval-<mode>/<target>.jsonl (최상위 glob만 — bench/ 하위는 상세 사본)
 지표: 완결율(빈 출력 제외), 평균 출력 길이, thinking 포함률(<think> 흔적),
       벤치별 정확도 (kmmlu_redux / gsm8k / humaneval, gold가 있는 행만)
 출력: outputs/eval-<mode>/score.json (stdout 표)
 
-  uv run s7-40-score.py --mode smoke
+  uv run s7-40-gsm8k.py --mode smoke
 """
 
 from __future__ import annotations
@@ -13,9 +13,21 @@ import argparse
 import json
 import os
 import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from sdlc import load_acceptance, merge_check, target_spec
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 BENCHMARKS = ["kmmlu_redux", "gsm8k", "humaneval"]
+
+#: 정확도로 채점할 수 있는 벤치. 통과율 벤치(format)는 s7-49가 담당하므로 여기서 제외한다
+#: (제외하지 않으면 "채점 불가"가 acc=0.0으로 기록돼 정상 벤치와 구분되지 않는다).
+SCORABLE_BENCHES = frozenset({"gsm8k", "kmmluko", "kmmlu_redux", "humaneval"})
+#: 계약 파일(config/acceptance.toml)이 없을 때 쓰는 기본 허용폭
+DEFAULT_DROP_MAX = 0.02
 
 _ANSWER_RE = re.compile(r"(?:정답|답|answer)\s*(?:은|는|:|=)?\s*\**\s*\(?([A-D])\)?\b", re.IGNORECASE)
 _BARE_MCQ_RE = re.compile(r"^\s*\**\(?([A-D])[\.\):]")
@@ -74,7 +86,7 @@ def score_answer(bench: str, gold, output: str) -> int:
     """벤치별 정답 일치 여부 (1/0). gold가 None/빈 값이면 채점 불가 → 0."""
     if gold is None or gold == "":
         return 0
-    if bench == "kmmlu_redux":
+    if bench in ("kmmlu_redux", "kmmluko"):
         pred = _mcq_pred(output)
         gold_list = gold if isinstance(gold, list) else [gold]
         return 1 if pred in {str(g).strip().upper() for g in gold_list} else 0
@@ -103,6 +115,8 @@ def score(mode: str) -> dict:
         benches: dict[str, dict] = {}
         for r in recs:
             b = r.get("bench", "smoke")
+            if b not in SCORABLE_BENCHES:
+                continue  # 통과율 벤치(format) 등은 s7-46/s7-49가 checks.json에 기록한다
             slot = benches.setdefault(b, {"n": 0, "acc_sum": 0})
             slot["n"] += 1
             slot["acc_sum"] += score_answer(b, r.get("gold"), r.get("output") or "")
@@ -120,11 +134,84 @@ def score(mode: str) -> dict:
     os.makedirs(outdir, exist_ok=True)
     with open(os.path.join(outdir, "score.json"), "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=2)
+    merge_check(mode, "gsm8k", gsm8k_check(mode, rows))
     print(f"{'target':12} {'n':>4} {'done':>6} {'avglen':>8} {'think':>6}  benchmarks")
     for t, r in rows.items():
         bs = " ".join(f"{b}={v['acc']}({v['n']})" for b, v in r["benchmarks"].items())
         print(f"{t:12} {r['n']:>4} {r['done_rate']:>6} {r['avg_len']:>8} {r['think_rate']:>6}  {bs}")
     return rows
+
+
+def gsm8k_stats(mode: str, target: str) -> dict:
+    """타깃별 GSM8K 통계: 정확도 · 답 마커율 · 절단률(답 마커 누락)."""
+    fp = os.path.join(OUTDIR(mode), f"{target}.jsonl")
+    if not os.path.isfile(fp):
+        return {}
+    n = marker = 0
+    with open(fp, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            if r.get("bench") not in (None, "gsm8k"):
+                continue
+            out = r.get("output") or ""
+            n += 1
+            if "####" in out:
+                marker += 1
+    return {"n": n, "answer_rate": round(marker / max(n, 1), 3) if n else 0.0,
+            "truncation_rate": round((n - marker) / max(n, 1), 3) if n else 0.0}
+
+
+def _drop_max(target: str, key: str, default: float) -> float:
+    """계약 파일(acceptance.toml)이 없거나 타깃 항목이 없으면 기본값을 쓴다."""
+    try:
+        return float(target_spec(load_acceptance(), target).get(key, default))
+    except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기본값
+        return default
+
+
+def gsm8k_check(mode: str, rows: dict[str, dict]) -> dict:
+    """GSM8K 검사 결과: 정확도·답 마커율·절단률 + 수용 기준(base 대비 하락 허용폭) 판정."""
+    targets: dict[str, dict] = {}
+    for t, row in rows.items():
+        g = (row.get("benchmarks") or {}).get("gsm8k") or {}
+        if not g:
+            continue
+        st = gsm8k_stats(mode, t)
+        targets[t] = {
+            "n": g.get("n"),
+            "acc": g.get("acc"),
+            "answer_rate": st.get("answer_rate"),
+            "truncation_rate": st.get("truncation_rate"),
+        }
+    base = targets.get("base") or {}
+    base_acc = base.get("acc")
+    verdicts: dict[str, str] = {}
+    deltas: dict[str, float] = {}
+    drop_maxes: dict[str, float] = {}
+    for t, v in targets.items():
+        if t == "base":
+            verdicts[t] = "ref"
+            continue
+        acc = v.get("acc")
+        if acc is None or base_acc is None:
+            verdicts[t] = "no-base"
+            continue
+        drop = round(float(base_acc) - float(acc), 4)
+        deltas[t] = drop
+        drop_max = _drop_max(t, "gsm8k_acc_drop_max", DEFAULT_DROP_MAX)
+        drop_maxes[t] = drop_max
+        verdicts[t] = "PASS" if drop <= drop_max else "FAIL"
+    return {
+        "targets": targets,
+        "delta_vs_base": deltas,
+        "verdict": verdicts,
+        # 계약 파일이 없을 때의 기본값 + 타깃별 실제 적용값(수치 불일치 방지)
+        "contract": {"gsm8k_acc_drop_max": DEFAULT_DROP_MAX},
+        "drop_max": drop_maxes,
+        "note": "answer_rate = fraction with a '#### N' marker; truncation_rate = 1 - answer_rate",
+    }
 
 
 def OUTDIR(mode: str) -> str:

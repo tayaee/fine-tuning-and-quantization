@@ -279,6 +279,35 @@ def update_ledger(
     return data
 
 
+def checks_path(mode: str, shared: str | os.PathLike[str] | None = None) -> Path:
+    """검사 결과 원장 (GSM8K 통계·한국어·형식 준수 등)."""
+    base = Path(shared) if shared is not None else SHARED
+    return base / "outputs" / f"eval-{mode}" / "checks.json"
+
+
+def merge_check(mode: str, name: str, payload: dict, shared: str | os.PathLike[str] | None = None) -> dict:
+    """검사 결과를 checks.json에 병합한다(병렬 실행 대비 파일 락)."""
+    p = checks_path(mode, shared)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = p.with_suffix(p.suffix + ".lock")
+    with lock_path.open("w", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        data: dict[str, Any] = {}
+        if p.is_file():
+            try:
+                loaded = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    data = loaded
+            except (OSError, json.JSONDecodeError):
+                data = {}
+        data[name] = payload
+        data["updated_at"] = _now()
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(p)
+    return data
+
+
 def write_json(path: str | os.PathLike[str], payload: Any) -> Path:
     """JSON 산출물 atomic write."""
     p = Path(path)

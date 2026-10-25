@@ -1,0 +1,18 @@
+{
+  "issue": 17,
+  "started": "2026-10-25T05:05:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "ts": "2026-10-25T06:50:00-04:00",
+        "loc_added": 1819,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "s7 평가 확장(한국어 KMMLU·형식/지시 준수·서빙 벤치) + s7-36/s7-40 명시적 개명 + 계약/게이트/카드 반영"
+}

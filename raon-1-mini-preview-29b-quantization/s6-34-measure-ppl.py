@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 # base = 19-dequant 복원본(공정 기준). 이슈는 bf16으로 부르지만 기존 산출물
-# 파일명(base.json)과 s7-37-eval/s7-40-score 관례가 base라 별칭으로만 받는다.
+# 파일명(base.json)과 s7-37-eval/s7-40-gsm8k 관례가 base라 별칭으로만 받는다.
 ALL_TARGETS = ["base", "awq-w5", "awq-w3", "nvfp4-awq", "nvfp4-gptq"]
 TARGET_ALIASES = {"bf16": "base", "raon-bf16": "base"}
 

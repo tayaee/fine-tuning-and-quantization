@@ -83,8 +83,7 @@ def main(n: int, seed: int, use_template: bool):
 
     tmp = tmp_path(out)
     with open(tmp, "w", encoding="utf-8") as f:
-        for i in idx[:n]:
-            f.write(json.dumps({"text": pool[i]}, ensure_ascii=False) + "\n")
+        f.writelines(json.dumps({"text": pool[i]}, ensure_ascii=False) + "\n" for i in idx[:n])
     commit_file(tmp, out)
     print(f"seed={seed} n={n} template={use_template} -> {out}")
 

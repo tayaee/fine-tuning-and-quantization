@@ -1,4 +1,4 @@
-"""s7-36-prep-evalset.py — 표준 GSM8K 평가 세트 준비 (Stage 7의 입력).
+"""s7-36-prep-gsm8k.py — 표준 GSM8K 평가 세트 준비 (Stage 7의 입력).
 
 기존에는 `outputs/eval-<mode>/prompts-*.jsonl`을 **만드는 스크립트가 파이프라인에
 없었다**(외부에서 수작업으로 만들어 둔 3~10행 샘플). 그래서 평가가 "표준 벤치마크"가
@@ -14,8 +14,8 @@
 출력: outputs/eval-<mode>/prompts-gsm8k.jsonl
       outputs/eval-<mode>/evalset-<mode>.json (매니페스트)
 
-  uv run s7-36-prep-evalset.py --mode full --n 200
-  uv run s7-36-prep-evalset.py --check --mode full
+  uv run s7-36-prep-gsm8k.py --mode full --n 200
+  uv run s7-36-prep-gsm8k.py --check --mode full
 """
 
 from __future__ import annotations

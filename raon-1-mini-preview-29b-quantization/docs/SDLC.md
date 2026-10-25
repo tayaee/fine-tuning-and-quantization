@@ -18,7 +18,7 @@
 | 4 | 베이스 복원 | `s4-19-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
-| 7 | 벤치마크 평가 | `s7-37-eval.sh` + `s7-40-score.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단) |
+| 7 | 벤치마크 평가 | `s7-37-eval.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
 | 8 | 릴리스·배포 | `s8-43-prep-upload.sh` → `s8-46-verify-upload.sh` → `s8-49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
 
 ## 0. 파일 명명 규칙
@@ -39,7 +39,7 @@ s<stage>-##-<slug>.{sh,py}
 | 4 | 베이스 복원 | `s4-19-dequant-mxfp8.{sh,py}` |
 | 5 | 양자화 | `s5-22-quant-awq-w3.{sh,py}` … `s5-31-quant-nvfp4-gptq.{sh,py}` |
 | 6 | PPL 게이트 | `s6-34-measure-ppl.{sh,py}` |
-| 7 | 평가 | `s7-36-prep-evalset.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-score.{sh,py}` |
+| 7 | 평가 | `s7-36-prep-gsm8k.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-gsm8k.{sh,py}`, `s7-43-prep-kmmluko.{sh,py}`, `s7-46-kmmluko.{sh,py}`, `s7-49-format.{sh,py}`, `s7-52-servebench.{sh,py}` |
 | 8 | 릴리스·배포 | `s8-43-prep-upload.{sh,py}` … `s8-64-verify-serving.py` |
 
 빌드 wrapper(`s0-s7-build-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는 진입점이라
@@ -65,7 +65,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ## 1-1. Stage 7 — 표준 GSM8K 평가 (측정 프로토콜)
 
-평가 입력은 **표준 벤치마크만** 쓴다. 프롬프트는 `s7-36-prep-evalset.sh`가 만든다.
+평가 입력은 **표준 벤치마크만** 쓴다. 프롬프트는 `s7-36-prep-gsm8k.sh`가 만든다.
 
 | 항목 | 값 |
 |---|---|
@@ -82,14 +82,32 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 따라서 **base와 양자화본은 반드시 같은 프로토콜**(동일 배치 크기·동일 max_new_tokens)로
 재야 비교가 공정하다. 허용폭 2%p는 n=200 기준 약 1σ 수준이니 표본 수와 함께 해석한다.
 
-## 1-2. 모델 카드의 두 검사
+## 1-1b. 검사 5종 (무엇을 얼마나 검증하는가)
+
+| # | 검사 | 스크립트 | 데이터 | 잡는 것 | 잡지 못하는 것 |
+|---:|---|---|---|---|---|
+| 1 | in-domain PPL | `s6-34-measure-ppl` | 캘리브 코퍼스 | 가중치 손상·스케일 붕괴(NaN) | 생성 품질·한국어 |
+| 2 | 표준 GSM8K | `s7-36-prep-gsm8k` → `s7-40-gsm8k` | `openai/gsm8k` test | 영어 수학 추론 붕괴 | 코드·지식·한국어 |
+| 3 | 표준 한국어 KMMLU | `s7-43-prep-kmmluko` → `s7-46-kmmluko` | `HAERAE-HUB/KMMLU` test | 한국어 능력·토크나이저 손상 | 영어 앵커링 |
+| 4 | 지시/형식 준수 | `s7-49-format` | 고정 10케이스 | 언어지시·JSON·마커·길이·bullet | 정확성 자체 |
+| 5 | 서빙 처리량 | `s7-52-servebench` | 실서빙(없으면 skip) | 양자화의 대가(속도) | 품질 |
+
+- 1~4는 **품질 회귀**(base 대비 하락 허용폭이 계약 `config/acceptance.toml`에 있음).
+- 5는 **배포 증거**(KRAFTON 카드에 공개된 처리량과 같은 축 — 하드웨어가 달라 방향성 참조).
+- 표본 수: GSM8K n=200이면 σ≈1.6%p → 허용폭 2%p는 ≈1.2σ. 릴리스는 1319 전체(σ≈0.6%p) 권장.
+- **결과 위치가 다르다**: 1·2는 `outputs/eval-<mode>/score.json`, 3·4·5는 `outputs/eval-<mode>/checks.json`.
+
+## 1-2. 모델 카드의 검사 표
 
 `s8-43-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
 
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|
-| 검사 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `s6-34-measure-ppl.sh` |
-| 검사 2 — GSM8K | 표준 테스트셋 정확도 | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s7-37-eval.sh` + `s7-40-score.sh` |
+| Check 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `s6-34-measure-ppl.sh` |
+| Check 2 — GSM8K | 표준 테스트셋 정확도 (+답 마커율·절단률) | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s7-37-eval.sh` + `s7-40-gsm8k.sh` |
+| Check 3 — KMMLU | 표준 한국어 정확도 | base 대비 하락 ≤ `kmmluko_acc_drop_max` | `s7-43-prep-kmmluko.sh` + `s7-46-kmmluko.sh` |
+| Check 4 — 형식/지시 준수 | 고정 10케이스 통과율 | ≥ `format_pass_rate_min` | `s7-49-format.sh` |
+| (참고) 서빙 성능 | 출력 tok/s · 요청 지연 | 방향성(공개 처리량과 같은 축) | `s7-52-servebench.sh` |
 
 ## 2. 게이트 (단계 간 계약)
 
@@ -102,6 +120,8 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | gate-quant | `rq_gate_quant` | dense 폴백·미보정 `global_scale`(MoE 캘리브레이션 누락) |
 | gate-ppl | `rq_gate_ppl` | NaN/미측정 PPL, 기준과 어긋난 verdict |
 | gate-eval | `rq_gate_eval` | 응답 0건(모델이 아무것도 못 냄), GSM8K 정확도가 계약 허용폭 초과 |
+| gate-kmmluko | `rq_gate_kmmluko` | 한국어 KMMLU 정확도가 계약 허용폭 초과 |
+| gate-format | `rq_gate_format` | 지시/형식 준수 통과율이 계약 하한 미달 |
 | gate-release | `rq_gate_release` | 모델카드/지표/업로드 전 감사 미통과 |
 | gate-serving | `rq_gate_serving` | 서빙 실패 (로그 미수행은 skip) |
 

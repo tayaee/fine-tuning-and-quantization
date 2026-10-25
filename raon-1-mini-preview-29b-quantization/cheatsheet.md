@@ -35,16 +35,26 @@ RQ_TARGETS=all ./s5-31-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Line
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_quant "$RQ_MODELS/raon-nvfp4-awq-smoke" nvfp4-pack-quantized'
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_ppl "$RQ_OUTPUTS/ppl-smoke/nvfp4-awq.json" nvfp4-awq'
 
-# 4.5 표준 GSM8K 평가 세트 (36) — 프롬프트+매니페스트(결정론, 멱등)
-./s7-36-prep-evalset.sh smoke
-./s7-36-prep-evalset.sh full                # GSM8K_N=0 이면 표준 테스트셋 전체 1319
-GSM8K_N=300 EVAL_N=200 ./s7-36-prep-evalset.sh full   # 표본 300 중 200문제만 풀기
+# 4.5 평가 세트 준비 (36 GSM8K / 43 한국어 KMMLU / 49 형식지시) — 결정론, 멱등
+./s7-36-prep-gsm8k.sh smoke
+./s7-36-prep-gsm8k.sh full                # GSM8K_N=0 이면 표준 테스트셋 전체 1319
+GSM8K_N=300 EVAL_N=200 ./s7-36-prep-gsm8k.sh full   # 표본 300 중 200문제만 풀기
+./s7-43-prep-kmmluko.sh smoke             # 표준 한국어 KMMLU (KMMLU_N=40, 과목 8종)
+./s7-43-prep-kmmluko.sh full              # KMMLU_N=200 으로 확대
+./s7-49-format.sh smoke --prepare         # 형식/지시 준수 고정 10케이스(eval 전에 1회)
 
 # 5. eval + score (백엔드: auto = vLLM → 커스텀 아키텍처 미지원 시 transformers)
 #    EVAL_BATCH=8 로 배치 생성(표준 GSM8K 실측에 필수)
+#    EVAL_BENCHMARKS 기본값 = gsm8k,kmmluko,format (3개 벤치 동시 평가)
 ./s7-37-eval.sh smoke nvfp4-gptq
-./s7-40-score.sh smoke
+./s7-40-gsm8k.sh smoke
 RQ_EVAL_BACKEND=transformers ./s7-37-eval.sh smoke nvfp4-gptq
+
+# 7.5 검사 채점 (40 GSM8K / 46 한국어 / 49 형식) + 서빙 처리량(52, 서버 필요)
+./s7-40-gsm8k.sh smoke        # → outputs/eval-<mode>/score.json
+./s7-46-kmmluko.sh smoke     # → checks.json "kmmluko"
+./s7-49-format.sh smoke      # → checks.json "format"
+STEPS=serve ./run-smoke.sh   # 서빙 처리량 측정(s7-52, 서버가 떠 있어야)
 
 # 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증)
 ./s8-43-prep-upload.sh smoke
@@ -66,7 +76,7 @@ STEPS=verify TARGETS=all ./run-smoke.sh    # 46-verify + gate-release (명시 �
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   s0-s7-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
-#   (파일명 앞 숫자 = 실행 스텝 번호: s0-10-setup·s2-13-calib·s3-16-compat·s4-19-dequant·s5-<quant>·s6-34-ppl·s7-37-eval·s7-40-score)
+#   (파일명 앞 숫자 = 실행 스텝 번호: s0-10-setup·s2-13-calib·s3-16-compat·s4-19-dequant·s5-<quant>·s6-34-ppl·s7-37-eval·s7-40-gsm8k)
 ./s0-s7-build-smoke-nvfp4-awq.sh    # smoke × nvfp4-awq
 ./s0-s7-build-full-nvfp4-awq.sh     # full  × nvfp4-awq
 STEPS=quant,ppl ./s0-s7-build-smoke-nvfp4-awq.sh      # 일부 스텝만

@@ -142,12 +142,22 @@ rq_bpe_main() {
   fi
   if rq_bpe_want_step eval; then
     if rq_bpe_want_step evalset; then
-      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./s7-36-prep-evalset.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./s7-36-prep-gsm8k.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "49-format-prepare" ./s7-49-format.sh "$mode" --prepare
     fi
     rq_bpe_step "$mode" "$BPE_TIMING" "s7-37-eval" ./s7-37-eval.sh "$mode" "$eval_targets"
-    rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./s7-40-score.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "40-gsm8k" ./s7-40-gsm8k.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "46-kmmluko" ./s7-46-kmmluko.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "49-format" ./s7-49-format.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-kmmluko" rq_gate_kmmluko "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-format" rq_gate_format "$mode" "$target"
+    # Tier 3: 서빙 처리량(STEPS=serve로 명시 요청 시에만 — 서버가 떠 있어야 측정된다)
+    case ",${STEPS:-$BPE_STEPS_DEFAULT}," in *,serve,*)
+      rq_bpe_step "$mode" "$BPE_TIMING" "52-servebench" ./s7-52-servebench.sh "$mode" ;;
+    esac
     rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then

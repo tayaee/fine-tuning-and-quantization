@@ -42,7 +42,9 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 ./s1-07-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
 ./s2-13-prep-calibration.sh smoke      # calib jsonl 생성
 ./s3-16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
-./s7-36-prep-evalset.sh full             # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
+./s7-36-prep-gsm8k.sh full            # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
+./s7-43-prep-kmmluko.sh full          # 표준 한국어 KMMLU 평가 세트 준비
+./s7-49-format.sh full --prepare      # 지시/형식 준수 고정 10케이스 준비
 ./s4-19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
 TARGETS=all ./run-smoke.sh           # 4종 전부 (TARGETS 미지정 시 가능한 값을 찍고 종료)
 TARGETS=nvfp4-awq ./run-smoke.sh    # 1종만
@@ -71,12 +73,13 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 | 4 | 베이스 복원 | `models/raon-bf16` | - |
 | 5 | 양자화 | `models/raon-<target>-<mode>` | gate-quant |
 | 6 | PPL | `outputs/ppl-<mode>/<target>.json` | gate-ppl |
-| 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` (표준 GSM8K) | gate-eval |
+| 7 | 평가 | `outputs/eval-<mode>/<target>.jsonl` (GSM8K·KMMLU·형식) + `score.json`·`checks.json` | gate-eval / gate-kmmluko / gate-format |
 | 8 | 릴리스·배포 | `outputs/release-notes-<mode>.md` | gate-release / gate-serving |
 
-- 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K 허용폭의 단일 소스
-- 평가: **표준 GSM8K**(`openai/gsm8k` test, revision·seed 고정) — `s7-36-prep-evalset.sh`가 생성
-- 모델 카드: **검사 1 PPL** + **검사 2 GSM8K** 두 표
+- 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K/KMMLU 허용폭·형식 통과율의 단일 소스
+- 평가: **5개 검사** — ① 표준 GSM8K(`openai/gsm8k` test, revision·seed 고정) ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) ③ 지시/형식 준수(고정 10케이스) ④ PPL(Stage 6) ⑤ 서빙 처리량
+  - 프롬프트 생성: `s7-36-prep-gsm8k.sh` · `s7-43-prep-kmmluko.sh` · `s7-49-format.sh` (모두 결정론·멱등)
+- 모델 카드: **Check 1 PPL** · **Check 2 GSM8K** · **Check 3 KMMLU** · **Check 4 형식 준수** (참고: 서빙 성능)
 - 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
 - 증빙: `outputs/stage-ledger-<mode>.json` → `s8-61-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`

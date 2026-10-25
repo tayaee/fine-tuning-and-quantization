@@ -472,7 +472,7 @@ def _check_metrics(
 
     if not score_fp.is_file():
         if not allow_missing_metrics:
-            errors.append(f"{score_fp}: 파일 없음 (s7-37-eval.sh / s7-40-score.sh 먼저 실행)")
+            errors.append(f"{score_fp}: 파일 없음 (s7-37-eval.sh / s7-40-gsm8k.sh 먼저 실행)")
     else:
         score_data = json.loads(score_fp.read_text(encoding="utf-8"))
         bad_keys = [k for k in score_data if k.startswith("prompts-")]
@@ -547,6 +547,8 @@ def _check_readme(
         "## Acceptance criteria (Stage 1 contract)",
         "## Check 1 - PPL",
         "## Check 2 - GSM8K",
+        "## Check 3 - KMMLU",
+        "## Check 4 - Instruction and format compliance",
         "## Usage - transformers",
         "## Usage - vLLM",
         "## License and source",

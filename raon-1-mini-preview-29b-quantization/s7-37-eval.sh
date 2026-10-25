@@ -16,7 +16,7 @@ target_model() {
     *) echo "$RQ_MODELS/raon-$1-$MODE" ;;
   esac
 }
-# 평가 벤치(기본: 표준 GSM8K). s7-36-prep-evalset.sh가 prompts-<bench>.jsonl을 만든다.
+# 평가 벤치(기본: 표준 GSM8K). s7-36-prep-gsm8k.sh가 prompts-<bench>.jsonl을 만든다.
 BENCHES="${EVAL_BENCHMARKS:-gsm8k}"
 rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES batch=${EVAL_BATCH:-1} gpu_mem_util=$VLLM_GPU_MEM_UTIL backend=$RQ_EVAL_BACKEND"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"

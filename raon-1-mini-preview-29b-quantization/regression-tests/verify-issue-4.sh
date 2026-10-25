@@ -73,11 +73,11 @@ grep -q 'decode(out\[0\]\[n_in:\])\|gen = out\[:, ids.size(1) :\]' "$ROOT/s7-37-
   || { echo "FAIL: 신규 토큰만 디코드하지 않음"; fail=1; }
 echo "OK: s7-37-eval.py transformers 백엔드 + auto 폴백"
 
-# 3b. s7-40-score.py 벤치마크 정확도 (issue-5가 score.json을 읽으므로 선행 조건)
+# 3b. s7-40-gsm8k.py 벤치마크 정확도 (issue-5가 score.json을 읽으므로 선행 조건)
 for tok in 'def score_answer(' '"benchmarks"' 'score.json'; do
-  grep -qF "$tok" "$ROOT/s7-40-score.py" || { echo "FAIL: s7-40-score.py에 '$tok' 없음"; fail=1; }
+  grep -qF "$tok" "$ROOT/s7-40-gsm8k.py" || { echo "FAIL: s7-40-gsm8k.py에 '$tok' 없음"; fail=1; }
 done
-echo "OK: s7-40-score.py 벤치마크 정확도 산출"
+echo "OK: s7-40-gsm8k.py 벤치마크 정확도 산출"
 
 # 4. run-{smoke,full}.sh 파이프라인 연동
 for f in run-smoke.sh run-full.sh; do
@@ -88,8 +88,8 @@ for f in run-smoke.sh run-full.sh; do
   grep -q 'QUANT_CPU_ONLY' "$ROOT/$f" || { echo "FAIL: $f 에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
   grep -q '_quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$ROOT/$f" \
     || { echo "FAIL: $f 가 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }
-  grep -q '"40-score" ./s7-40-score.sh "\$MODE"' "$ROOT/$f" \
-    || { echo "FAIL: $f 에서 s7-40-score 호출 체인 끊김"; fail=1; }
+  grep -q '"40-gsm8k" ./s7-40-gsm8k.sh "\$MODE"' "$ROOT/$f" \
+    || { echo "FAIL: $f 에서 s7-40-gsm8k 호출 체인 끊김"; fail=1; }
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done
 echo "OK: run-{smoke,full}.sh TARGETS 전파 + QUANT_CPU_ONLY + eval 체인"

@@ -46,13 +46,14 @@ def main():
         cap = torch.cuda.get_device_capability(i)
         print(f"  gpu{i}={torch.cuda.get_device_name(i)} sm={cap[0]}.{cap[1]} nvfp4_ok={cap >= (10, 0)}")
 
-    import llmcompressor, vllm  # noqa: F401
-
-    print(f"llmcompressor={llmcompressor.__version__} vllm={vllm.__version__}")
+    import llmcompressor
+    import vllm
     from llmcompressor.modifiers.awq import AWQModifier
     from llmcompressor.modifiers.gptq import GPTQModifier
     from llmcompressor.modifiers.quantization import QuantizationModifier
-    print(f"modifiers_ok=AWQModifier,GPTQModifier,QuantizationModifier")
+
+    print(f"llmcompressor={llmcompressor.__version__} vllm={vllm.__version__}")
+    print(f"modifiers_ok={AWQModifier.__name__},{GPTQModifier.__name__},{QuantizationModifier.__name__}")
     print("COMPAT-OK")
 
 

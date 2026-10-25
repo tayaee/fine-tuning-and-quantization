@@ -117,6 +117,45 @@ def _num(value, dash: str = "-") -> str:
     return str(value)
 
 
+def _check_rows(data: dict) -> list[str]:
+    """s7 검사 결과(GSM8K 통계·한국어·형식 준수·서빙) 표."""
+    checks = {}
+    for f in ("checks.json",):
+        p = outputs_dir(data["mode"]) / f
+        if p.is_file():
+            try:
+                loaded = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    checks = loaded
+            except (OSError, json.JSONDecodeError):
+                checks = {}
+    rows = ["| 검사 | 대상 | 결과 | 판정 |", "| --- | --- | ---: | --- |"]
+    gsm = (checks.get("gsm8k") or {}).get("targets") or {}
+    for t, v in sorted(gsm.items()):
+        verdict = str(((checks.get("gsm8k") or {}).get("verdict") or {}).get(t, "-"))
+        rows.append(
+            f"| GSM8K (표준) | {t} | acc {v.get('acc')} (answer_rate {v.get('answer_rate')}) | {verdict} |"
+        )
+    ko = (checks.get("kmmluko") or {}).get("targets") or {}
+    for t, v in sorted(ko.items()):
+        verdict = str(((checks.get("kmmluko") or {}).get("verdict") or {}).get(t, "-"))
+        rows.append(f"| KMMLU (한국어) | {t} | acc {v.get('acc')} (n {v.get('n')}) | {verdict} |")
+    fmt = (checks.get("format") or {}).get("targets") or {}
+    for t, v in sorted(fmt.items()):
+        verdict = str(((checks.get("format") or {}).get("verdict") or {}).get(t, "-"))
+        if verdict in ("", "-"):
+            verdict = ",".join(v.get("failed") or []) or "PASS"
+        rows.append(
+            f"| 형식/지시 준수 | {t} | pass_rate {v.get('pass_rate')} (n {v.get('n')}) | {verdict} |"
+        )
+    sb = checks.get("servebench") or {}
+    if sb.get("ok"):
+        rows.append(
+            f"| 서빙 처리량 | {sb.get('model')} | tok/s(p50) {sb.get('tok_per_s_p50')} @c{sb.get('concurrency')} | measured |"
+        )
+    return rows
+
+
 def render(data: dict) -> str:
     mode = data["mode"]
     acceptance = data.get("acceptance") or {}
@@ -147,7 +186,9 @@ def render(data: dict) -> str:
     lines += _stage_rows(data)
     lines += ["", "## 2. 수용 기준 대비 실측", ""]
     lines += _metric_rows(data)
-    lines += ["", "## 3. 릴리스 게이트", ""]
+    lines += ["", "## 3. 검사 결과 (s7)", ""]
+    lines += _check_rows(data)
+    lines += ["", "## 4. 릴리스 게이트", ""]
     lines += gate_lines
     lines += [
         "",

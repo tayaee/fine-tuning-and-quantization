@@ -64,6 +64,10 @@ want_step() {
 want_step_explicit() {
   case ",${STEPS:-all}," in *,"$1",*) return 0 ;; *) return 1 ;; esac
 }
+# 서빙 처리량 측정은 명시 요청 시에만(STEPS=serve) — 서버가 떠 있어야 측정된다.
+want_step_serve() {
+  case ",${STEPS:-all}," in *,serve,*) return 0 ;; *) return 1 ;; esac
+}
 run_done() {
   rq_log "run-$MODE end rc=$? total=$(( $(date +%s) - RUN_T0 ))s (timing: $TIMING_LOG)"
 }
@@ -122,12 +126,14 @@ fi
 if want_step validate; then
   rq_step "validate-helps" bash -c '
     for s in s1-07-acceptance s4-19-dequant-mxfp8 s5-25-quant-awq-w5 s5-22-quant-awq-w3 \
-             s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-evalset \
-             s6-34-measure-ppl s7-37-eval s7-40-score s8-43-prep-upload s8-46-verify-upload \
+             s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-gsm8k s7-43-prep-kmmluko \
+             s6-34-measure-ppl s7-37-eval s7-40-gsm8k s7-46-kmmluko s7-49-format s7-52-servebench \
+             s8-43-prep-upload s8-46-verify-upload \
              s8-49-upload-hf s8-61-release-notes s8-64-verify-serving; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-evalset s7-37-eval s7-40-score \
+    for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-gsm8k s7-37-eval s7-40-gsm8k \
+             s7-43-prep-kmmluko s7-46-kmmluko s7-49-format s7-52-servebench \
              s8-43-prep-upload s8-46-verify-upload s8-49-upload-hf s8-52-serve-vllm \
              s8-55-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
@@ -185,15 +191,24 @@ if want_step ppl; then
   done
 fi
 if want_step eval; then
-  # 표준 GSM8K 평가 세트 준비(36) — s7-37-eval의 입력. 결정론적이라 멱등.
-  want_step evalset && rq_step "36-evalset" ./s7-36-prep-evalset.sh "$MODE"
+  # 평가 세트 준비(36 GSM8K / 43 한국어 KMMLU / 49 형식 준수) — 결정론적이라 멱등.
+  want_step evalset && rq_step "36-evalset" ./s7-36-prep-gsm8k.sh "$MODE"
+  want_step evalset && rq_step "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$MODE"
+  want_step evalset && rq_step "49-format-prepare" ./s7-49-format.sh "$MODE" --prepare
   rq_step "37-eval" ./s7-37-eval.sh "$MODE" "$_eval_targets"
-  rq_step "40-score" ./s7-40-score.sh "$MODE"
+  # 채점(40 GSM8K / 46 한국어 / 49 형식)
+  rq_step "40-gsm8k" ./s7-40-gsm8k.sh "$MODE"
+  rq_step "46-kmmluko" ./s7-46-kmmluko.sh "$MODE"
+  rq_step "49-format" ./s7-49-format.sh "$MODE"
   rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
-  # Stage 7 게이트: 응답이 실제로 생성되었는지 + 표준 GSM8K 정확도가 계약 범위인가.
+  # Stage 7 게이트: 응답 생성 + GSM8K 정확도 + 한국어 정확도 + 형식 준수
   for _t in $(echo "$_eval_targets" | tr ',' ' '); do
     rq_step "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$_t.jsonl" "$_t" "$MODE"
+    rq_step "gate-kmmluko" rq_gate_kmmluko "$MODE" "$_t"
+    rq_step "gate-format" rq_gate_format "$MODE" "$_t"
   done
+  # Tier 3: 서빙 처리량(서버가 떠 있을 때만 측정 — 없으면 skip)
+  want_step_serve && rq_step "52-servebench" ./s7-52-servebench.sh "$MODE"
 fi
 if want_step prep; then
   rq_step "43-prep" ./s8-43-prep-upload.sh "$MODE" "$_targets"

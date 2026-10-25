@@ -1,4 +1,4 @@
-"""tests/test_ppl_and_eval.py — issue-4 (s6-34-measure-ppl / s7-37-eval / s7-40-score) 단위 테스트.
+"""tests/test_ppl_and_eval.py — issue-4 (s6-34-measure-ppl / s7-37-eval / s7-40-gsm8k) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_ppl_and_eval.py
@@ -37,7 +37,7 @@ def _load_script(name: str):
 
 ppl = _load_script("s6-34-measure-ppl.py")
 ev = _load_script("s7-37-eval.py")
-sc = _load_script("s7-40-score.py")
+sc = _load_script("s7-40-gsm8k.py")
 BENCHES = ("kmmlu_redux", "gsm8k", "humaneval")
 
 
@@ -336,7 +336,7 @@ def test_load_prompts_falls_back_to_calib_file_only_for_pseudo_bench(tmp_out):
 
 def test_load_prompts_fails_when_standard_prompts_missing(tmp_out):
     """표준 GSM8K 프롬프트 파일이 없으면 실패한다(임의 표본 평가 금지)."""
-    with pytest.raises(SystemExit, match="s7-36-prep-evalset"):
+    with pytest.raises(SystemExit, match="s7-36-prep-gsm8k"):
         ev.load_prompts("smoke", 3, None, ["gsm8k"])
 
 
@@ -370,9 +370,9 @@ def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):
 
 
 def test_run_transformers_to_score_json_chain(tmp_out, monkeypatch, fake_transformers):
-    """합성 CausalLM → run_transformers → 벤치 JSONL → s7-40-score → score.json.
+    """합성 CausalLM → run_transformers → 벤치 JSONL → s7-40-gsm8k → score.json.
 
-    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 s7-40-score가 읽어
+    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 s7-40-gsm8k가 읽어
     산출물의 정확한 Bench 이름으로 score.json에 정확도를 남기는지까지 확인한다.
     """
     mdir = tmp_out / "models" / "base"
@@ -428,7 +428,7 @@ def test_auto_fallback_to_transformers_chain(tmp_out, monkeypatch, fake_transfor
     assert sc.score("smoke")["base"]["n"] == 1
 
 
-# ================================================================ s7-40-score
+# ================================================================ s7-40-gsm8k
 
 
 def test_score_answer_kmmlu():
