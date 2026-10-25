@@ -373,16 +373,71 @@ def _check_tables(
             f"{'ref' if r == 'base' else _gsm8k_verdict(acc, base_acc, gsm8k_drop)} |"
         )
     sb = checks.get("servebench") or {}
-    if sb.get("ok"):
-        serve_lines = (
-            f"| Model | Concurrency | Output tok/s (p50) | Request latency (p50) | Output tokens |\n"
-            f"| --- | ---: | ---: | ---: | ---: |\n"
-            f"| {sb.get('model', '-')} | {sb.get('concurrency', '-')} | {sb.get('tok_per_s_p50', '-')} | "
-            f"{sb.get('req_latency_s_p50', '-')} s | {sb.get('output_tokens_total', '-')} |\n"
+    serve_lines = _serve_section(sb, rows, mode)
+    return ppl_table, gsm_table, ko_table, fmt_table, serve_lines
+
+
+def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
+    """서빙 성능 비교표 + 측정 하드웨어 조건.
+
+    `s7-53-serve-compare.sh`가 타깃별로 누적한 checks.json servebench.targets를
+    타깃 × concurrency 표로 렌더링한다. 구 형태(단일 측정 payload)도 fallback 지원.
+    """
+    hw = sb.get("hardware") or {}
+    if hw:
+        hw_line = (
+            f"Hardware: {hw.get('gpu', '?')} (unified {hw.get('unified_mem_gb', '?')} GB) · "
+            f"vLLM {hw.get('vllm_version', '?')} · "
+            f"TP={hw.get('tensor_parallel', '?')} · "
+            f"gpu-mem-util={hw.get('gpu_memory_utilization', '?')} · "
+            f"max-model-len={hw.get('max_model_len', '?')} · "
+            f"temperature=0.0, max_tokens=256, warmup=2, n=32 per concurrency."
         )
     else:
-        serve_lines = "_Not measured (no running server during the last run)._\n"
-    return ppl_table, gsm_table, ko_table, fmt_table, serve_lines
+        hw_line = "Hardware: not recorded."
+    targets = sb.get("targets") or {}
+    lines = [hw_line, ""]
+    if isinstance(targets, dict) and targets:
+        lines += [
+            "| Model | C=1 tok/s (p50) | C=8 tok/s (p50) | C=32 tok/s (p50) | C=1 latency p50 |",
+            "| --- | ---: | ---: | ---: | ---: |",
+        ]
+        for r in [t for t in rows if t in targets] + [t for t in targets if t not in rows]:
+            runs = targets.get(r) or {}
+            label = model_label(r, mode) if r in rows else r
+            cells = []
+            for c in ("1", "8", "32"):
+                v = (runs.get(c) or {}).get("tok_per_s_p50", "—")
+                cells.append(str(v))
+            lat = (runs.get("1") or {}).get("req_latency_s_p50", "—")
+            lines.append(f"| {label} | {cells[0]} | {cells[1]} | {cells[2]} | {lat} s |")
+        mem_lines = []
+        for r in [t for t in rows if t in targets] + [t for t in targets if t not in rows]:
+            mem = (targets.get(r) or {}).get("memory") or {}
+            if not mem:
+                continue
+            avail = {p: (mem.get(p) or {}).get("mem_avail_gb", "—") for p in
+                     ("before_load", "after_warmup", "before_teardown", "after_teardown")}
+            rss = max([float((mem.get(p) or {}).get("server_rss_gb") or 0)
+                       for p in mem] + [0.0])
+            label = model_label(r, mode) if r in rows else r
+            mem_lines.append(
+                f"- {label} unified-mem avail (GB): "
+                f"before_load {avail['before_load']} → after_warmup {avail['after_warmup']} → "
+                f"before_teardown {avail['before_teardown']} → after_teardown {avail['after_teardown']} "
+                f"(server RSS peak {rss:.1f} GB)")
+        if mem_lines:
+            lines += ["", *mem_lines]
+    elif sb.get("ok"):
+        lines += [
+            "| Model | Concurrency | Output tok/s (p50) | Request latency (p50) | Output tokens |",
+            "| --- | ---: | ---: | ---: | ---: |",
+            f"| {sb.get('model', '-')} | {sb.get('concurrency', '-')} | {sb.get('tok_per_s_p50', '-')} | "
+            f"{sb.get('req_latency_s_p50', '-')} s | {sb.get('output_tokens_total', '-')} |",
+        ]
+    else:
+        lines.append("_Not measured (no running server during the last run)._")
+    return "\n".join(lines) + "\n"
 
 
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:

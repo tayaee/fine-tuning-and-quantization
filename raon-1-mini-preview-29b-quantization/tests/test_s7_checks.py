@@ -300,5 +300,51 @@ def test_servebench_skips_without_server():
         assert "published_reference" in payload
 
 
+def test_servebench_infer_target():
+    assert sb.infer_target("tayaee/Raon-1-mini-preview-nvfp4-awq") == "nvfp4-awq"
+    assert sb.infer_target("tayaee/Raon-1-mini-preview-smoke") == "base"
+    assert sb.infer_target("tayaee/Raon-1-mini-preview") == "base"
+    assert sb.infer_target("tayaee/Raon-1-mini-preview-awq-w3") == "awq-w3"
+
+
+def test_servebench_skip_preserves_history():
+    with tempfile.TemporaryDirectory() as d:
+        _isolate(sb, d)
+        outdir = Path(d) / "outputs" / "eval-smoke"
+        outdir.mkdir(parents=True)
+        prior = {"servebench": {"ok": True, "targets": {"base": {"1": {"tok_per_s_p50": 42.0}}},
+                                "hardware": {"gpu": "X"}}}
+        (outdir / "checks.json").write_text(json.dumps(prior), encoding="utf-8")
+        payload = sb.main("smoke", 1, 1, "http://127.0.0.1:1/v1", 1, None, 16)
+        assert payload["ok"] is False
+        assert payload["targets"] == {"base": {"1": {"tok_per_s_p50": 42.0}}}
+        assert payload["hardware"] == {"gpu": "X"}
+
+
+def test_servebench_hardware_keys():
+    hw = sb.hardware_info("none")
+    for k in ("gpu", "gpu_driver", "unified_mem_gb", "vllm_version",
+              "tensor_parallel", "gpu_memory_utilization", "max_model_len", "quantization"):
+        assert k in hw, k
+    assert hw["quantization"] == "none"
+
+
+def test_serve_section_comparison_table():
+    sb_doc = {"ok": True, "hardware": {"gpu": "G", "unified_mem_gb": 128.0, "vllm_version": "v",
+                                       "tensor_parallel": 1, "gpu_memory_utilization": 0.9,
+                                       "max_model_len": 8192},
+              "targets": {"base": {"1": {"tok_per_s_p50": 50.0, "req_latency_s_p50": 5.0},
+                                   "8": {"tok_per_s_p50": 200.0}, "32": {"tok_per_s_p50": 300.0},
+                                   "memory": {"before_load": {"mem_avail_gb": 114.0, "server_rss_gb": 0.0},
+                                              "after_warmup": {"mem_avail_gb": 52.0, "server_rss_gb": 60.1},
+                                              "before_teardown": {"mem_avail_gb": 51.0, "server_rss_gb": 61.2},
+                                              "after_teardown": {"mem_avail_gb": 113.0, "server_rss_gb": 0.0}}},
+                          "nvfp4-awq": {"1": {"tok_per_s_p50": 90.0, "req_latency_s_p50": 2.8}}}}
+    out = prep._serve_section(sb_doc, ["base", "nvfp4-awq"], "full")
+    assert "Hardware: G" in out and "TP=1" in out
+    assert "50.0" in out and "90.0" in out and "C=32 tok/s" in out
+    assert "before_load 114.0" in out and "RSS peak 61.2 GB" in out
+
+
 if __name__ == "__main__":
     raise SystemExit(run_standalone(dict(globals())))
