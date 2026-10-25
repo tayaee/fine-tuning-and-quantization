@@ -27,7 +27,7 @@ import os
 import random
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -89,10 +89,11 @@ def load_test_rows() -> list[dict]:
     ds = load_dataset(GSM8K_DATASET, GSM8K_CONFIG, revision=GSM8K_REVISION, split="test")
     rows: list[dict] = []
     for i, r in enumerate(ds):
-        gold = _gold_of(r.get("answer", ""))
+        row = dict(r)  # pyright: ignore[reportArgumentType] — datasets 행은 매핑으로 접근
+        gold = _gold_of(str(row.get("answer", "")))
         if gold is None:
             continue
-        rows.append({"idx": i, "question": r["question"], "gold": gold})
+        rows.append({"idx": i, "question": str(row.get("question", "")), "gold": gold})
     return rows
 
 
@@ -135,7 +136,7 @@ def build(mode: str, n: int, seed: int) -> dict:
         "written_n": len(picked),
         "pool_size": len(rows),
         "sha256": _sha256(out),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "instruction": INSTRUCTION,
     }
     mpath = manifest_path(mode)

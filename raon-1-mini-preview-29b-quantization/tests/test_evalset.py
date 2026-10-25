@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tests._compat import pytest, run_standalone  # noqa: E402
+from tests._compat import run_standalone
 
 
 def _load_script(name: str):

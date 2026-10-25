@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # run-full.sh — full 전 파이프라인 원샷 (calib 256·seq 2048, 밤샘 권장).
 # NOTE: 28.8B MoE NVFP4-GPTQ/AWQ가 가장 오래 걸린다. 공식 KRAFTON NVFP4와 PPL 비교 권장.
-# TARGETS: 양자화 타깃 부분집합 (콤마 구분, 기본 all) — 2노드 분산용. PPL/eval/prep은 base를 앞에 붙인다.
-#   예: TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-full.sh        # spark1 분담
+# TARGETS: 양자화 타깃 부분집합 (콤마 구분) — 2노드 분산용. **미지정 시 가능한 값을 찍고 종료**. PPL/eval/prep은 base를 앞에 붙인다.
+#   예: TARGETS=all ./run-full.sh                              # 4종 전부
+#       TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-full.sh        # spark1 분담
 #       TARGETS=nvfp4-awq,nvfp4-gptq STEPS=dequant,quant ./run-full.sh  # spark2 분담
 #   smoke와 동일한 TARGETS 분할을 쓴다 (dequant 공유 1회, PPL/eval은 전 타깃 모인 뒤 1곳에서).
 # QUANT_CPU_ONLY=1 ./run-full.sh  # 양자화 단계만 GPU를 가리고 PPL/eval은 GPU 사용.
@@ -57,6 +58,32 @@ trap 'RQ_RC=$?; rq_repro; run_done' EXIT
 
 rq_log "run-$MODE start (steps=${STEPS:-all})"
 
+# TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
+# TARGETS는 **명시해야 한다**: 미지정 시 4종 전체(각 20~40분)를 조용히 돌지 않는다.
+RQ_TARGETS_ALL="awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"
+if [ -z "${TARGETS:-}" ]; then
+  echo "TARGETS 미지정 — 양자화 대상을 명시해야 합니다 (issue-12)." >&2
+  echo "" >&2
+  echo "사용 가능한 값:" >&2
+  for _t in $RQ_TARGETS_ALL; do echo "  - $_t" >&2; done
+  echo "  - all            # 위 4종 전부" >&2
+  echo "" >&2
+  echo "예:" >&2
+  echo "  TARGETS=nvfp4-awq ./run-*.sh              # 1종만" >&2
+  echo "  TARGETS=awq-w3,awq-w5 ./run-*.sh           # 2노드 분담" >&2
+  echo "  TARGETS=all ./run-*.sh                     # 전부(각 타깃별 시간이 큼)" >&2
+  exit 2
+fi
+_targets="$TARGETS"
+case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
+# 알 수 없는 타깃은 즉시 거부한다(조용히 무시되면 "왜 안 돌아갔지"가 된다).
+for _t in $(echo "$_targets" | tr ',' ' '); do
+  case " $RQ_TARGETS_ALL " in
+    *" $_t "*) ;;
+    *) echo "알 수 없는 TARGETS: $_t (사용 가능: $RQ_TARGETS_ALL | all)" >&2; exit 2 ;;
+  esac
+done
+
 if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
   rq_step "10-setup" ./10-setup.sh
 fi
@@ -77,9 +104,6 @@ if want_step dequant; then
   rq_stage_record 4 dequant pass "$RQ_MODELS/raon-bf16"
 fi
 
-# TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
-_targets="${TARGETS:-all}"
-case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;; esac
 # base(19-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
 _eval_targets="base,$_targets"
 

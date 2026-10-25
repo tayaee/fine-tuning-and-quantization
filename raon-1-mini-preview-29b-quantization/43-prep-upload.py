@@ -125,7 +125,7 @@ def _gsm8k_acc_n(scores: dict, target: str) -> tuple[float | None, str]:
     n = row.get("n")
     if acc is None or not n:
         return None, "-"
-    return acc, f"{int(round(float(acc) * int(n)))}/{int(n)}"
+    return acc, f"{round(float(acc) * int(n))}/{int(n)}"
 
 
 def _gsm8k_acc(scores: dict, target: str) -> float | None:

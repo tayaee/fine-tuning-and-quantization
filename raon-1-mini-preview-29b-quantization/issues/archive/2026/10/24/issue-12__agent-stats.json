@@ -1,0 +1,18 @@
+{
+  "issue": 12,
+  "started": "2026-10-24T15:30:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T15:35:00-04:00",
+        "loc_added": 96,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "run-{smoke,full}.sh TARGETS 필수화(가드·all 확장·잘못된 값 거부) · 문서 · verify-issue-12"
+}

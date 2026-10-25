@@ -62,7 +62,7 @@ DRY_RUN=1 ./49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검�
 # 8. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / 배포 후 서빙 검증
 python 61-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
 python 64-verify-serving.py --mode smoke   # logs/55.*.log → outputs/serve-smoke.json
-STEPS=verify ./run-smoke.sh                # 46-verify + gate-release (명시 시에만)
+STEPS=verify TARGETS=all ./run-smoke.sh    # 46-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   10-16,19,{22|25|28|31}-40-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
@@ -78,15 +78,17 @@ FORCE=1 ./10-16,19,28-40-build-smoke-nvfp4-awq.sh               # freshness 무�
 #   (2개 build 동시 실행 → 먼저 들어온 쪽만 수행, 나머지는 대기 후 skip)
 
 # 원샷
-./run-smoke.sh
-SKIP_SETUP=1 STEPS=quant,ppl ./run-smoke.sh
-QUANT_CPU_ONLY=1 ./run-smoke.sh      # 양자화만 CPU 강제, PPL/eval은 GPU
-./run-full.sh
+# TARGETS는 반드시 명시 (미지정하면 가능한 값을 찍고 종료 — 자동 전체 실행 없음)
+TARGETS=all ./run-smoke.sh
+TARGETS=nvfp4-awq ./run-smoke.sh      # 1종만
+SKIP_SETUP=1 STEPS=quant,ppl TARGETS=all ./run-smoke.sh
+QUANT_CPU_ONLY=1 TARGETS=all ./run-smoke.sh   # 양자화만 CPU 강제, PPL/eval은 GPU
+TARGETS=all ./run-full.sh
 
 # 2노드 분산 (smoke/full 동일 분할, dequant 공유·PPL/eval은 1곳)
 TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-smoke.sh  # spark1
 TARGETS=nvfp4-awq,nvfp4-gptq STEPS=dequant,quant ./run-smoke.sh  # spark2
-STEPS=ppl,eval ./run-smoke.sh  # 전 타깃 모인 뒤 1곳에서
+STEPS=ppl,eval TARGETS=all ./run-smoke.sh  # 전 타깃 모인 뒤 1곳에서
 # full도 동일: MODE만 full (run-full.sh + 같은 TARGETS/STEPS)
 ```
 

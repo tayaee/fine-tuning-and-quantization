@@ -60,6 +60,7 @@ config.json: vLLM/생성 필수 필드 'pad_token_id' 누락
 |---|---|---|---|
 | `10-16,19,28-40-build-smoke-nvfp4-awq.sh` | **3s** | **2s** | 전 단계 skip + 게이트 3종 통과 |
 | `10-16,19,28-40-build-full-nvfp4-awq.sh` | 3211s | **2s** | 1회차는 캘리브 재생성 → 양자화 무효화 cascade(아래) |
+| (2026-10-24 재측정) smoke / full | 2s / 3s | **2s / 2s** | 표준 GSM8K 평가 도입 후에도 즉시 종료 유지 |
 
 full 1회차가 53분 걸린 이유(정상적 재작업):
 `13-calib`이 캘리브 세트를 **재생성**했다(스크립트 mtime이 데이터보다 최신 — 개명 커밋의 부작용).
@@ -91,12 +92,15 @@ gate-eval       eval OK (9 lines)                0s
 
 ## 6. 측정 결과 (재수집)
 
-| 모드 | 대상 | PPL | Δ vs bf16 | 판정 | GSM8K | HumanEval | KMMLU-redux | done_rate |
-|---|---|---|---|---|---|---|---|---|
-| smoke | base | 6.0550 | - | ref | 1.0 | 1.0 | 0.333 | 1.0 |
-| smoke | nvfp4-awq | 6.0825 | +0.0275 | **Accept** | 1.0 | 1.0 | 0.333 | 1.0 |
-| full | base | 7.7022 | - | ref | 1.0 | 1.0 | 0.400 | 1.0 |
-| full | nvfp4-awq | 7.7011 | −0.0010 | **Accept** | 1.0 | 1.0 | 0.300 | 1.0 |
+| 모드 | 대상 | PPL | Δ vs bf16 | 판정 | 표준 GSM8K | done_rate |
+|---|---|---|---|---|---|---|
+| smoke | base | 6.0550 | - | ref | 0.900 (n=20) | 1.0 |
+| smoke | nvfp4-awq | 6.0825 | +0.0275 | **Accept** | 0.950 (n=20) | 1.0 |
+| full | base | 7.7022 | - | ref | 0.945 (n=200) | 1.0 |
+| full | nvfp4-awq | 7.7011 | −0.0010 | **Accept** | 0.935 (n=200) | 1.0 |
+
+> GSM8K는 `openai/gsm8k` main/test(1319문제)에서 seed 20261024로 셔플한 표본의 앞 n개.
+> 전체 1319를 돌리려면 `GSM8K_N=0 EVAL_N=1319 ./run-*.sh` (배치 8 기준 약 2.2시간).
 
 수집 비용(재수집): 양자화 smoke 1190s / full 2227s · PPL smoke 947s / full 1029s ·
 eval smoke ~1130s / full ~1650s · dequant 958s.

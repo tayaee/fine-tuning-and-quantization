@@ -68,7 +68,8 @@ done
 grep -q '"--backend"' "$ROOT/37-eval.py" || { echo "FAIL: --backend 인자 없음"; fail=1; }
 grep -q 'RQ_EVAL_BACKEND' "$ROOT/37-eval.py" || { echo "FAIL: RQ_EVAL_BACKEND env 폴백 없음"; fail=1; }
 grep -q '"transformers"' "$ROOT/37-eval.py" || { echo "FAIL: transformers 백엔드 선택지 없음"; fail=1; }
-grep -q 'return nn.Token\|decode(out\[0\]\[n_in:\]' "$ROOT/37-eval.py" \
+# 신규 토큰만 디코드해야 한다(단건: out[0][n_in:] / 배치: out[:, ids.size(1):])
+grep -q 'decode(out\[0\]\[n_in:\])\|gen = out\[:, ids.size(1) :\]' "$ROOT/37-eval.py" \
   || { echo "FAIL: 신규 토큰만 디코드하지 않음"; fail=1; }
 echo "OK: 37-eval.py transformers 백엔드 + auto 폴백"
 

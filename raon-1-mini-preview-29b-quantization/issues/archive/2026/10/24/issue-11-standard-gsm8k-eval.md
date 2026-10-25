@@ -92,3 +92,19 @@ agent-tier: local-ok
   4. `37-eval.py`의 `_strip_assistant_completion`이 ChatML 마커만 보고 있어 실제 캘리브
      데이터(평문 `assistant\n` 형식)의 응답 꼬리를 못 잘라내고 있었다(정답 누출 위험).
      두 마커를 모두 처리하도록 고쳤다.
+  5. `46-verify-upload.py`가 옛 3벤치(kmmlu_redux/humaneval)와 '## 성능 비교' 섹션을
+     요구해 신규 카드가 오탐으로 실패했다 → 표준 GSM8K + '검사 1/검사 2' 기준으로 갱신.
+
+- **검증 결과**:
+  - 표준 GSM8K 실측(모델 nvfp4-awq, base 대비):
+
+    | 모드 | n | base | nvfp4-awq | 하락 | 판정(허용폭 2%p) |
+    |---|---:|---:|---:|---:|---|
+    | smoke | 20 | 0.900 | 0.950 | -0.050 | PASS |
+    | full | 200 | 0.945 | 0.935 | +0.010 | PASS |
+
+  - `done_rate` 1.0 (응답 100% 생성) · 실제 GSM8K 문제에서 CoT 후 `#### N` 출력 확인
+  - 재실행 즉시 종료: nvfp4-awq 빌드 smoke 2s/2s, full 3s/2s (전 단계 skip + 게이트 통과)
+  - `gate-eval`의 GSM8K 계약 대조:
+    `GSM8K OK nvfp4-awq acc=0.935 (base=0.945, 하락 0.010 <= 0.020, n=200)`
+  - `regression-tests/verify-issue-11.sh` 통과 · 단위 테스트 전부 통과 · ruff/pyright 0건

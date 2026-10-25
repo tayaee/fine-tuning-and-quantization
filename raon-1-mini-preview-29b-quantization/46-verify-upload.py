@@ -28,7 +28,7 @@
      - outputs/ppl-<mode>/summary.json 내 base 및 타겟 PPL 유한성·Δ·verdict 확인
      - outputs/eval-<mode>/score.json 내 done_rate > 0, prompts-* 오염 부재, 3대 벤치 존재 확인
      - README.md YAML frontmatter 필수 키, extra_gated_* 금지, 실제 체크포인트 용량(GB) 및
-       성능 비교표 내 타겟 행의 실제 수치 기입 여부 확인
+       검사 표(PPL/GSM8K) 내 타것 행의 실제 수치 기입 여부 확인
 
   uv run 46-verify-upload.py --mode full --targets nvfp4-awq
 """
@@ -53,7 +53,8 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
 ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-BENCH_ORDER = ("kmmlu_redux", "gsm8k", "humaneval")
+# 평가 벤치 = 표준 GSM8K 단일 (37-eval이 표준 GSM8K만 평가한다)
+BENCH_ORDER = ("gsm8k",)
 ROUTED_LINEAR_MARKER = "return nn.Linear(in_features, out_features, bias=False)"
 MOE_CALIB_MARKER = "get_calibrate_all_experts_flag"
 
@@ -543,7 +544,8 @@ def _check_readme(
         rule["format"],
         f"{size_gb} GB",
         "## 양자화 사양",
-        "## 성능 비교",
+        "## 검사 1 — PPL",
+        "## 검사 2 — GSM8K",
         "## 사용법 — transformers",
         "## 사용법 — vLLM",
         "## 라이선스 및 출처",
@@ -553,15 +555,15 @@ def _check_readme(
         if req_body not in text:
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
 
-    # 성능 비교표에서 현재 타겟 강조 행 확인
+    # 검사 표에서 현재 타겟 강조 행 확인
     row_re = re.compile(rf"^\|\s*\*\*{re.escape(target)}\*\*\s*\|(.+)\|$", re.MULTILINE)
     m = row_re.search(text)
     if not m:
-        errors.append(f"{readme_fp}: 성능 비교표에 현재 타겟 강조 행('| **{target}** |') 없음")
+        errors.append(f"{readme_fp}: 검사 표에 현재 타겟 강조 행('| **{target}** |') 없음")
     elif not allow_missing_metrics:
         cells = [c.strip() for c in m.group(1).split("|")]
         if any(c in ("—", "", "None", "nan") for c in cells):
-            errors.append(f"{readme_fp}: 성능 비교표의 '**{target}**' 행에 미기입 결측치('—') 존재: {cells}")
+            errors.append(f"{readme_fp}: 검사 표의 '**{target}**' 행에 미기입 결측치('—') 존재: {cells}")
 
     return errors
 

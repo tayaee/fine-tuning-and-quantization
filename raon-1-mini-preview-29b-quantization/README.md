@@ -44,9 +44,10 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 ./16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
 ./36-prep-evalset.sh full             # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
 ./19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
-./run-smoke.sh                       # 첫 실행=파이프라인 테스트 (5분 목표)
-PIPELINE_TEST=0 ./run-smoke.sh       # smoke 4종 실측
-./run-full.sh                        # full 4종 (밤샘 권장)
+TARGETS=all ./run-smoke.sh           # 4종 전부 (TARGETS 미지정 시 가능한 값을 찍고 종료)
+TARGETS=nvfp4-awq ./run-smoke.sh    # 1종만
+PIPELINE_TEST=0 TARGETS=all ./run-smoke.sh   # smoke 4종 실측
+TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 
 # 단일 타깃만 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
 ./10-16,19,28-40-build-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq

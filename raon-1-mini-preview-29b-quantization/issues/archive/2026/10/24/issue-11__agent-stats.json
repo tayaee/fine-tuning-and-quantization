@@ -1,0 +1,18 @@
+{
+  "issue": 11,
+  "started": "2026-10-24T15:30:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T15:35:00-04:00",
+        "loc_added": 612,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "36-prep-evalset 신설 · 37-eval 표준 GSM8K+배치 · 카드 2종 검사 · gate GSM8K 대조 · tests/test_evalset"
+}

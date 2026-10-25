@@ -39,7 +39,8 @@ up = _load_script("49-upload-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"
-BENCHES = ("kmmlu_redux", "gsm8k", "humaneval")
+# 표준 GSM8K 단일 벤치 (37-eval이 표준 GSM8K만 평가)
+BENCHES = ("gsm8k",)
 
 
 # ---------------------------------------------------------------- 픽스처
@@ -187,6 +188,9 @@ def test_prep_generates_readme_with_required_sections(workspace):
                 "Apache"):
         assert tok in readme, f"README에 '{tok}' 없음"
     assert "extra_gated" not in readme, "원본 KRAFTON gated 필드를 복사하면 안 된다"
+    # 검사 2종(PPL/GSM8K) 표가 있어야 한다
+    assert "## 검사 1 — PPL" in readme, "PPL 검사 절 없음"
+    assert "## 검사 2 — GSM8K" in readme, "GSM8K 검사 절 없음"
     # 기준선(base) 수치와 현재 모델 수치가 표에 함께 있어야 한다
     assert "8.11" in readme and "8.42" in readme
     for b in BENCHES:

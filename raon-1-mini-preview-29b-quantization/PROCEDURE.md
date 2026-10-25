@@ -40,6 +40,18 @@
 - 릴리스 노트: `python 61-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
   (원장 + 수용 기준 + 실측 지표 대조표)
 
+## TARGETS는 필수
+
+`run-{smoke,full}.sh`는 **양자화 대상을 명시해야** 실행한다. 미지정 시 가능한 값
+(`awq-w3`/`awq-w5`/`nvfp4-awq`/`nvfp4-gptq`/`all`)을 찍고 exit 2 한다 —
+"인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
+
+```bash
+TARGETS=nvfp4-awq ./run-smoke.sh        # 1종
+TARGETS=awq-w3,awq-w5 ./run-full.sh     # 2노드 분담
+TARGETS=all ./run-full.sh               # 4종 전부
+```
+
 ## smoke/full 스케일 (`config/common.env`)
 
 | 항목 | smoke (full 동일 단계, 작은 규모) | full |
