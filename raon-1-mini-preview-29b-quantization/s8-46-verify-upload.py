@@ -142,6 +142,20 @@ def model_dir(mode: str, target: str) -> Path:
     return Path(f"{MODELS_DIR(mode)}/raon-{target}-{mode}")
 
 
+#: Hub repo id 규칙 — s8-49-upload-hf.py / s8-43-prep-upload.py와 같아야 한다
+#: (full → <HF_ID>/<BASE>-<target>, smoke → ...-<target>-smoke)
+HF_ID = os.environ.get("HF_ID", "tayaee")
+BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
+
+
+def hf_repo_id(target: str, mode: str) -> str:
+    """정식 HF 모델명(Hub repo id) — 카드 표의 Model 컬럼 값."""
+    name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    if mode == "smoke":
+        name += "-smoke"
+    return name
+
+
 def _scan_safetensors_headers(d: Path) -> tuple[dict[str, set[str]], dict[str, str], dict[str, int]]:
     """샤드별 텐서 키 집합, 전체 텐서->dtype 매핑, 접미사별 개수를 헤더만으로 스캔한다."""
     from safetensors import safe_open
@@ -512,6 +526,7 @@ def _check_readme(
     size_gb: float,
     *,
     allow_missing_metrics: bool = False,
+    mode: str = "smoke",
 ) -> list[str]:
     """README.md YAML frontmatter, 필수 섹션, 사양·성능표 정합성 검증."""
     errors: list[str] = []
@@ -558,23 +573,24 @@ def _check_readme(
         if req_body not in text:
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
 
-    # 검사 표에서 현재 타겟 강조 행 확인
-    row_re = re.compile(rf"^\|\s*\*\*{re.escape(target)}\*\*\s*\|(.+)\|$", re.MULTILINE)
+    # 검사 표에서 현재 타겟 강조 행 확인 (Model 컬럼 = 정식 HF repo id)
+    repo_id = hf_repo_id(target, mode)
+    row_re = re.compile(rf"^\|\s*\*\*{re.escape(repo_id)}\*\*\s*\|(.+)\|$", re.MULTILINE)
     m = row_re.search(text)
     if not m:
-        errors.append(f"{readme_fp}: 검사 표에 현재 타겟 강조 행('| **{target}** |') 없음")
+        errors.append(f"{readme_fp}: 검사 표에 현재 타겟 강조 행('| **{repo_id}** |') 없음")
     elif not allow_missing_metrics:
         cells = [c.strip() for c in m.group(1).split("|")]
         if any(c in ("—", "", "None", "nan") for c in cells):
-            errors.append(f"{readme_fp}: 검사 표의 '**{target}**' 행에 미기입 결측치('—') 존재: {cells}")
+            errors.append(f"{readme_fp}: 검사 표의 '**{repo_id}**' 행에 미기입 결측치('—') 존재: {cells}")
 
-    # 모델 카드는 base + 이 타겟 1개만 비교한다 (전체 버전 비교는 models/README-<mode>.md)
+    # 모델 카드는 base + 이 타깃 1개만 비교한다 (전체 버전 비교는 models/README-<mode>.md)
     for other in ALL_TARGETS:
         if other == target:
             continue
-        if re.search(rf"^\|\s*\*\*{re.escape(other)}\*\*\s*\|", text, re.MULTILINE):
-            errors.append(f"{readme_fp}: 다른 양자화 버전 행('**{other}**')이 포함됨 — 모델 카드는 base + 대상 1개만")
-
+        other_id = hf_repo_id(other, mode)
+        if re.search(rf"^\|\s*\*\*{re.escape(other_id)}\*\*\s*\|", text, re.MULTILINE):
+            errors.append(f"{readme_fp}: 다른 양자화 버전 행('**{other_id}**')이 포함됨 — 모델 카드는 base + 대상 1개만")
     return errors
 
 
@@ -695,7 +711,7 @@ def verify_target(
     report["errors"].extend(m_errs)
 
     # 8) README.md 모델 카드 검증
-    rm_errs = _check_readme(d, target, size_gb, allow_missing_metrics=allow_missing_metrics)
+    rm_errs = _check_readme(d, target, size_gb, allow_missing_metrics=allow_missing_metrics, mode=mode)
     if not rm_errs:
         report["checks"]["readme"] = True
     report["errors"].extend(rm_errs)

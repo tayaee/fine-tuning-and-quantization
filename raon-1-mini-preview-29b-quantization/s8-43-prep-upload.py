@@ -96,6 +96,27 @@ def model_dir(mode: str, target: str) -> Path:
     return Path(f"{MODELS_DIR(mode)}/raon-{target}-{mode}")
 
 
+#: Hub repo id 규칙 — s8-49-upload-hf.py의 repo_name과 같아야 한다
+#: (full → <HF_ID>/<BASE>-<target>, smoke → ...-<target>-smoke)
+HF_ID = os.environ.get("HF_ID", "tayaee")
+BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
+
+
+def hf_repo_id(target: str, mode: str) -> str:
+    """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
+    name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    if mode == "smoke":
+        name += "-smoke"
+    return name
+
+
+def model_label(target: str, mode: str) -> str:
+    """표의 Model 컬럼 값 — base는 원본 repo, 양자화본은 업로드 repo id."""
+    if target == "base":
+        return BASE_MODEL
+    return hf_repo_id(target, mode)
+
+
 def _ppl_summary(mode: str) -> dict:
     fp = Path(f"{OUT_ROOT()}/ppl-{mode}/summary.json")
     return json.loads(fp.read_text(encoding="utf-8")) if fp.is_file() else {}
@@ -287,6 +308,7 @@ def _existing_targets(mode: str, ppl: dict, scores: dict) -> list[str]:
 def _check_tables(
     rows: list[str],
     bold: set[str],
+    mode: str,
     ppl: dict,
     scores: dict,
     checks: dict,
@@ -296,11 +318,13 @@ def _check_tables(
 
     `rows`에 들어있는 모델만 표에 실린다 — 모델 카드는 base + 대상 1개,
     요약 리포트는 base + 그 모드의 전체 양자화 버전.
+    Model 컬럼에는 **정식 HF 모델명**(Hub repo id)을 쓴다.
     """
     def _name(r: str) -> str:
+        label = model_label(r, mode)
         if r == "base":
-            return "**bf16 (base)**"
-        return f"**{r}**" if r in bold else r
+            return f"**{label}** (base)"
+        return f"**{label}**" if r in bold else label
 
     ppl_table = [
         "| Model | PPL | Delta vs bf16 | Verdict |",
@@ -379,8 +403,9 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb, checks)
     rows = ["base", target]
     ppl_table, gsm_table, ko_table, fmt_table, serve_lines = _check_tables(
-        rows, {target}, ppl, scores, checks, gsm8k_drop
+        rows, {target}, mode, ppl, scores, checks, gsm8k_drop
     )
+    repo_id = hf_repo_id(target, mode)
 
     tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
     fm = [
@@ -399,9 +424,9 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     ]
     return "\n".join(fm) + f"""
 
-# {BASE_MODEL} — {target} ({mode})
+# {repo_id}
 
-This is a **{target}** quantized version of `{BASE_MODEL}`. Only the weights are
+This is a **{repo_id}** quantized version of `{BASE_MODEL}`. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
 The checkpoint is stored in the `compressed-tensors` format (`{spec['format']}`), so it
 loads directly with `transformers`' `AutoModelForCausalLM`.
@@ -480,7 +505,7 @@ KRAFTON publishes throughput numbers for the base model, but on a different stac
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_id = "{target}"  # or the published repo id below
+model_id = "{repo_id}"  # or the published repo id below
 tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
     model_id, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
@@ -495,7 +520,7 @@ print(tok.decode(model.generate(inputs, max_new_tokens=256)[0], skip_special_tok
 The Raon-1-mini family uses a custom architecture, so the KRAFTON vLLM fork is required.
 
 ```bash
-vllm serve {target} \\
+vllm serve {repo_id} \\
   --trust-remote-code \\
   --quantization compressed-tensors \\
   --tensor-parallel-size 2
@@ -527,19 +552,19 @@ def render_summary(mode: str, ppl: dict, scores: dict) -> str:
     _spec = _acceptance_target_spec(targets[0]) if targets else {}
     gsm8k_drop = _spec.get("gsm8k_acc_drop_max", 0.02)
     ppl_table, gsm_table, ko_table, fmt_table, serve_lines = _check_tables(
-        rows, set(targets), ppl, scores, checks, gsm8k_drop
+        rows, set(targets), mode, ppl, scores, checks, gsm8k_drop
     )
 
     spec_rows = [
-        "| Build | Algorithm | Precision | Bits | Group size | Storage format | Checkpoint (GB) | Model card |",
+        "| Model | Algorithm | Precision | Bits | Group size | Storage format | Checkpoint (GB) | Model card |",
         "| --- | --- | --- | --- | --- | --- | ---: | --- |",
     ]
     for t in targets:
         sp = SPECS[t]
         size = _dir_size_gb(model_dir(mode, t))
         spec_rows.append(
-            f"| **{t}** | {sp['algorithm']} | {sp['precision']} | {sp['bits']} | {sp['group_size']} | "
-            f"`{sp['format']}` | {size} | `raon-{t}-{mode}/README.md` |"
+            f"| **{hf_repo_id(t, mode)}** | {sp['algorithm']} | {sp['precision']} | {sp['bits']} | "
+            f"{sp['group_size']} | `{sp['format']}` | {size} | `raon-{t}-{mode}/README.md` |"
         )
 
     return f"""# Quantization comparison - {BASE_MODEL} ({mode})

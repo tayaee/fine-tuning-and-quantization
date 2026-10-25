@@ -374,13 +374,13 @@ def test_prep_readme_compares_base_and_target_only(workspace):
     report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
     assert report["ok"] is True, report["errors"]
     readme = (workspace / "models" / "raon-nvfp4-awq-smoke" / "README.md").read_text(encoding="utf-8")
-    # base 행과 대상 행은 있어야 한다
-    assert "| **bf16 (base)** |" in readme
-    assert "| **nvfp4-awq** |" in readme
+    # Model 컬럼은 정식 HF 모델명(Hub repo id)이어야 한다
+    assert "| **KRAFTON/Raon-1-mini-preview** (base) |" in readme
+    assert "| **tayaee/Raon-1-mini-preview-nvfp4-awq-smoke** |" in readme
     # 다른 양자화 버전 행은 없어야 한다(업로드용 카드는 이 모델 1개만)
-    assert "| **awq-w5** |" not in readme
-    assert "| **awq-w3** |" not in readme
-    assert "| **nvfp4-gptq** |" not in readme
+    assert "| **tayaee/Raon-1-mini-preview-awq-w5-smoke** |" not in readme
+    assert "| **tayaee/Raon-1-mini-preview-awq-w3-smoke** |" not in readme
+    assert "| **tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke** |" not in readme
 
 
 def test_prep_writes_mode_summary_comparison(workspace):
@@ -392,10 +392,10 @@ def test_prep_writes_mode_summary_comparison(workspace):
     summary = workspace / "models" / "README-smoke.md"
     assert summary.is_file(), "모드 요약 리포트가 안 생김"
     text = summary.read_text(encoding="utf-8")
-    # 존재하는 양자화 버전이 모두 표에 있다
-    assert "| **nvfp4-awq** |" in text
-    assert "| **awq-w5** |" in text
-    assert "| **bf16 (base)** |" in text
+    # 존재하는 양자화 버전이 모두 표에 있다 (정식 HF 모델명)
+    assert "| **tayaee/Raon-1-mini-preview-nvfp4-awq-smoke** |" in text
+    assert "| **tayaee/Raon-1-mini-preview-awq-w5-smoke** |" in text
+    assert "| **KRAFTON/Raon-1-mini-preview** (base) |" in text
     # 모델 카드로 가는 링크
     assert "raon-nvfp4-awq-smoke/README.md" in text
     # 요약은 모델 카드가 아니다(HF frontmatter 없음)
@@ -408,9 +408,9 @@ def test_summary_lists_only_existing_targets(workspace):
     _write_metrics(workspace, "smoke")
     prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
     text = (workspace / "models" / "README-smoke.md").read_text(encoding="utf-8")
-    assert "**nvfp4-awq**" in text
-    assert "**awq-w5**" not in text
-    assert "**nvfp4-gptq**" not in text
+    assert "**tayaee/Raon-1-mini-preview-nvfp4-awq-smoke**" in text
+    assert "**tayaee/Raon-1-mini-preview-awq-w5-smoke**" not in text
+    assert "**tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke**" not in text
 
 
 # ---------------------------------------------------------------- 단독 실행

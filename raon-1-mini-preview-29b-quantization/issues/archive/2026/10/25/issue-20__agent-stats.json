@@ -1,0 +1,18 @@
+{
+  "issue": 20,
+  "started": "2026-10-25T08:15:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "ts": "2026-10-25T08:35:00-04:00",
+        "loc_added": 118,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "카드 표·제목·사용 예제의 Model 식별자를 정식 HF repo id로 (업로드 스크립트 규칙과 동일)"
+}
