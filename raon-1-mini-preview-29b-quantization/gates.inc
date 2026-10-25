@@ -22,7 +22,7 @@ rq_gate_acceptance() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/acceptance-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./07-acceptance.sh $mode)" >&2
+    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-07-acceptance.sh $mode)" >&2
     return 1
   fi
   ( set -x; rq_py - "$f" <<'PY'
@@ -62,7 +62,7 @@ PY
 
 # --- 게이트 2: PPL 유효성 + 수용 기준 일치 ----------------------------------
 # NaN/미측정이면 '오염된 모델'을 eval에 흘려보내지 않는다.
-# (34-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
+# (s6-34-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
 rq_gate_ppl() {
   local f="$1" target="${2:-}"
   if [ ! -f "$f" ]; then
@@ -176,13 +176,13 @@ PY
 }
 
 # --- 게이트 5: 배포 후 서빙 검증 ---------------------------------------------
-# 64-verify-serving.py가 만든 outputs/serve-<mode>.json을 대조한다.
+# s8-64-verify-serving.py가 만든 outputs/serve-<mode>.json을 대조한다.
 # 서빙을 아직 하지 않았다면 "미수행"은 실패가 아니라 skip으로 본다(배포는 수동 단계).
 rq_gate_serving() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/serve-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "SKIP: $f 없음 — 서빙 검증 미수행 (58-serve-infer-all.sh 후 64-verify-serving.sh)"
+    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s8-58-serve-infer-all.sh 후 s8-64-verify-serving.sh)"
     return 0
   fi
   ( set -x; rq_py - "$f" <<'PY'

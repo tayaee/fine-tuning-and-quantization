@@ -12,8 +12,8 @@
 
 | # | 원인 | 증상 | 근본 | 조치 |
 |---|---|---|---|---|
-| A | dequant 산출물에 MoE 전-expert 캘리브레이션 심(`get_calibrate_all_experts_flag`)이 없음 | `19-dequant-mxfp8.sh`의 freshness grep이 실패 → **매 실행마다 999s(16.6분) 재복원** | 심 적용본이 커밋된 적 없음(구 코드에선 치환 미적용) | `19-dequant-mxfp8.py` 재실행 → 심 적용(5/7) → 이후 skip |
-| B | 파일 개명(commit `1e573cc`)으로 스크립트 mtime이 산출물보다 최신 | `28-quant-nvfp4-awq.sh` freshness 실패 → **매 실행마다 1190s(20분) 재양자화** | freshness가 산출물↔스크립트 mtime 비교에 의존 | 산출물 재생성(스크립트 mtime보다 최신) → 이후 skip |
+| A | dequant 산출물에 MoE 전-expert 캘리브레이션 심(`get_calibrate_all_experts_flag`)이 없음 | `s4-19-dequant-mxfp8.sh`의 freshness grep이 실패 → **매 실행마다 999s(16.6분) 재복원** | 심 적용본이 커밋된 적 없음(구 코드에선 치환 미적용) | `s4-19-dequant-mxfp8.py` 재실행 → 심 적용(5/7) → 이후 skip |
+| B | 파일 개명(commit `1e573cc`)으로 스크립트 mtime이 산출물보다 최신 | `s5-28-quant-nvfp4-awq.sh` freshness 실패 → **매 실행마다 1190s(20분) 재양자화** | freshness가 산출물↔스크립트 mtime 비교에 의존 | 산출물 재생성(스크립트 mtime보다 최신) → 이후 skip |
 | C | 측정 산출물 자체가 미생성 | `ppl-smoke/nvfp4-awq.json`, `eval-full/*.jsonl` 부재 → 1회 실행이 수십 분~수 시간 | 이전 실행이 중단됨 | Phase B로 재측정 |
 
 ## 2. 실측 결함(게이트가 잡아낸 것)
@@ -51,7 +51,7 @@ config.json: vLLM/생성 필수 필드 'pad_token_id' 누락
 ## 4. 환경 드리프트(별제 결함)
 
 `compressed-tensors`가 0.19.0 → 0.17.0으로 내려가 있어 llmcompressor 0.14.0 import가
-실패(`cannot import name 'exec_jobs_dynamic'`)했다. `10-setup.sh`의 **스탬프 판정**
+실패(`cannot import name 'exec_jobs_dynamic'`)했다. `s0-10-setup.sh`의 **스탬프 판정**
 (uv.lock 해시 + 핀 버전)이 이를 감지해 자동 복구했다 — stamp 설계가 실제로 작동한 사례.
 
 ## 5. 재실행 측정 결과
@@ -117,4 +117,4 @@ Stage 8 릴리스 게이트 실측: `43-prep-upload`·`46-verify-upload` smoke/f
    (Δ 임계값·용량 범위·포맷). 코드 하드코딩 없음.
 3. **게이트는 산출물을 먼저 검사**: 다음 단계로 넘어가기 전에
    패킹 계약 위반·NaN PPL·빈 응답을 차단.
-4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `61-release-notes.py` → 릴리스 노트.
+4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `s8-61-release-notes.py` → 릴리스 노트.

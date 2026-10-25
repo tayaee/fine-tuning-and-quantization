@@ -23,5 +23,5 @@ required-environments = [
 ]
 
 # NOTE: llmcompressor는 여기서 설치하지 않는다. PyPI가 accelerate 핀으로
-# resolver를 깨뜨리므로 10-setup.sh에서 --no-deps로 별도 설치한다.
+# resolver를 깨뜨리므로 s0-10-setup.sh에서 --no-deps로 별도 설치한다.
 # NOTE: UV_TORCH_BACKEND=cu130이 env에 있어야 cu130 휠로 해석된다.

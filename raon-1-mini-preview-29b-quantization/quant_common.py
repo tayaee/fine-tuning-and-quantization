@@ -302,12 +302,12 @@ def allow_trusted_remote_code() -> None:
 def load_calib_texts(calib: int, calib_file: str | None = None) -> list[str]:
     """캘리브레이션 jsonl 앞 `calib`줄을 텍스트로 반환.
     `{"text"}` 우선, 없으면 구 형식 source/target 결합.
-    파일 부재·행 부족 시 명시 종료 (13-prep-calibration.sh로 생성).
+    파일 부재·행 부족 시 명시 종료 (s2-13-prep-calibration.sh로 생성).
     """
     calib_file = calib_file or os.environ.get("CALIB_FILE", DEFAULT_CALIB_FILE)
     if not os.path.exists(calib_file):
         raise SystemExit(
-            f"missing calibration file: {calib_file} (run 13-prep-calibration.sh first)"
+            f"missing calibration file: {calib_file} (run s2-13-prep-calibration.sh first)"
         )
     texts = []
     with open(calib_file, encoding="utf-8") as f:

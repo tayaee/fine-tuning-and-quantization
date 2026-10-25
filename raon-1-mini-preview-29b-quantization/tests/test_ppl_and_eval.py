@@ -35,9 +35,9 @@ def _load_script(name: str):
     return mod
 
 
-ppl = _load_script("34-measure-ppl.py")
-ev = _load_script("37-eval.py")
-sc = _load_script("40-score.py")
+ppl = _load_script("s6-34-measure-ppl.py")
+ev = _load_script("s7-37-eval.py")
+sc = _load_script("s7-40-score.py")
 BENCHES = ("kmmlu_redux", "gsm8k", "humaneval")
 
 

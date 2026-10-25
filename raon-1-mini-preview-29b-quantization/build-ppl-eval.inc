@@ -25,10 +25,10 @@ BPE_TIMING=""
 # 타깃 → "<양자화 스크립트> <기대 압축 포맷>"
 rq_bpe_spec() {
   case "$1" in
-    awq-w3) echo "22-quant-awq-w3.sh pack-quantized" ;;
-    awq-w5) echo "25-quant-awq-w5.sh pack-quantized" ;;
-    nvfp4-awq) echo "28-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
-    nvfp4-gptq) echo "31-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
+    awq-w3) echo "s5-22-quant-awq-w3.sh pack-quantized" ;;
+    awq-w5) echo "s5-25-quant-awq-w5.sh pack-quantized" ;;
+    nvfp4-awq) echo "s5-28-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
+    nvfp4-gptq) echo "s5-31-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
     *) echo "" ;;
   esac
 }
@@ -113,22 +113,22 @@ rq_bpe_main() {
   fi
 
   if [ "${SKIP_SETUP:-0}" != 1 ] && rq_bpe_want_step setup; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "10-setup" ./10-setup.sh
+    rq_bpe_step "$mode" "$BPE_TIMING" "10-setup" ./s0-10-setup.sh
   fi
   # Stage 1 — 수용 기준(07-acceptance). 게이트의 판정 기준이 여기서 정해진다.
   if rq_bpe_want_step acceptance; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "07-acceptance" ./07-acceptance.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "07-acceptance" ./s1-07-acceptance.sh "$mode"
     rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$mode.json"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-acceptance" rq_gate_acceptance "$mode"
   fi
   if rq_bpe_want_step calib; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "13-calib" ./13-prep-calibration.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "13-calib" ./s2-13-prep-calibration.sh "$mode"
   fi
   if rq_bpe_want_step compat; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "16-compat" ./16-compat-check.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "16-compat" ./s3-16-compat-check.sh "$mode"
   fi
   if rq_bpe_want_step dequant; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "19-dequant" ./19-dequant-mxfp8.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "19-dequant" ./s4-19-dequant-mxfp8.sh "$mode"
   fi
   if rq_bpe_want_step quant; then
     rq_bpe_step "$mode" "$BPE_TIMING" "${qscript%.sh}" "${quant_cmd[@]}" "./$qscript" "$mode"
@@ -136,26 +136,26 @@ rq_bpe_main() {
     rq_stage_target 5 quant pass "$target" "$model_dir"
   fi
   if rq_bpe_want_step ppl; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "34-ppl" ./34-measure-ppl.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "34-ppl" ./s6-34-measure-ppl.sh "$mode" "$eval_targets"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$mode/$target.json" "$target"
     rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
   fi
   if rq_bpe_want_step eval; then
     if rq_bpe_want_step evalset; then
-      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./36-prep-evalset.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./s7-36-prep-evalset.sh "$mode"
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "37-eval" ./37-eval.sh "$mode" "$eval_targets"
-    rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./40-score.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "37-eval" ./s7-37-eval.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "40-score" ./s7-40-score.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
     rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "43-prep" ./43-prep-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "43-prep" ./s8-43-prep-upload.sh "$mode" "$target"
     rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "46-verify" ./46-verify-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "46-verify" ./s8-46-verify-upload.sh "$mode" "$target"
   fi
 
   rq_log "build-ppl-eval done mode=$mode target=$target"

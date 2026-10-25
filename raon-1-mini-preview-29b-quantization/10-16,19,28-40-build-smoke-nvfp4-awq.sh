@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 10-16,19,28-40-build-smoke-nvfp4-awq.sh — smoke × nvfp4-awq 단일 타깃 원샷(빌드→PPL→eval).
 # 스텝 번호: 10-setup · 13-prep-calibration · 16-compat-check · 19-dequant-mxfp8 · 28-quant-nvfp4-awq · 34-measure-ppl · 37-eval · 40-score
-# 타깃: nvfp4-awq — AWQ smoothing + NVFP4 (W4A4) (28-quant-nvfp4-awq.sh)
+# 타깃: nvfp4-awq — AWQ smoothing + NVFP4 (W4A4) (s5-28-quant-nvfp4-awq.sh)
 # run-smoke.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전:
 #   dequant(BF16 복원) → quant(nvfp4-awq) → PPL(base 대비 Δ) → eval → score
 # 사용: ./10-16,19,28-40-build-smoke-nvfp4-awq.sh

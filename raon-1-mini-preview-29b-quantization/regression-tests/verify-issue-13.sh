@@ -8,8 +8,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
 # 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외)
-mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 [0-9]*.sh | sort)
-[ "${#SCRIPTS[@]}" -ge 15 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (15개 이상 기대)"; fail=1; }
+mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh 10-16,19,*-build-*.sh | sort)
+[ "${#SCRIPTS[@]}" -ge 25 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (25개 이상 기대)"; fail=1; }
 
 for f in "${SCRIPTS[@]}"; do
   if ! grep -q 'rq_banner "' "$ROOT/$f"; then
@@ -36,15 +36,15 @@ for f in "$ROOT"/10-16,19,*-build-*.sh; do
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 8 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (8 기대)"; fail=1; }
-for f in 61-release-notes.py 64-verify-serving.py; do
-  grep -q 'print("\[6' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
+for f in s8-61-release-notes.py s8-64-verify-serving.py; do
+  grep -q 'print("\[s8-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"
 
 # 실제 출력 확인(07)
-out="$(cd "$ROOT" && ./07-acceptance.sh smoke 2>&1 || true)"
-echo "$out" | grep -qE '^\[07-acceptance\] Stage 1/9 - .*[A-Za-z]' \
-  || { echo "FAIL: 07-acceptance.sh 시작 배너 출력 형식 불일치"; fail=1; }
-echo "OK: 07-acceptance.sh 실제 출력"
+out="$(cd "$ROOT" && ./s1-07-acceptance.sh smoke 2>&1 || true)"
+echo "$out" | grep -qE '^\[s1-07-acceptance\] Stage 1/9 - .*[A-Za-z]' \
+  || { echo "FAIL: s1-07-acceptance.sh 시작 배너 출력 형식 불일치"; fail=1; }
+echo "OK: s1-07-acceptance.sh 실제 출력"
 
 exit $fail

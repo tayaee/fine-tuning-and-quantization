@@ -11,15 +11,39 @@
 
 | # | 단계 | 스크립트 | 산출물 | Exit 게이트 (다음 단계로 가려면) |
 |---:|---|---|---|---|
-| 0 | 환경·접근성 | `10-setup.sh` | `.venv/.rq-setup-stamp` | 의존성 핀·llmcompressor/compressed-tensors 버전·GPU(NVFP4=Blackwell) 확인 |
-| 1 | 요구사항·수용 기준 | `07-acceptance.sh` | `outputs/acceptance-<mode>.json` | `config/acceptance.toml` 스키마 정상, 타깃 4종 기준 존재 |
-| 2 | 캘리브레이션 데이터 | `13-prep-calibration.sh` | `datasets/raon-calibration-<N>.jsonl` | chat template 적용·용량·한국어 혼합 비율 |
-| 3 | 호환성 사전 점검 | `16-compat-check.sh` | `outputs/compat.stamp` | custom_code 로드·expert 타깃·SM≥10·vLLM/transformers 버전 |
-| 4 | 베이스 복원 | `19-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
+| 0 | 환경·접근성 | `s0-10-setup.sh` | `.venv/.rq-setup-stamp` | 의존성 핀·llmcompressor/compressed-tensors 버전·GPU(NVFP4=Blackwell) 확인 |
+| 1 | 요구사항·수용 기준 | `s1-07-acceptance.sh` | `outputs/acceptance-<mode>.json` | `config/acceptance.toml` 스키마 정상, 타깃 4종 기준 존재 |
+| 2 | 캘리브레이션 데이터 | `s2-13-prep-calibration.sh` | `datasets/raon-calibration-<N>.jsonl` | chat template 적용·용량·한국어 혼합 비율 |
+| 3 | 호환성 사전 점검 | `s3-16-compat-check.sh` | `outputs/compat.stamp` | custom_code 로드·expert 타깃·SM≥10·vLLM/transformers 버전 |
+| 4 | 베이스 복원 | `s4-19-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
-| 6 | PPL 품질 게이트 | `34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
-| 7 | 벤치마크 평가 | `37-eval.sh` + `40-score.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단) |
-| 8 | 릴리스·배포 | `43-prep-upload.sh` → `46-verify-upload.sh` → `49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
+| 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
+| 7 | 벤치마크 평가 | `s7-37-eval.sh` + `s7-40-score.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단) |
+| 8 | 릴리스·배포 | `s8-43-prep-upload.sh` → `s8-46-verify-upload.sh` → `s8-49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
+
+## 0. 파일 명명 규칙
+
+```
+s<stage>-##-<slug>.{sh,py}
+ │      │   └── 작업 이름
+ │      └────── Stage 내 스텝 번호 (실행 순서, 10 단위 간격)
+ └───────────── 9단계 중 몇 번째 단계 (0~8, 한 자리)
+```
+
+| stage | 단계 | 파일 예시 |
+|---:|---|---|
+| 0 | 환경 | `s0-10-setup.sh` |
+| 1 | 수용 기준 | `s1-07-acceptance.{sh,py}` |
+| 2 | 데이터 | `s2-13-prep-calibration.{sh,py}` |
+| 3 | 호환성 | `s3-16-compat-check.{sh,py}` |
+| 4 | 베이스 복원 | `s4-19-dequant-mxfp8.{sh,py}` |
+| 5 | 양자화 | `s5-22-quant-awq-w3.{sh,py}` … `s5-31-quant-nvfp4-gptq.{sh,py}` |
+| 6 | PPL 게이트 | `s6-34-measure-ppl.{sh,py}` |
+| 7 | 평가 | `s7-36-prep-evalset.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-score.{sh,py}` |
+| 8 | 릴리스·배포 | `s8-43-prep-upload.{sh,py}` … `s8-64-verify-serving.py` |
+
+빌드 wrapper(`10-16,19,X-40-build-*.sh`)는 **Stage를 넘나드는** 진입점이라 접두사를 붙이지
+않는다(파일명 자체가 스텝 나열이다).
 
 ## 1. Stage 1 — 수용 기준 (Acceptance Criteria)
 
@@ -41,7 +65,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ## 1-1. Stage 7 — 표준 GSM8K 평가 (측정 프로토콜)
 
-평가 입력은 **표준 벤치마크만** 쓴다. 프롬프트는 `36-prep-evalset.sh`가 만든다.
+평가 입력은 **표준 벤치마크만** 쓴다. 프롬프트는 `s7-36-prep-evalset.sh`가 만든다.
 
 | 항목 | 값 |
 |---|---|
@@ -51,7 +75,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | 프롬프트 | Raon chat template(`user\n…\nassistant\n<think></think>\n\n`) + `#### <number>` 지시 |
 | gold | 데이터셋 정답의 `#### N` (콤마 제거) |
 | 재현성 | `outputs/eval-<mode>/evalset-<mode>.json`에 데이터셋·리비전·seed·n·**sha256** 기록 |
-| 생성 | `37-eval.py --batch-size` (기본 `EVAL_BATCH=8`, 좌측 패딩) |
+| 생성 | `s7-37-eval.py --batch-size` (기본 `EVAL_BATCH=8`, 좌측 패딩) |
 
 **배치 생성 주의**: 배치가 바뀌면 어휘는 달라질 수 있고(패딩/배치 모양에 따른 수치 차이),
 **채점 결과도 달라질 수 있다** — 실측 20문제 대조에서 bs=1 19/20, bs=8 20/20(1문제 차이).
@@ -64,8 +88,8 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|
-| 검사 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `34-measure-ppl.sh` |
-| 검사 2 — GSM8K | 표준 테스트셋 정확도 | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `37-eval.sh` + `40-score.sh` |
+| 검사 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `s6-34-measure-ppl.sh` |
+| 검사 2 — GSM8K | 표준 테스트셋 정확도 | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s7-37-eval.sh` + `s7-40-score.sh` |
 
 ## 2. 게이트 (단계 간 계약)
 
@@ -93,7 +117,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
   "targets": { "nvfp4-awq": { "status": "pass" } } } } }
 ```
 
-`61-release-notes.py`가 원장 + 수용 기준 + 실측 지표를 합쳐
+`s8-61-release-notes.py`가 원장 + 수용 기준 + 실측 지표를 합쳐
 `outputs/release-notes-<mode>.md`를 만든다 — 이게 SDLC의 "릴리스 노트"다.
 
 ## 4. 멱등성 (2회 실행이 즉시 끝나야 한다)

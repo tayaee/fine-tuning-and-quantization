@@ -1,4 +1,4 @@
-"""tests/test_verify_upload.py — 46-verify-upload.py 단위 테스트.
+"""tests/test_verify_upload.py — s8-46-verify-upload.py 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_verify_upload.py
@@ -32,8 +32,8 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("43-prep-upload.py")
-ver = _load_script("46-verify-upload.py")
+prep = _load_script("s8-43-prep-upload.py")
+ver = _load_script("s8-46-verify-upload.py")
 
 CUSTOM_CFG_PY = "class Raon1MiniConfig:\n    pass\n"
 CUSTOM_MOD_PY = (

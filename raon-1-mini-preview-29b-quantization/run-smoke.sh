@@ -99,36 +99,37 @@ for _t in $(echo "$_targets" | tr ',' ' '); do
 done
 
 if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
-  rq_step "10-setup" ./10-setup.sh
+  rq_step "10-setup" ./s0-10-setup.sh
 fi
 
 # Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(07-acceptance).
 if want_step acceptance; then
-  rq_step "07-acceptance" ./07-acceptance.sh "$MODE"
+  rq_step "07-acceptance" ./s1-07-acceptance.sh "$MODE"
   rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
 fi
 
-want_step calib && rq_step "13-calib" ./13-prep-calibration.sh "$MODE"
+want_step calib && rq_step "13-calib" ./s2-13-prep-calibration.sh "$MODE"
 if want_step compat; then
-  rq_step "16-compat" ./16-compat-check.sh "$MODE"
+  rq_step "16-compat" ./s3-16-compat-check.sh "$MODE"
   rq_stage_record 3 compat pass "$RQ_OUTPUTS/compat.stamp"
 fi
 
 if want_step dequant; then
-  rq_step "19-dequant" ./19-dequant-mxfp8.sh "$MODE"
+  rq_step "19-dequant" ./s4-19-dequant-mxfp8.sh "$MODE"
   rq_stage_record 4 dequant pass "$RQ_MODELS/raon-bf16"
 fi
 
 if want_step validate; then
   rq_step "validate-helps" bash -c '
-    for s in 07-acceptance 19-dequant-mxfp8 25-quant-awq-w5 22-quant-awq-w3 28-quant-nvfp4-awq 31-quant-nvfp4-gptq \
-             36-prep-evalset \
-             34-measure-ppl 37-eval 40-score 43-prep-upload 46-verify-upload 49-upload-hf \
-             61-release-notes 64-verify-serving; do
+    for s in s1-07-acceptance s4-19-dequant-mxfp8 s5-25-quant-awq-w5 s5-22-quant-awq-w3 \
+             s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-evalset \
+             s6-34-measure-ppl s7-37-eval s7-40-score s8-43-prep-upload s8-46-verify-upload \
+             s8-49-upload-hf s8-61-release-notes s8-64-verify-serving; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in 07-acceptance 34-measure-ppl 36-prep-evalset 37-eval 40-score 43-prep-upload 46-verify-upload \
-             49-upload-hf 52-serve-vllm 55-infer-examples; do
+    for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-evalset s7-37-eval s7-40-score \
+             s8-43-prep-upload s8-46-verify-upload s8-49-upload-hf s8-52-serve-vllm \
+             s8-55-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
     done
     bash -n "$0/gates.inc" || exit 1
@@ -155,19 +156,19 @@ if want_step quant; then
   for _t in $(echo "$_targets" | tr ',' ' '); do
     case "$_t" in
       awq-w3)
-        rq_step "22-awq-w3" "${_quant_cmd[@]}" ./22-quant-awq-w3.sh "$MODE"
+        rq_step "22-awq-w3" "${_quant_cmd[@]}" ./s5-22-quant-awq-w3.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
         rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       awq-w5)
-        rq_step "25-awq-w5" "${_quant_cmd[@]}" ./25-quant-awq-w5.sh "$MODE"
+        rq_step "25-awq-w5" "${_quant_cmd[@]}" ./s5-25-quant-awq-w5.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
         rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       nvfp4-awq)
-        rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./28-quant-nvfp4-awq.sh "$MODE"
+        rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./s5-28-quant-nvfp4-awq.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
         rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       nvfp4-gptq)
-        rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./31-quant-nvfp4-gptq.sh "$MODE"
+        rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./s5-31-quant-nvfp4-gptq.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
         rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
@@ -176,7 +177,7 @@ if want_step quant; then
 fi
 
 if want_step ppl; then
-  rq_step "34-ppl" ./34-measure-ppl.sh "$MODE" "$_eval_targets"
+  rq_step "34-ppl" ./s6-34-measure-ppl.sh "$MODE" "$_eval_targets"
   rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
   # Stage 6 게이트: PPL이 유한하고 수용 기준(Δ) 판정과 일치하는지 확인한다.
   for _t in $(echo "$_targets" | tr ',' ' '); do
@@ -185,9 +186,9 @@ if want_step ppl; then
 fi
 if want_step eval; then
   # 표준 GSM8K 평가 세트 준비(36) — 37-eval의 입력. 결정론적이라 멱등.
-  want_step evalset && rq_step "36-evalset" ./36-prep-evalset.sh "$MODE"
-  rq_step "37-eval" ./37-eval.sh "$MODE" "$_eval_targets"
-  rq_step "40-score" ./40-score.sh "$MODE"
+  want_step evalset && rq_step "36-evalset" ./s7-36-prep-evalset.sh "$MODE"
+  rq_step "37-eval" ./s7-37-eval.sh "$MODE" "$_eval_targets"
+  rq_step "40-score" ./s7-40-score.sh "$MODE"
   rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
   # Stage 7 게이트: 응답이 실제로 생성되었는지 + 표준 GSM8K 정확도가 계약 범위인가.
   for _t in $(echo "$_eval_targets" | tr ',' ' '); do
@@ -195,19 +196,19 @@ if want_step eval; then
   done
 fi
 if want_step prep; then
-  rq_step "43-prep" ./43-prep-upload.sh "$MODE" "$_targets"
+  rq_step "43-prep" ./s8-43-prep-upload.sh "$MODE" "$_targets"
   rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
 fi
 
 # Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 46이 필요하므로 기본 경로 밖).
 if want_step_explicit verify; then
-  rq_step "46-verify" ./46-verify-upload.sh "$MODE" "$_targets"
+  rq_step "46-verify" ./s8-46-verify-upload.sh "$MODE" "$_targets"
   rq_step "gate-release" rq_gate_release "$MODE"
 fi
 
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---
-# ./49-upload-hf.sh full              # smoke는 업로드하지 않음
-# ./52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1 (상주)
-# ./55-infer-examples.sh 3            # 터미널2
-# ./58-serve-infer-all.sh smoke 3     # 전 타깃 순회
+# ./s8-49-upload-hf.sh full              # smoke는 업로드하지 않음
+# ./s8-52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1 (상주)
+# ./s8-55-infer-examples.sh 3            # 터미널2
+# ./s8-58-serve-infer-all.sh smoke 3     # 전 타깃 순회

@@ -1,6 +1,6 @@
 """tests/_compat.py — pytest 미설치 환경(`.venv` 기본 상태) 호환 레이어.
 
-`10-setup.sh`의 `uv sync --frozen` 실행 후에는 `.venv`에 `pytest`가 없으므로,
+`s0-10-setup.sh`의 `uv sync --frozen` 실행 후에는 `.venv`에 `pytest`가 없으므로,
 `pytest`가 설치되어 있으면 그대로 사용하고 없으면 동일한 인터페이스의 경량 shim
 (`fixture`, `raises`, `approx`, `skip`, `monkeypatch`, `capsys`)으로 모든 테스트를 실행한다.
 """

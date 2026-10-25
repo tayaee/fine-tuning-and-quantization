@@ -34,7 +34,7 @@ def _load_script(name: str):
     return mod
 
 
-ev = _load_script("36-prep-evalset.py")
+ev = _load_script("s7-36-prep-evalset.py")
 
 
 def test_gold_extraction():

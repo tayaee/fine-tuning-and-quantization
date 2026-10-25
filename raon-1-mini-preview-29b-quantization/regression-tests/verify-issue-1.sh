@@ -4,33 +4,33 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-# 1. 52-serve-vllm.sh: awq-w5/awq-w3/nvfp4-* 모두 QUANT="compressed-tensors"
+# 1. s8-52-serve-vllm.sh: awq-w5/awq-w3/nvfp4-* 모두 QUANT="compressed-tensors"
 for t in awq-w5 awq-w3 nvfp4-awq nvfp4-gptq; do
-  line=$(grep -E "^[[:space:]]*${t}\)" "$ROOT/52-serve-vllm.sh" || true)
+  line=$(grep -E "^[[:space:]]*${t}\)" "$ROOT/s8-52-serve-vllm.sh" || true)
   if ! echo "$line" | grep -q 'QUANT="compressed-tensors"'; then
-    echo "FAIL: 52-serve-vllm.sh $t not compressed-tensors: $line"; fail=1
+    echo "FAIL: s8-52-serve-vllm.sh $t not compressed-tensors: $line"; fail=1
   else
-    echo "OK: 52-serve-vllm.sh $t -> compressed-tensors"
+    echo "OK: s8-52-serve-vllm.sh $t -> compressed-tensors"
   fi
 done
 
 # 2. QUANT="gptq" 잔존 금지
-if grep -q 'QUANT="gptq"' "$ROOT/52-serve-vllm.sh"; then
-  echo 'FAIL: 52-serve-vllm.sh still contains QUANT="gptq"'; fail=1
+if grep -q 'QUANT="gptq"' "$ROOT/s8-52-serve-vllm.sh"; then
+  echo 'FAIL: s8-52-serve-vllm.sh still contains QUANT="gptq"'; fail=1
 else
-  echo 'OK: no QUANT="gptq" in 52-serve-vllm.sh'
+  echo 'OK: no QUANT="gptq" in s8-52-serve-vllm.sh'
 fi
 
 # 3. REPO-smoke 할당 정확히 1회
-cnt=$(grep -c 'REPO="\$REPO-smoke"' "$ROOT/52-serve-vllm.sh" || true)
+cnt=$(grep -c 'REPO="\$REPO-smoke"' "$ROOT/s8-52-serve-vllm.sh" || true)
 if [ "$cnt" != 1 ]; then
   echo "FAIL: REPO-smoke assignment count=$cnt (expected 1)"; fail=1
 else
   echo "OK: REPO-smoke assignment exactly once"
 fi
 
-# 4. 37-eval.py QUANT_OF 매핑 검증 (AST)
-if ! python3 - "$ROOT/37-eval.py" <<'EOF'; then
+# 4. s7-37-eval.py QUANT_OF 매핑 검증 (AST)
+if ! python3 - "$ROOT/s7-37-eval.py" <<'EOF'; then
 import ast, sys
 src = open(sys.argv[1], encoding="utf-8").read()
 tree = ast.parse(src)
@@ -41,18 +41,18 @@ for node in ast.walk(tree):
 exp = {"nvfp4-awq": "compressed-tensors", "nvfp4-gptq": "compressed-tensors",
        "awq-w5": "compressed-tensors", "awq-w3": "compressed-tensors"}
 assert found == exp, f"QUANT_OF mismatch: {found}"
-print(f"OK: 37-eval.py QUANT_OF={found}")
+print(f"OK: s7-37-eval.py QUANT_OF={found}")
 EOF
-  echo "FAIL: 37-eval.py QUANT_OF mapping wrong"; fail=1
+  echo "FAIL: s7-37-eval.py QUANT_OF mapping wrong"; fail=1
 fi
 
-# 5. 37-eval.sh 콤마 분리 + 문법 검사
-if grep -q "tr ',' ' '" "$ROOT/37-eval.sh"; then
-  echo "OK: 37-eval.sh splits comma TARGETS"
+# 5. s7-37-eval.sh 콤마 분리 + 문법 검사
+if grep -q "tr ',' ' '" "$ROOT/s7-37-eval.sh"; then
+  echo "OK: s7-37-eval.sh splits comma TARGETS"
 else
-  echo "FAIL: 37-eval.sh missing tr ',' ' ' split"; fail=1
+  echo "FAIL: s7-37-eval.sh missing tr ',' ' ' split"; fail=1
 fi
-bash -n "$ROOT/37-eval.sh" && echo "OK: 37-eval.sh bash -n" || { echo "FAIL: 37-eval.sh bash -n"; fail=1; }
-bash -n "$ROOT/52-serve-vllm.sh" && echo "OK: 52-serve-vllm.sh bash -n" || { echo "FAIL: 52-serve-vllm.sh bash -n"; fail=1; }
+bash -n "$ROOT/s7-37-eval.sh" && echo "OK: s7-37-eval.sh bash -n" || { echo "FAIL: s7-37-eval.sh bash -n"; fail=1; }
+bash -n "$ROOT/s8-52-serve-vllm.sh" && echo "OK: s8-52-serve-vllm.sh bash -n" || { echo "FAIL: s8-52-serve-vllm.sh bash -n"; fail=1; }
 
 exit $fail

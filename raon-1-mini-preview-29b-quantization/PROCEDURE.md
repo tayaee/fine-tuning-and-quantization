@@ -14,17 +14,24 @@
   → [8. 릴리스·배포 43·46·49·52·55·58]
 ```
 
+> **파일 명명 규칙**: `s<stage>-##-<slug>.{sh,py}` — `s#`은 9단계 중 몇 번째 단계인지
+> (0=환경, 1=수용기준, 2=데이터, 3=호환성, 4=복원, 5=양자화, 6=PPL, 7=평가, 8=배포),
+> `##`은 그 Stage 안에서의 스텝 번호(실행 순서), `<slug>`은 작업 이름이다.
+> 예) `s5-28-quant-nvfp4-awq.sh` = 5단계(양자화)의 28번 스텝.
+> 빌드 wrapper(`10-16,19,X-40-build-*.sh`)는 Stage를 넘나드는 진입점이라 접두사 없이
+> 파일명 자체가 스텝 나열이다.
+
 | Stage | 스크립트 | 입력 → 출력 | Exit 게이트 |
 |---|---|---|---|
-| 0. 환경 | `10-setup.sh` | env sync + HF gated 로그인 + GPU/NVFP4 가능 점검 | stamp(uv.lock 해시 + 핀 버전) |
-| 1. 수용기준 | `07-acceptance.sh [smoke\|full]` | `config/acceptance.toml` → `outputs/acceptance-<mode>.json` | 계약 스키마 정상(타깃 4종 기준 존재) |
-| 2. calib | `13-prep-calibration.sh [smoke\|full]` | HF 한국어 혼합 → `datasets/raon-calibration-<N>.jsonl` (`text` chat-formatted) | 산출물 존재·최신 |
-| 3. compat | `16-compat-check.sh` | trust_remote_code 로드, expert 타깃, MoE 제외층, SM≥10, vLLM 버전 | stamp(probe 해시 + GPU cc + 버전) |
-| 4. dequant | `19-dequant-mxfp8.sh` | MXFP8 repo → `models/raon-bf16` (22~31·34·37의 입력, 1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
+| 0. 환경 | `s0-10-setup.sh` | env sync + HF gated 로그인 + GPU/NVFP4 가능 점검 | stamp(uv.lock 해시 + 핀 버전) |
+| 1. 수용기준 | `s1-07-acceptance.sh [smoke\|full]` | `config/acceptance.toml` → `outputs/acceptance-<mode>.json` | 계약 스키마 정상(타깃 4종 기준 존재) |
+| 2. calib | `s2-13-prep-calibration.sh [smoke\|full]` | HF 한국어 혼합 → `datasets/raon-calibration-<N>.jsonl` (`text` chat-formatted) | 산출물 존재·최신 |
+| 3. compat | `s3-16-compat-check.sh` | trust_remote_code 로드, expert 타깃, MoE 제외층, SM≥10, vLLM 버전 | stamp(probe 해시 + GPU cc + 버전) |
+| 4. dequant | `s4-19-dequant-mxfp8.sh` | MXFP8 repo → `models/raon-bf16` (22~31·34·37의 입력, 1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 5. PTQ | `22-awq-w3` `25-awq-w5` `28-nvfp4-awq` `31-nvfp4-gptq` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
-| 6. PPL | `34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
-| 6.5 평가세트 | `36-prep-evalset.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
-| 7. eval | `36-prep-evalset.sh` → `37-eval.sh` + `40-score.sh` | **표준 GSM8K**(`openai/gsm8k` test) 프롬프트 결정론 생성 → 생성·채점(완결율·정확도) | **gate-eval**: 응답 1줄 이상 + GSM8K 정확도가 계약 범위 |
+| 6. PPL | `s6-34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
+| 6.5 평가세트 | `s7-36-prep-evalset.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
+| 7. eval | `s7-36-prep-evalset.sh` → `s7-37-eval.sh` + `s7-40-score.sh` | **표준 GSM8K**(`openai/gsm8k` test) 프롬프트 결정론 생성 → 생성·채점(완결율·정확도) | **gate-eval**: 응답 1줄 이상 + GSM8K 정확도가 계약 범위 |
 | 8. 릴리스·배포 | `43-prep-upload` → `46-verify-upload` → `49-upload-hf` → `52/55/58` | 모델카드 `README.md` + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
@@ -32,12 +39,12 @@
 > `config/acceptance.toml`(Stage 1)이 단일 소스다.
 >
 > **평가는 표준 GSM8K만** 쓴다(`openai/gsm8k` main/test, revision 고정, seed 고정).
-> 프롬프트는 `36-prep-evalset.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
+> 프롬프트는 `s7-36-prep-evalset.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
 
 ## 단계 원장 · 릴리스 노트
 
 - 원장: `outputs/stage-ledger-<mode>.json` (각 단계의 status/artifact/verdict, 타깃별 집계)
-- 릴리스 노트: `python 61-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
+- 릴리스 노트: `python s8-61-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
   (원장 + 수용 기준 + 실측 지표 대조표)
 
 ## TARGETS는 필수

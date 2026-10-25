@@ -31,19 +31,19 @@ Raon은 한국어 대화·thinking 모델이므로 GSM8K 영어 슬라이스 재
 | `HuggingFaceH4/ultrachat_200k` | 영어 유지 (소량) | NVFP4 스킬 기본값, EN 보존용 |
 | `eouya2/KGuard-Korean-MoE-Calibration-v1` | MoE 특화 대안 (24,576 한국어 calib) | MoE expert routing 관찰 포함, 대안 |
 
-기본 혼합 (`13-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
+기본 혼합 (`s2-13-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
 full = KoAlpaca 128 + ultrachat-ko 64 + ultrachat-en 64 (seq 2048).
 chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 ## 실행
 
 ```bash
-./10-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
-./07-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
-./13-prep-calibration.sh smoke      # calib jsonl 생성
-./16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
-./36-prep-evalset.sh full             # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
-./19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
+./s0-10-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
+./s1-07-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
+./s2-13-prep-calibration.sh smoke      # calib jsonl 생성
+./s3-16-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
+./s7-36-prep-evalset.sh full             # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
+./s4-19-dequant-mxfp8.sh                # BF16 복원 (32~36의 선행 조건, 1회)
 TARGETS=all ./run-smoke.sh           # 4종 전부 (TARGETS 미지정 시 가능한 값을 찍고 종료)
 TARGETS=nvfp4-awq ./run-smoke.sh    # 1종만
 PIPELINE_TEST=0 TARGETS=all ./run-smoke.sh   # smoke 4종 실측
@@ -75,10 +75,10 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 | 8 | 릴리스·배포 | `outputs/release-notes-<mode>.md` | gate-release / gate-serving |
 
 - 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K 허용폭의 단일 소스
-- 평가: **표준 GSM8K**(`openai/gsm8k` test, revision·seed 고정) — `36-prep-evalset.sh`가 생성
+- 평가: **표준 GSM8K**(`openai/gsm8k` test, revision·seed 고정) — `s7-36-prep-evalset.sh`가 생성
 - 모델 카드: **검사 1 PPL** + **검사 2 GSM8K** 두 표
 - 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
-- 증빙: `outputs/stage-ledger-<mode>.json` → `61-release-notes.py` → 릴리스 노트
+- 증빙: `outputs/stage-ledger-<mode>.json` → `s8-61-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`
 
 ## 알려진 위험 (스캐폴딩 시점 미검증)

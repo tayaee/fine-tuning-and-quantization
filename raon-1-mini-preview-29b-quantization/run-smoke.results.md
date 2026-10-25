@@ -13,7 +13,7 @@
 
 | 스크립트 | 결과 | 시간 | 산출물 |
 |---|---|---|---|
-| `10-setup.sh` | OK | ~2s | venv sync, llmcompressor 0.14.0, compressed-tensors 0.19.0 확인 |
+| `s0-10-setup.sh` | OK | ~2s | venv sync, llmcompressor 0.14.0, compressed-tensors 0.19.0 확인 |
 | `12-prep-calibration.sh smoke` | OK | ~0s | `datasets/raon-calibration-2.jsonl` (2행, KoAlpaca+ultrachat-ko) |
 | `20-compat-check.sh smoke` | OK | 10s | COMPAT-OK (arch Raon1MiniForCausalLM, 128 experts, 9496 Linear, NVFP4 가능) |
 | `validate-helps` | OK | 1s | 15개 스크립트 `--help`/`bash -n` 통과 |

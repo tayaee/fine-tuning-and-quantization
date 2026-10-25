@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 10-16,19,31-40-build-full-nvfp4-gptq.sh — full × nvfp4-gptq 단일 타깃 원샷(빌드→PPL→eval).
 # 스텝 번호: 10-setup · 13-prep-calibration · 16-compat-check · 19-dequant-mxfp8 · 31-quant-nvfp4-gptq · 34-measure-ppl · 37-eval · 40-score
-# 타깃: nvfp4-gptq — GPTQModifier NVFP4 (W4A4) (31-quant-nvfp4-gptq.sh)
+# 타깃: nvfp4-gptq — GPTQModifier NVFP4 (W4A4) (s5-31-quant-nvfp4-gptq.sh)
 # run-full.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전:
 #   dequant(BF16 복원) → quant(nvfp4-gptq) → PPL(base 대비 Δ) → eval → score
 # 사용: ./10-16,19,31-40-build-full-nvfp4-gptq.sh

@@ -1,4 +1,4 @@
-"""tests/test_dequant_mxfp8.py — 19-dequant-mxfp8.py 단위 테스트 (issue-2).
+"""tests/test_dequant_mxfp8.py — s4-19-dequant-mxfp8.py 단위 테스트 (issue-2).
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_dequant_mxfp8.py
@@ -32,7 +32,7 @@ EXPERT_KEY = "model.layers.1.moe.experts.0.gate_proj.weight"
 
 
 def _load_script(name: str):
-    """`19-dequant-mxfp8.py`처럼 숫자로 시작하는 파일을 모듈로 로드."""
+    """`s4-19-dequant-mxfp8.py`처럼 숫자로 시작하는 파일을 모듈로 로드."""
     mod_name = name.replace("-", "_").removesuffix(".py")
     spec = importlib.util.spec_from_file_location(mod_name, ROOT / name)
     assert spec is not None and spec.loader is not None, f"{name} 로드 실패"
@@ -41,7 +41,7 @@ def _load_script(name: str):
     return mod
 
 
-deq = _load_script("19-dequant-mxfp8.py")
+deq = _load_script("s4-19-dequant-mxfp8.py")
 
 
 # ---------------------------------------------------------------- 픽스처/독립 기준값
