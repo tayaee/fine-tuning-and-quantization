@@ -102,7 +102,7 @@ if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
   rq_step "10-setup" ./s0-10-setup.sh
 fi
 
-# Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(07-acceptance).
+# Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(s1-07-acceptance).
 if want_step acceptance; then
   rq_step "07-acceptance" ./s1-07-acceptance.sh "$MODE"
   rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"

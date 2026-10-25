@@ -116,7 +116,7 @@ def test_ledger_missing_file_is_empty():
         assert data["stages"] == {}
 
 
-# ---------------------------------------------------------------- 07-acceptance
+# ---------------------------------------------------------------- s1-07-acceptance
 
 
 def test_07_acceptance_writes_snapshot():

@@ -29,7 +29,7 @@ for tok in 'def load_acceptance(' 'def acceptance_errors(' 'def verdict_for_delt
            'def update_ledger(' 'def read_ledger(' 'acceptance-' 'acceptance_errors'; do
   grep -qF -- "$tok" "$ROOT/sdlc.py" || { echo "FAIL: sdlc.py에 '$tok' 없음"; fail=1; }
 done
-echo "OK: 07-acceptance.{py,sh} + sdlc.py 계약/원장 API"
+echo "OK: s1-07-acceptance.{py,sh} + sdlc.py 계약/원장 API"
 
 # 3. 기존 판정 코드가 기준을 참조
 grep -q 'acceptance_spec' "$ROOT/s6-34-measure-ppl.py" || { echo "FAIL: s6-34-measure-ppl.py가 기준 미참조"; fail=1; }

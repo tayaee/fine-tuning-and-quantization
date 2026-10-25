@@ -13,13 +13,13 @@ for tok in '9단계' 'Stage 1' 'rq_gate_quant' 'acceptance.toml' '멱등' 'stage
 done
 echo "OK: docs/SDLC.md"
 
-for tok in '07-acceptance' '9단계' 'gate-quant'; do
+for tok in 's1-07-acceptance' '9단계' 'gate-quant'; do
   grep -qF -- "$tok" "$ROOT/PROCEDURE.md" || { echo "FAIL: PROCEDURE.md에 '$tok' 없음"; fail=1; }
 done
-for tok in '07-acceptance' 'docs/SDLC.md'; do
+for tok in 's1-07-acceptance' 'docs/SDLC.md'; do
   grep -qF -- "$tok" "$ROOT/README.md" || { echo "FAIL: README.md에 '$tok' 없음"; fail=1; }
 done
-for tok in '07-acceptance' '61-release-notes' '64-verify-serving'; do
+for tok in 's1-07-acceptance' 's8-61-release-notes' 's8-64-verify-serving'; do
   grep -qF -- "$tok" "$ROOT/cheatsheet.md" || { echo "FAIL: cheatsheet.md에 '$tok' 없음"; fail=1; }
 done
 echo "OK: PROCEDURE/README/cheatsheet 정렬"

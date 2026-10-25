@@ -89,7 +89,7 @@ for f in run-smoke.sh run-full.sh; do
   grep -q '_quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$ROOT/$f" \
     || { echo "FAIL: $f 가 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }
   grep -q '"40-score" ./s7-40-score.sh "\$MODE"' "$ROOT/$f" \
-    || { echo "FAIL: $f 에서 40-score 호출 체인 끊김"; fail=1; }
+    || { echo "FAIL: $f 에서 s7-40-score 호출 체인 끊김"; fail=1; }
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done
 echo "OK: run-{smoke,full}.sh TARGETS 전파 + QUANT_CPU_ONLY + eval 체인"

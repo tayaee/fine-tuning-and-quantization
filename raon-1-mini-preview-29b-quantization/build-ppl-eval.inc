@@ -115,7 +115,7 @@ rq_bpe_main() {
   if [ "${SKIP_SETUP:-0}" != 1 ] && rq_bpe_want_step setup; then
     rq_bpe_step "$mode" "$BPE_TIMING" "10-setup" ./s0-10-setup.sh
   fi
-  # Stage 1 — 수용 기준(07-acceptance). 게이트의 판정 기준이 여기서 정해진다.
+  # Stage 1 — 수용 기준(s1-07-acceptance). 게이트의 판정 기준이 여기서 정해진다.
   if rq_bpe_want_step acceptance; then
     rq_bpe_step "$mode" "$BPE_TIMING" "07-acceptance" ./s1-07-acceptance.sh "$mode"
     rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$mode.json"

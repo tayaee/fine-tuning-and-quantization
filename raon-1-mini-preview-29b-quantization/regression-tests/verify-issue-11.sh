@@ -22,7 +22,7 @@ for tok in 'openai/gsm8k' 'GSM8K_REVISION' 'GSM8K_SEED' 'def _gold_of(' 'def sam
            'def build(' 'def is_fresh(' 'prompts-gsm8k.jsonl' 'evalset-' 'sha256' 'dataset_idx'; do
   grep -qF -- "$tok" "$ROOT/s7-36-prep-evalset.py" || { echo "FAIL: s7-36-prep-evalset.py에 '$tok' 없음"; fail=1; }
 done
-echo "OK: 36-prep-evalset.{py,sh} 존재 + 표준 GSM8K 계약"
+echo "OK: s7-36-prep-evalset.{py,sh} 존재 + 표준 GSM8K 계약"
 
 # 2. s7-37-eval.py
 grep -q 'BENCHMARKS = \["gsm8k"\]' "$ROOT/s7-37-eval.py" || { echo "FAIL: s7-37-eval.py BENCHMARKS가 gsm8k 단일이 아님"; fail=1; }
@@ -32,7 +32,7 @@ for tok in 'batch_size' 'padding=bs > 1' 'padding_side = "left"' 'attention_mask
 done
 grep -q 'EVAL_BENCHMARKS' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh에 EVAL_BENCHMARKS 없음"; fail=1; }
 grep -q 'prompts-\$_b.jsonl' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh freshness에 프롬프트 파일 없음"; fail=1; }
-echo "OK: 37-eval 표준 GSM8K + 배치 생성"
+echo "OK: s7-37-eval 표준 GSM8K + 배치 생성"
 
 # 3. s8-43-prep-upload.py 카드 2종 검사
 for tok in '검사 1 — PPL' '검사 2 — GSM8K' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do

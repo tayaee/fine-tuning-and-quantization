@@ -1,4 +1,4 @@
-"""tests/test_evalset.py — 36-prep-evalset(표준 GSM8K 평가 세트) 단위 테스트.
+"""tests/test_evalset.py — s7-36-prep-evalset(표준 GSM8K 평가 세트) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_evalset.py

@@ -1,0 +1,18 @@
+{
+  "issue": 14,
+  "started": "2026-10-24T19:30:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T19:35:00-04:00",
+        "loc_added": 214,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "37개 파일을 s<stage>-##-<slug> 로 개명 + 79개 파일의 참조 갱신 + 문서/회귀테스트 정합"
+}

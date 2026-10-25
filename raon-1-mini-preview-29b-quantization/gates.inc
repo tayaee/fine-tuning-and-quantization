@@ -153,8 +153,8 @@ rq_gate_release() {
   local prep="$RQ_OUTPUTS/prep-upload-$mode.json"
   local ver="$RQ_OUTPUTS/verify-upload-$mode.json"
   local rc=0
-  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — 43-prep-upload 미수행" >&2; rc=1; }
-  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — 46-verify-upload 미수행" >&2; rc=1; }
+  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — s8-43-prep-upload 미수행" >&2; rc=1; }
+  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — s8-46-verify-upload 미수행" >&2; rc=1; }
   [ "$rc" -eq 0 ] || return 1
   ( set -x; rq_py - "$prep" "$ver" <<'PY'
 import json, sys

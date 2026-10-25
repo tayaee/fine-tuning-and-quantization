@@ -23,7 +23,7 @@ grep -q ': "${ALLOW_MISSING_METRICS:=0}"' "$ROOT/s8-43-prep-upload.sh" \
 if grep -q '"$RQ_MODELS/raon-\*-$MODE/README.md"' "$ROOT/s8-43-prep-upload.sh"; then
   echo "FAIL: s8-43-prep-upload.sh에 따옴표 안 글로브(*) 버그 잔존"; fail=1
 fi
-echo "OK: 43-prep-upload.{py,sh} 존재 + 실행 권한 + bash -n + set -u 안전"
+echo "OK: s8-43-prep-upload.{py,sh} 존재 + 실행 권한 + bash -n + set -u 안전"
 
 # 1. s8-43-prep-upload.py 계약
 for tok in 'def prepare_target(' 'def render_readme(' 'def run(' \
@@ -69,7 +69,7 @@ for f in run-smoke.sh run-full.sh; do
     || { echo "FAIL: $f 에 43-prep 단계 없음"; fail=1; }
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done
-grep -q '43-prep-upload' "$ROOT/run-smoke.sh" || { echo "FAIL: run-smoke.sh validate 목록에 43-prep-upload 없음"; fail=1; }
+grep -q 's8-43-prep-upload' "$ROOT/run-smoke.sh" || { echo "FAIL: run-smoke.sh validate 목록에 s8-43-prep-upload 없음"; fail=1; }
 echo "OK: run-{smoke,full}.sh 43-prep 단계"
 
 # 5. 단위 테스트

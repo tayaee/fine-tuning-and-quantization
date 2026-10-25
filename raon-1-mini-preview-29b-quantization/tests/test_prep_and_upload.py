@@ -1,4 +1,4 @@
-"""tests/test_prep_and_upload.py — issue-5 (43-prep-upload / 49-upload-hf) 단위 테스트.
+"""tests/test_prep_and_upload.py — issue-5 (s8-43-prep-upload / s8-49-upload-hf) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_prep_and_upload.py
@@ -139,7 +139,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     )
 
 
-# ---------------------------------------------------------------- 43-prep-upload
+# ---------------------------------------------------------------- s8-43-prep-upload
 
 
 def test_prep_rejects_dense_fallback(workspace):
@@ -293,7 +293,7 @@ def test_upload_skips_missing_model(workspace, capsys):
 
 
 def test_prep_then_dry_run_succeeds(workspace, capsys):
-    """issue-5 §4: 43-prep 실행 후 49-upload-hf --dry-run이 성공해야 한다.
+    """issue-5 §4: s8-43-prep 실행 후 s8-49-upload-hf --dry-run이 성공해야 한다.
 
     READY가 안 나오는 경우가 많아야 하는 흔한 실수는 (a) dry-run이 네트워크를 건드림,
     (b) repo_id 규칙이 깨짐, (c) prep이 README를 다른 경로에 씀 — 셋 다 여기서 잡힌다.

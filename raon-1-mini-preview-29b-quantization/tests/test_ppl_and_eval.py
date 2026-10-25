@@ -1,4 +1,4 @@
-"""tests/test_ppl_and_eval.py — issue-4 (34-measure-ppl / 37-eval / 40-score) 단위 테스트.
+"""tests/test_ppl_and_eval.py — issue-4 (s6-34-measure-ppl / s7-37-eval / s7-40-score) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_ppl_and_eval.py
@@ -370,7 +370,7 @@ def test_eval_writes_per_target_jsonl(tmp_out, monkeypatch):
 
 
 def test_run_transformers_to_score_json_chain(tmp_out, monkeypatch, fake_transformers):
-    """합성 CausalLM → run_transformers → 벤치 JSONL 3종 → 40-score → score.json.
+    """합성 CausalLM → run_transformers → 벤치 JSONL → s7-40-score → score.json.
 
     issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 40-score가 읽어
     산출물의 정확한 Bench 이름으로 score.json에 정확도를 남기는지까지 확인한다.
