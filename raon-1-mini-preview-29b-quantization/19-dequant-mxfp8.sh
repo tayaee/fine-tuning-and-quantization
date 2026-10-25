@@ -4,6 +4,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 rq_repro_echo
+rq_banner "19-dequant" "Stage 4/9 - restore the BF16 base model from the MXFP8 checkpoint (models/raon-bf16)"
 OUT="$RQ_MODELS/raon-bf16"
 rq_lock "$OUT"
 if [ -f "$OUT/config.json" ] && [ "${FORCE:-0}" != 1 ] \

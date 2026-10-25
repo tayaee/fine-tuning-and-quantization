@@ -6,6 +6,7 @@ source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 N="${2:-$CALIB_N}"
 SEED="${3:-42}"
 rq_repro_echo
+rq_banner "13-calib" "Stage 2/9 - build the calibration set (Korean HF datasets -> datasets/raon-calibration-<N>.jsonl)"
 OUT="$RQ_DATASETS/raon-calibration-$N.jsonl"
 # 동시 build(8종 wrapper 병렬 실행)가 같은 calib 파일을 동시에 만들지 않게 한다.
 # 먼저 들어온 쪽이 생성하고, 기다린 쪽은 freshness로 즉시 skip한다.

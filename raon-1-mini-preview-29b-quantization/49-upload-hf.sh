@@ -14,6 +14,7 @@ else
 fi
 [ "${DRY_RUN:-0}" = 1 ] && DRY="--dry-run"
 rq_repro_echo
+rq_banner "49-upload" "Stage 8/9 - upload the prepared model folder to the HuggingFace Hub"
 if [ "${SKIP_VERIFY:-0}" != 1 ]; then
   "$RQ_ROOT/46-verify-upload.sh" "$MODE" "$TARGETS"
 fi

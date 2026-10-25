@@ -3,6 +3,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 rq_repro_echo
+rq_banner "16-compat" "Stage 3/9 - pre-flight compatibility check (custom arch load, expert targets, SM>=10, vLLM/transformers versions)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 
 # 동시 build(8종 wrapper 병렬 실행)가 같은 probe를 중복 실행하지 않게 한다.

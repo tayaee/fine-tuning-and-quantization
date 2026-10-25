@@ -14,6 +14,7 @@ EXTRA_ARGS=()
 [ "$ALLOW_TINY" = 1 ] && EXTRA_ARGS+=(--allow-tiny)
 [ "$SKIP_BF16" = 1 ] && EXTRA_ARGS+=(--skip-bf16)
 rq_repro_echo
+rq_banner "46-verify" "Stage 8/9 - full pre-upload audit (model integrity, metrics, README, vLLM readiness)"
 rq_log "verify-upload mode=$MODE targets=$TARGETS"
 (set -x; uv run "$RQ_ROOT/46-verify-upload.py" --mode "$MODE" --targets "$TARGETS" "${EXTRA_ARGS[@]}")
 

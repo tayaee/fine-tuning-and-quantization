@@ -2,6 +2,7 @@
 # 31-quant-nvfp4-gptq.sh [smoke|full] [calib] — 원본→NVFP4 (GPTQ).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-smoke}"
+rq_banner "31-nvfp4-gptq" "Stage 5/9 - GPTQ + NVFP4 quantization (models/raon-nvfp4-gptq-<mode>)"
 CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$RQ_DATASETS/raon-calibration-$CALIB.jsonl}"
 OUT="$RQ_MODELS/raon-nvfp4-gptq-$MODE"

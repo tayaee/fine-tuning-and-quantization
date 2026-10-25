@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source "$(dirname "$0")/config/common.env"
 rq_repro_echo
+rq_banner "10-setup" "Stage 0/9 - prepare the environment (uv sync, llmcompressor/compressed-tensors pins, HF login, GPU/NVFP4 check)"
 
 rq_log "repo=$REPO_ROOT rq_root=$RQ_ROOT infra=$INFRA python=$(python3 --version 2>&1) uv=$(uv --version 2>&1)"
 rq_log "pins: BASE_MODEL=$BASE_MODEL BASE_REVISION=${BASE_REVISION:-(floating, 첫 다운로드 후 고정)}"

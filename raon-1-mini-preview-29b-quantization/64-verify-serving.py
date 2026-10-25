@@ -59,6 +59,7 @@ def main() -> int:
     ap.add_argument("--log-dir", default=str(ROOT / "logs"))
     a = ap.parse_args()
 
+    print("[64-verify-serving] Stage 8/9 - verify the serving logs and write outputs/serve-<mode>.json")
     log_dir = Path(a.log_dir)
     results: dict[str, dict] = {}
     for t in TARGETS:

@@ -6,6 +6,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 rq_repro_echo
+rq_banner "07-acceptance" "Stage 1/9 - validate the acceptance contract (config/acceptance.toml) and write outputs/acceptance-<mode>.json"
 
 # 2노드 동시 실행 시 한쪽만 쓰고 나머지는 대기 후 스킵(계약은 동일하므로 결과도 동일).
 rq_lock "$RQ_OUTPUTS/acceptance"

@@ -69,6 +69,7 @@ run_done() {
 }
 trap 'RQ_RC=$?; rq_repro; run_done' EXIT
 
+rq_banner "run-$MODE" "9-stage pipeline: setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval -> release (TARGETS is required)"
 rq_log "run-$MODE start (steps=${STEPS:-all})"
 
 # TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).

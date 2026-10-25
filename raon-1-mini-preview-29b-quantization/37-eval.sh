@@ -9,6 +9,7 @@ N="$EVAL_N"
 : "${RQ_EVAL_BACKEND:=auto}"
 export VLLM_GPU_MEM_UTIL RQ_EVAL_BACKEND
 rq_repro_echo
+rq_banner "37-eval" "Stage 7/9 - generate benchmark answers with vLLM (fallback: transformers) and save them"
 target_model() {
   case "$1" in
     base) echo "$RQ_MODELS/raon-bf16" ;;

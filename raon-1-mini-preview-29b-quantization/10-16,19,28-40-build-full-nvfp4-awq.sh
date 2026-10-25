@@ -17,4 +17,5 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 export BPE_MODE=full BPE_TARGET=nvfp4-awq
 source "$ROOT/config/common.env" "$BPE_MODE"
 source "$ROOT/build-ppl-eval.inc"
+rq_banner "build-full-nvfp4-awq" "9-stage pipeline for a single target (setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval)"
 rq_bpe_main

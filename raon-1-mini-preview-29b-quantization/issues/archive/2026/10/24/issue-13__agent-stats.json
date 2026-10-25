@@ -1,0 +1,18 @@
+{
+  "issue": 13,
+  "started": "2026-10-24T18:40:00-04:00",
+  "coders": {
+    "pi": {
+      "model": "MiniMax-M3",
+      "mvp": {
+        "started": "2026-10-24T18:45:00-04:00",
+        "loc_added": 86,
+        "static_analysis_failures": {
+          "ruff": 0,
+          "pyright": 0
+        }
+      }
+    }
+  },
+  "scope": "rq_banner 헬퍼 + 실행 진입 스크립트 27종 시작 배너(영어 1줄) + verify-issue-13"
+}

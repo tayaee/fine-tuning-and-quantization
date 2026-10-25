@@ -166,6 +166,7 @@ def main() -> int:
     ap.add_argument("--print", dest="show", action="store_true")
     a = ap.parse_args()
 
+    print("[61-release-notes] Stage 8/9 - build the release notes from the stage ledger and the measured metrics")
     data = collect(a.mode)
     text = render(data)
     if a.show:

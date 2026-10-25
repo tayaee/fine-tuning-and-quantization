@@ -8,6 +8,7 @@ TARGETS="${2:-${TARGETS:-all}}"
 ALLOW_MISSING=""
 [ "$ALLOW_MISSING_METRICS" = 1 ] && ALLOW_MISSING="--allow-missing-metrics"
 rq_repro_echo
+rq_banner "43-prep" "Stage 8/9 - verify the model directory and generate the HuggingFace model card (README.md)"
 rq_lock "$RQ_OUTPUTS"
 rq_log "prep-upload targets=$TARGETS allow_missing=$ALLOW_MISSING_METRICS"
 (set -x; uv run "$RQ_ROOT/43-prep-upload.py" --mode "$MODE" --targets "$TARGETS" $ALLOW_MISSING)

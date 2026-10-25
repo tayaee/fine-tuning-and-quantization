@@ -22,6 +22,7 @@ TARGET="${2:-nvfp4-gptq}"
 SOURCE="${SOURCE:-local}"
 PORT="${PORT:-8000}"
 rq_repro_echo
+rq_banner "52-serve" "Stage 8/9 - serve the model with vLLM (OpenAI-compatible API)"
 
 case "$TARGET" in
   base)        SUF="raon-bf16"; QUANT="" ;;

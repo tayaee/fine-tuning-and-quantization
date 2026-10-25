@@ -6,6 +6,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 rq_repro_echo
+rq_banner "36-evalset" "Stage 7/9 - build the standard GSM8K evaluation set (openai/gsm8k test split, deterministic sample)"
 
 N="${GSM8K_N:-0}"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"

@@ -8,6 +8,7 @@ cd "$(dirname "$0")"
 MODE_ARG="${1:-smoke}"
 N="${2:-3}"
 source "$(dirname "$0")/config/common.env" "$MODE_ARG"
+rq_banner "58-serve-all" "Stage 8/9 - serve every target in sequence and smoke-test inference"
 PORT="${PORT:-8000}"
 BASE_URL="${BASE_URL:-http://localhost:${PORT}/v1}"
 export PORT BASE_URL

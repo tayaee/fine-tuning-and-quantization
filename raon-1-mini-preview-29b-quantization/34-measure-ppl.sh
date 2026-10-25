@@ -8,6 +8,7 @@ source "$(dirname "$0")/config/common.env" "${1:-smoke}"
 N="${PPL_N:-8}"
 TARGETS="${2:-${TARGETS:-all}}"
 rq_repro_echo
+rq_banner "34-ppl" "Stage 6/9 - measure in-domain PPL and judge the delta against the bf16 base"
 SUMMARY="$RQ_OUTPUTS/ppl-$MODE/summary.json"
 rq_lock "$RQ_OUTPUTS/ppl-$MODE"
 target_model() {
