@@ -5,8 +5,8 @@
 # run-{smoke,full}.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전이다.
 #
 # 스텝(기본 STEPS):
-#   setup(10) → calib(13) → compat(16) → dequant(19) → quant(22·25·28·31) → ppl(34) → eval(37+40)
-#   → prep(56 모델카드) → verify(57 감사) — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다.
+#   setup(10) → calib(13) → compat(16) → dequant(19) → quant(22·25·28·31) → ppl(34) → eval(36+43+49준비,37+40+46+49)
+#   → prep(56 모델카드) → verify(57 감사 + gate-release) — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다.
 #
 # 환경변수:
 #   STEPS=quant,ppl        실행할 스텝만 (기본: setup,calib,compat,dequant,quant,ppl,eval,prep,verify)
@@ -18,7 +18,7 @@
 # 주의: wrapper는 config/common.env를 source한 *뒤에* 이 파일을 source한다.
 #       (common.env의 EXIT 트랩을 이 파일이 대체한다.)
 
-BPE_STEPS_DEFAULT="setup,acceptance,calib,compat,dequant,quant,ppl,eval,prep,verify"
+BPE_STEPS_DEFAULT="setup,acceptance,calib,compat,dequant,quant,ppl,eval,evalset,prep,verify"
 BPE_T0=$(date +%s)
 BPE_TIMING=""
 
@@ -166,6 +166,7 @@ rq_bpe_main() {
   fi
   if rq_bpe_want_step verify; then
     rq_bpe_step "$mode" "$BPE_TIMING" "57-verify" ./s7-57-verify-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "gate-release" rq_gate_release "$mode"
   fi
 
   rq_log "build-ppl-eval done mode=$mode target=$target"

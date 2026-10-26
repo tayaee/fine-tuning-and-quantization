@@ -12,7 +12,7 @@
     s7-56-prep-upload.py(모델 카드) 모두 여기 정의된 값만 사용한다.
     파일이 없으면 DEFAULT_ACCEPTANCE로 폴백(하위 호환).
   - outputs/stage-ledger-<mode>.json = 단계 원장. 각 단계가
-    status/artifact/verdict를 남기고, s8-61-release-notes.py가 릴리스 노트로 굽는다.
+    status/artifact/verdict를 남기고, s8-73-release-notes.py가 릴리스 노트로 굽는다.
 
 표준 라이브러리만 사용한다(uv sync/lock을 건드리지 않기 위함).
 """

@@ -18,7 +18,7 @@
 > (0=환경, 1=수용기준, 2=데이터, 3=호환성, 4=복원, 5=양자화, 6=PPL, 7=평가, 8=배포),
 > `##`은 그 Stage 안에서의 스텝 번호(실행 순서), `<slug>`은 작업 이름이다.
 > 예) `s5-28-quant-nvfp4-awq.sh` = 5단계(양자화)의 28번 스텝.
-> 빌드 wrapper(`s0-s7-build-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는
+> 빌드 wrapper(`run-s0-to-s7-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는
 > 진입점이므로 `s0-s7-` 접두사를 쓴다(Stage 8의 카드·감사·업로드는 `STEPS=prep,verify`로 선택).
 
 | Stage | 스크립트 | 입력 → 출력 | Exit 게이트 |
@@ -32,7 +32,7 @@
 | 6. PPL | `s6-34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
 | 6.5 평가세트 | `s7-36-prep-gsm8k.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
 | 7. eval | `s7-36-prep-gsm8k` · `s7-43-prep-kmmluko` · `s7-49-format` → `s7-37-eval` → `s7-40-gsm8k` · `s7-46-kmmluko` · `s7-49-format` · `s7-55-bench-transformers` → `s7-56-prep-upload` → `s7-57-verify-upload` | **5개 검사** + 모델카드 + 업로드 전 감사: ① 표준 GSM8K(영어 수학) ② 표준 한국어 KMMLU ③ 지시/형식 준수 ④ 서빙 처리량(Tier3) ⑤ 카드·감사 — 전부 결정론 생성 | **gate-eval** · **gate-kmmluko** · **gate-format**: 응답 생성 + 정확도/통과율 계약 대조 |
-| 8. 릴리스·배포 | `s8-49-upload-hf` → `s8-52/55/58` | Hub 업로드 + `outputs/release-notes-<mode>.md` + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
+| 8. 릴리스·배포 | `s8-49-upload-hf` → `s8-52`(개별 서빙)/`53`(전 타깃 서빙)/`55`(추론)/`58`(순회) | Hub 업로드 + `outputs/release-notes-<mode>.md` + 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
@@ -49,7 +49,7 @@
 ## 단계 원장 · 릴리스 노트
 
 - 원장: `outputs/stage-ledger-<mode>.json` (각 단계의 status/artifact/verdict, 타깃별 집계)
-- 릴리스 노트: `python s8-61-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
+- 릴리스 노트: `python s8-73-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
   (원장 + 수용 기준 + 실측 지표 대조표)
 
 ## TARGETS는 필수
@@ -60,7 +60,7 @@
 
 같은 규칙이 타깃을 받는 모든 개별 스크립트에도 적용된다
 (`s6-34-measure-ppl` · `s7-37-eval` · `s7-55-bench-transformers` ·
-`s7-56-prep-upload` · `s7-57-verify-upload` · `s8-49-upload-hf` · `s8-58-serve-infer-all`):
+`s7-56-prep-upload` · `s7-57-verify-upload` · `s8-49-upload-hf` · `s8-70-serve-infer-all`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (`s8-58`은 `[mode] [n]` 형태라 `TARGETS` 환경변수로만 받는다.)
 
@@ -81,17 +81,17 @@ TARGETS=all ./run-full.sh               # 4종 전부
 | 실행순 | awq-w3 → awq-w5 → nvfp4-awq → nvfp4-gptq (알파벳순) | 동일 (밤샘 권장) |
 | 2노드 분할 | `TARGETS=awq-w3,awq-w5` (spark1) + `TARGETS=nvfp4-awq,nvfp4-gptq` (spark2), `STEPS=dequant,quant`로 양쪽 실행 후 1곳에서 `STEPS=ppl,eval` | 동일 분할 (`MODE=full`) |
 
-## 단일 타깃 실행 (`s0-s7-build-*.sh`)
+## 단일 타깃 실행 (`run-s0-to-s7-*.sh`)
 
 `run-{smoke,full}.sh`의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 진입점 8종.
 **파일명 앞 숫자 = 실행되는 스텝 번호** (s0-10-setup·s2-13-calib·s3-16-compat·s4-19-dequant·s5-<quant>·s6-34-ppl·s7-37-eval·s7-40-gsm8k):
 
 | 파일 | 스텝 번호 | 양자화 스크립트 |
 |---|---|---|
-| `s0-s7-build-{smoke,full}-awq-w5.sh` | 0~7 (setup~eval) | s5-25-quant-awq-w5 |
-| `s0-s7-build-{smoke,full}-awq-w3.sh` | 0~7 (setup~eval) | s5-22-quant-awq-w3 |
-| `s0-s7-build-{smoke,full}-nvfp4-awq.sh` | 0~7 (setup~eval) | s5-28-quant-nvfp4-awq |
-| `s0-s7-build-{smoke,full}-nvfp4-gptq.sh` | 0~7 (setup~eval) | s5-31-quant-nvfp4-gptq |
+| `run-s0-to-s7-{smoke,full}-awq-w5.sh` | 0~7 (setup~eval) | s5-25-quant-awq-w5 |
+| `run-s0-to-s7-{smoke,full}-awq-w3.sh` | 0~7 (setup~eval) | s5-22-quant-awq-w3 |
+| `run-s0-to-s7-{smoke,full}-nvfp4-awq.sh` | 0~7 (setup~eval) | s5-28-quant-nvfp4-awq |
+| `run-s0-to-s7-{smoke,full}-nvfp4-gptq.sh` | 0~7 (setup~eval) | s5-31-quant-nvfp4-gptq |
 
 (engine: `build-ppl-eval.inc`)
 

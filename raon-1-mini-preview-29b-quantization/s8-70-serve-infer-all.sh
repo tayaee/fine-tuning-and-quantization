@@ -1,17 +1,17 @@
 #!/bin/bash
-# s8-58-serve-infer-all.sh [mode] [n] — 전 타깃 순회 서빙+추론 (단일 터미널).
+# s8-70-serve-infer-all.sh [mode] [n] — 전 타깃 순회 서빙+추론 (단일 터미널).
 # 대상은 TARGETS 환경변수로 필수 지정 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
-# 모델마다: serve 기동 → 로딩 대기 → s8-55-infer-examples → logs/55.<slug>.log → kill.
+# 모델마다: serve 기동 → 로딩 대기 → s8-67-infer-examples → logs/67.<slug>.log → kill.
 # 29B 로드 감안: LOAD_TIMEOUT 기본 1200.
-# 사용: TARGETS=all ./s8-58-serve-infer-all.sh smoke 3
-#       TARGETS=nvfp4-awq ./s8-58-serve-infer-all.sh full 3
+# 사용: TARGETS=all ./s8-70-serve-infer-all.sh smoke 3
+#       TARGETS=nvfp4-awq ./s8-70-serve-infer-all.sh full 3
 set -uo pipefail
 cd "$(dirname "$0")"
 MODE_ARG="${1:-${MODE:-smoke}}"
 N="${2:-3}"
 source "$(dirname "$0")/config/common.env" "$MODE_ARG"
-RQ_WANT="$(rq_require_targets "./s8-58-serve-infer-all.sh $MODE 3" "" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
-rq_banner "s8-58-serve-infer-all" "Stage 8/9 - serve every target in sequence and smoke-test inference"
+RQ_WANT="$(rq_require_targets "./s8-70-serve-infer-all.sh $MODE 3" "" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
+rq_banner "s8-70-serve-infer-all" "Stage 8/9 - serve every target in sequence and smoke-test inference"
 PORT="${PORT:-8000}"
 BASE_URL="${BASE_URL:-http://localhost:${PORT}/v1}"
 export PORT BASE_URL
@@ -65,13 +65,13 @@ trap 'kill_server; exit 130' INT TERM
 run_one() {
   local mode="$1" target="$2"
   local expected=""; expected="$(expected_slug "$mode" "$target")"
-  local logf="logs/55.${expected}.log"
+  local logf="logs/67.${expected}.log"
   if [ -f "$logf" ]; then echo "[skip] $mode $target — $logf 이미 있음"; return 0; fi
   rm -f "$logf.tmp"
   echo "=========================================="
   echo "Model: mode=$mode target=$target (expect $expected, n=$N)"
   echo "=========================================="
-  eval "./s8-52-serve-vllm.sh $mode $target" &
+  eval "./s8-64-serve-vllm.sh $mode $target" &
   CHILD=$!
   local elapsed=0 loaded=0 slug=""
   while [ "$elapsed" -lt "$LOAD_TIMEOUT" ]; do
@@ -94,8 +94,8 @@ run_one() {
   echo "[infer] $slug (n=$N, timeout ${INFER_TIMEOUT}s) → $logf"
   {
     echo "[model] $slug $(date --iso-8601=s) mode=$mode target=$target"
-    if command -v timeout >/dev/null 2>&1; then timeout "$INFER_TIMEOUT" ./s8-55-infer-examples.sh "$N"
-    else ./s8-55-infer-examples.sh "$N"; fi
+    if command -v timeout >/dev/null 2>&1; then timeout "$INFER_TIMEOUT" ./s8-67-infer-examples.sh "$N"
+    else ./s8-67-infer-examples.sh "$N"; fi
   } > "$logf.tmp" 2>&1 && rc=0 || rc=$?
   if [ "$rc" -eq 0 ]; then echo "[OK] $slug" >> "$logf.tmp"
   elif [ "$rc" -eq 124 ]; then echo "[INFER-FAIL] timeout ${INFER_TIMEOUT}s $(date --iso-8601=s)" >> "$logf.tmp"
@@ -116,7 +116,7 @@ for t in "${TARGETS[@]}"; do run_one "$MODE" "$t" || true; done
 echo "########## 결과 ##########"
 ok=0; fail=0
 for t in "${TARGETS[@]}"; do
-  s="$(expected_slug "$MODE" "$t")"; f="logs/55.${s}.log"
+  s="$(expected_slug "$MODE" "$t")"; f="logs/67.${s}.log"
   if [ ! -f "$f" ]; then echo "[MISSING] $MODE $t"; fail=$((fail + 1)); continue; fi
   if grep -q "SERVE-FAIL\|INFER-FAIL" "$f"; then echo "[FAIL] $MODE $t ($f)"; fail=$((fail + 1)); else echo "[OK] $MODE $t"; ok=$((ok + 1)); fi
 done

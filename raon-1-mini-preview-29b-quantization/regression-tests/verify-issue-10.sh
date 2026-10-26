@@ -19,7 +19,7 @@ done
 for tok in 's1-07-acceptance' 'docs/SDLC.md'; do
   grep -qF -- "$tok" "$ROOT/README.md" || { echo "FAIL: README.md에 '$tok' 없음"; fail=1; }
 done
-for tok in 's1-07-acceptance' 's8-61-release-notes' 's8-64-verify-serving'; do
+for tok in 's1-07-acceptance' 's8-73-release-notes' 's8-76-verify-serving'; do
   grep -qF -- "$tok" "$ROOT/cheatsheet.md" || { echo "FAIL: cheatsheet.md에 '$tok' 없음"; fail=1; }
 done
 echo "OK: PROCEDURE/README/cheatsheet 정렬"

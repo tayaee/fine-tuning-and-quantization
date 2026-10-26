@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# s8-52-vllm-serve-Raon-1-mini-preview-nvfp4-gptq.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다.
-# 사용: ./s8-52-vllm-serve-Raon-1-mini-preview-nvfp4-gptq.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
+# s8-61-vllm-serve-Raon-1-mini-preview-nvfp4-gptq.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다.
+# 사용: ./s8-61-vllm-serve-Raon-1-mini-preview-nvfp4-gptq.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
 set -euo pipefail
 VLLM_REF="raon-1-mini-preview"
 VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \

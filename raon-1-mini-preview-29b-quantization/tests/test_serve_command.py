@@ -1,7 +1,8 @@
-"""tests/test_serve_command.py — README vLLM 명령 ≡ s8-52-serve-vllm.sh 실행 명령 동등성.
+"""tests/test_serve_command.py — README vLLM 명령 ≡ s8-64-serve-vllm.sh 실행 명령 동등성.
 
-s8-52는 README 모델카드의 vLLM 명령을 as-is로 실행해 검증한다. 양쪽이 어긋나면
+s8-64는 README 모델카드의 vLLM 명령을 as-is로 실행해 검증한다. 양쪽이 어긋나면
 "카드대로 했는데 안 돈다"가 된다. 4종 양자화 타깃은 repo id를 제외하고 동일 명령이다.
+개별 래퍼 번호: awq-w3=52, awq-w5=55, nvfp4-awq=58, nvfp4-gptq=61.
 """
 
 from __future__ import annotations
@@ -30,7 +31,8 @@ def _load_script(name: str):
 prep = _load_script("s7-56-prep-upload.py")
 
 QUANT_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-S852 = (ROOT / "s8-52-serve-vllm.sh").read_text(encoding="utf-8")
+WRAPPER_NUM = {"awq-w3": 52, "awq-w5": 55, "nvfp4-awq": 58, "nvfp4-gptq": 61}
+S864 = (ROOT / "s8-64-serve-vllm.sh").read_text(encoding="utf-8")
 
 
 def _vllm_block(readme: str) -> str:
@@ -42,7 +44,7 @@ def _vllm_block(readme: str) -> str:
 
 
 def _norm(block: str, model: str) -> str:
-    """모델 ref를 플레이스홀더로 치환한 정규형 (README repo id vs s8-52 local 경로 차이 흡수)."""
+    """모델 ref를 플레이스홀더로 치환한 정규형 (README repo id vs s8-64 local 경로 차이 흡수)."""
     return block.replace(model, "<MODEL>")
 
 
@@ -62,35 +64,43 @@ def test_readme_commands_share_one_template():
     assert "--served-model-name" in cmd and "--max-model-len 8192" in cmd
 
 
-def test_s852_matches_readme_spec():
-    """s8-52의 case 테이블이 s7-56 VLLM_SERVE 스펙과 일치한다."""    """s8-52의 case 테이블이 s7-56 VLLM_SERVE 스펙과 일치한다."""
+def test_s864_matches_readme_spec():
+    """s8-64의 case 테이블이 s7-56 VLLM_SERVE 스펙과 일치한다."""
     for t in QUANT_TARGETS:
-        m = re.search(rf"^\s*{re.escape(t)}\)\s*SUF=\"([^\"]+)\";\s*QUANT=\"([^\"]+)\";\s*VTP_DEF=(\S+)", S852, re.M)
-        assert m, f"s8-52 case arm 없음: {t}"
+        m = re.search(rf"^\s*{re.escape(t)}\)\s*SUF=\"([^\"]+)\";\s*QUANT=\"([^\"]+)\";\s*VTP_DEF=(\S+?);\s*NUM=(\S+)", S864, re.M)
+        assert m, f"s8-64 case arm 없음: {t}"
         assert m.group(2) == prep.VLLM_SERVE[t]["quant"], t
         assert m.group(3) == str(prep.VLLM_SERVE[t]["tp"]), t
-    assert 'VLLM_REF:-raon-1-mini-preview' in S852
-    assert "krafton-ai/vllm.git@${VLLM_REF}" in S852
-    assert "--tensor-parallel-size \"$VTP\"" in S852
-    assert "--host 127.0.0.1" in S852
-    # README 렌더 명령과 s8-52 exec 명령의 플래그 집합이 같다 (모델 ref 제외).
+        assert m.group(4) == str(WRAPPER_NUM[t]), t
+    assert 'VLLM_REF:-raon-1-mini-preview' in S864
+    assert "krafton-ai/vllm.git@${VLLM_REF}" in S864
+    assert "--tensor-parallel-size \"$VTP\"" in S864
+    assert "--host 127.0.0.1" in S864
+    # README 렌더 명령과 s8-64 exec 명령의 플래그 집합이 같다 (모델 ref 제외).
     r = prep.render_readme("nvfp4-awq", "full", {}, {}, 20.0)
     readme_flags = sorted(re.findall(r"--[\w-]+(?:\s+[^\s\\]+)?", _vllm_block(r)))
-    s852_flags = sorted(re.findall(r"--[\w-]+(?:\s+\"?[^\s\"\\]+\"?)?", S852))
+    s864_flags = sorted(re.findall(r"--[\w-]+(?:\s+\"?[^\s\"\\]+\"?)?", S864))
     for f in ("--tensor-parallel-size", "--quantization", "--trust-remote-code",
               "--served-model-name", "--max-model-len", "--gpu-memory-utilization"):
         assert any(x.startswith(f) for x in readme_flags), f
-        assert any(x.startswith(f) for x in s852_flags), f
+        assert any(x.startswith(f) for x in s864_flags), f
 
 
 def test_wrapper_scripts_embed_readme_block():
-    """s8-52-vllm-serve-<slug>.sh 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
+    """s8-<num>-vllm-serve-<slug>.sh 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
     for t in QUANT_TARGETS:
         slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s8-52-vllm-serve-{slug}.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s8-{WRAPPER_NUM[t]}-vllm-serve-{slug}.sh").read_text(encoding="utf-8")
         r = prep.render_readme(t, "full", {}, {}, 20.0)
         assert _vllm_block(r) in wrapper, f"wrapper 본문 불일치: {t}"
         assert wrapper.startswith("#!/usr/bin/env bash"), t
+
+
+def test_s864_delegates_to_wrapper_for_card_command():
+    """full+hf+기본값 호출은 frozen 래퍼에 위임한다 (카드 명령 as-is 실행)."""
+    assert 'WRAPPER="$RQ_ROOT/s8-$NUM-vllm-serve-${BASE_MODEL##*/}-${TARGET}.sh"' in S864
+    assert 'exec "$WRAPPER"' in S864
+    assert '[ "$SOURCE" = hf ] && [ "$MODE" = full ]' in S864
 
 
 if __name__ == "__main__":

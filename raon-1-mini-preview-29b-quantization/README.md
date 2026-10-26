@@ -56,8 +56,8 @@ PIPELINE_TEST=0 TARGETS=all ./run-smoke.sh   # smoke 4종 실측
 TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 
 # 단일 타깃만 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
-./s0-s7-build-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
-./s0-s7-build-full-nvfp4-awq.sh   # full  × nvfp4-awq
+./run-s0-to-s7-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
+./run-s0-to-s7-full-nvfp4-awq.sh   # full  × nvfp4-awq
 # 게이트: quant 직후 패킹 계약·global_scale, PPL 직후 유한값 검증 → 실패 시 즉시 중단
 ```
 
@@ -88,7 +88,7 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
   - 프롬프트 생성: `s7-36-prep-gsm8k.sh` · `s7-43-prep-kmmluko.sh` · `s7-49-format.sh` (모두 결정론·멱등)
 - 모델 카드: **Check 1 PPL** · **Check 2 GSM8K** · **Check 3 KMMLU** · **Check 4 형식 준수** (참고: 서빙 성능)
 - 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
-- 증빙: `outputs/stage-ledger-<mode>.json` → `s8-61-release-notes.py` → 릴리스 노트
+- 증빙: `outputs/stage-ledger-<mode>.json` → `s8-73-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`
 
 ## 알려진 위험 (스캐폴딩 시점 미검증)

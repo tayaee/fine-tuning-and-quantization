@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
 # 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외)
-mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh s0-s7-build-*.sh | sort)
+mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s0-to-s7-*.sh | sort)
 [ "${#SCRIPTS[@]}" -ge 25 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (25개 이상 기대)"; fail=1; }
 
 for f in "${SCRIPTS[@]}"; do
@@ -31,12 +31,12 @@ for f in run-smoke.sh run-full.sh; do
 done
 # 빌드 wrapper 8종은 각자 배너를 출력한다(공용 엔진 .inc는 중복 방지를 위해 배너 없음)
 n_build=0
-for f in "$ROOT"/s0-s7-build-*.sh; do
+for f in "$ROOT"/run-s0-to-s7-*.sh; do
   grep -q 'rq_banner "' "$f" || { echo "FAIL: $(basename "$f") 에 배너 없음"; fail=1; }
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 8 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (8 기대)"; fail=1; }
-for f in s8-61-release-notes.py s8-64-verify-serving.py; do
+for f in s8-73-release-notes.py s8-76-verify-serving.py; do
   grep -q 'print("\[s8-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"

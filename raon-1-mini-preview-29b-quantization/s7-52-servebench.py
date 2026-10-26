@@ -4,7 +4,7 @@
 처리량 표(AR/DFlash2 × C=1/8/32)가 공개돼 있고, 그 값은 **다른 스택·하드웨어**의
 수치라 직접 비교는 되지 않지만 "우리가 무엇을 얻었는지"를 같은 축에서 보여줄 수 있다.
 
-이 스크립트는 이미 떠 있는 OpenAI-호환 서버(vLLM, s8-52-serve-vllm.sh)에 요청을 보내
+이 스크립트는 이미 떠 있는 OpenAI-호환 서버(vLLM, s8-64-serve-vllm.sh)에 요청을 보내
 TTFT(latency)와 출력 토큰/초를 측정한다. 서버가 없으면 측정하지 않고 사유를 남긴다.
 
   uv run s7-52-servebench.py --mode full --n 8 --concurrency 1

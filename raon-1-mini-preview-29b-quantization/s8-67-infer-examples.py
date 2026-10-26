@@ -1,8 +1,8 @@
-"""s8-55-infer-examples.py — 서빙 중인 모델에 한국어 스모크 3문항 요청 (completions API).
-서버는 별도 터미널에서 s8-52-serve-vllm.sh로 실행. chat template이 아닌 completions 기준
+"""s8-67-infer-examples.py — 서빙 중인 모델에 한국어 스모크 3문항 요청 (completions API).
+서버는 별도 터미널에서 s8-64-serve-vllm.sh로 실행. chat template이 아닌 completions 기준
 스모크라 thinking/한국어 출력 여부만 확인한다.
 
-  uv run s8-55-infer-examples.py [--n 3] [--model tayaee/Raon-1-mini-preview-nvfp4-gptq]
+  uv run s8-67-infer-examples.py [--n 3] [--model tayaee/Raon-1-mini-preview-nvfp4-gptq]
 """
 
 import argparse

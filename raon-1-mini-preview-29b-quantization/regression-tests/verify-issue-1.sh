@@ -4,25 +4,25 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-# 1. s8-52-serve-vllm.sh: awq-w5/awq-w3/nvfp4-* 모두 QUANT="compressed-tensors"
+# 1. s8-64-serve-vllm.sh: awq-w5/awq-w3/nvfp4-* 모두 QUANT="compressed-tensors"
 for t in awq-w5 awq-w3 nvfp4-awq nvfp4-gptq; do
-  line=$(grep -E "^[[:space:]]*${t}\)" "$ROOT/s8-52-serve-vllm.sh" || true)
+  line=$(grep -E "^[[:space:]]*${t}\)" "$ROOT/s8-64-serve-vllm.sh" || true)
   if ! echo "$line" | grep -q 'QUANT="compressed-tensors"'; then
-    echo "FAIL: s8-52-serve-vllm.sh $t not compressed-tensors: $line"; fail=1
+    echo "FAIL: s8-64-serve-vllm.sh $t not compressed-tensors: $line"; fail=1
   else
-    echo "OK: s8-52-serve-vllm.sh $t -> compressed-tensors"
+    echo "OK: s8-64-serve-vllm.sh $t -> compressed-tensors"
   fi
 done
 
 # 2. QUANT="gptq" 잔존 금지
-if grep -q 'QUANT="gptq"' "$ROOT/s8-52-serve-vllm.sh"; then
-  echo 'FAIL: s8-52-serve-vllm.sh still contains QUANT="gptq"'; fail=1
+if grep -q 'QUANT="gptq"' "$ROOT/s8-64-serve-vllm.sh"; then
+  echo 'FAIL: s8-64-serve-vllm.sh still contains QUANT="gptq"'; fail=1
 else
-  echo 'OK: no QUANT="gptq" in s8-52-serve-vllm.sh'
+  echo 'OK: no QUANT="gptq" in s8-64-serve-vllm.sh'
 fi
 
 # 3. REPO-smoke 할당 정확히 1회
-cnt=$(grep -c 'REPO="\$REPO-smoke"' "$ROOT/s8-52-serve-vllm.sh" || true)
+cnt=$(grep -c 'REPO="\$REPO-smoke"' "$ROOT/s8-64-serve-vllm.sh" || true)
 if [ "$cnt" != 1 ]; then
   echo "FAIL: REPO-smoke assignment count=$cnt (expected 1)"; fail=1
 else
@@ -53,6 +53,6 @@ else
   echo "FAIL: s7-37-eval.sh missing tr ',' ' ' split"; fail=1
 fi
 bash -n "$ROOT/s7-37-eval.sh" && echo "OK: s7-37-eval.sh bash -n" || { echo "FAIL: s7-37-eval.sh bash -n"; fail=1; }
-bash -n "$ROOT/s8-52-serve-vllm.sh" && echo "OK: s8-52-serve-vllm.sh bash -n" || { echo "FAIL: s8-52-serve-vllm.sh bash -n"; fail=1; }
+bash -n "$ROOT/s8-64-serve-vllm.sh" && echo "OK: s8-64-serve-vllm.sh bash -n" || { echo "FAIL: s8-64-serve-vllm.sh bash -n"; fail=1; }
 
 exit $fail

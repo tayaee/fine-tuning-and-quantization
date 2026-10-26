@@ -58,8 +58,8 @@ config.json: vLLM/생성 필수 필드 'pad_token_id' 누락
 
 | 대상 | 1회차 | 2회차 | 비고 |
 |---|---|---|---|
-| `s0-s7-build-smoke-nvfp4-awq.sh` | **3s** | **2s** | 전 단계 skip + 게이트 3종 통과 |
-| `s0-s7-build-full-nvfp4-awq.sh` | 3211s | **2s** | 1회차는 캘리브 재생성 → 양자화 무효화 cascade(아래) |
+| `run-s0-to-s7-smoke-nvfp4-awq.sh` | **3s** | **2s** | 전 단계 skip + 게이트 3종 통과 |
+| `run-s0-to-s7-full-nvfp4-awq.sh` | 3211s | **2s** | 1회차는 캘리브 재생성 → 양자화 무효화 cascade(아래) |
 | (2026-10-24 재측정) smoke / full | 2s / 3s | **2s / 2s** | 표준 GSM8K 평가 도입 후에도 즉시 종료 유지 |
 
 full 1회차가 53분 걸린 이유(정상적 재작업):
@@ -117,4 +117,4 @@ Stage 8 릴리스 게이트 실측: `s8-43-prep-upload`·`s8-46-verify-upload` s
    (Δ 임계값·용량 범위·포맷). 코드 하드코딩 없음.
 3. **게이트는 산출물을 먼저 검사**: 다음 단계로 넘어가기 전에
    패킹 계약 위반·NaN PPL·빈 응답을 차단.
-4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `s8-61-release-notes.py` → 릴리스 노트.
+4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `s8-73-release-notes.py` → 릴리스 노트.
