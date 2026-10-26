@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # verify-issue-21.sh — issue-21(일부 벤치 재생성 시 GSM8K 응답 소실 + PPL delta 3자리) 승인 기준 기계 검증
 #   1. s7-37-eval.py가 이번에 재생성하지 않는 벤치의 기존 응답을 <target>.jsonl에 보존한다
-#   2. s7-37-eval.sh의 freshness가 "요청 벤치 응답 존재"까지 본다
+#   2. s7-37-base/s7-38-quantized의 freshness가 "요청 벤치 응답 존재"까지 본다
 #   3. s7-56-prep-upload.py가 GSM8K 정확도 없는 카드를 거부하고, PPL delta를 3자리로 쓴다
 #   4. 단위 테스트
 set -euo pipefail
@@ -17,12 +17,14 @@ grep -q 'kept = preserved_rows(main_path' "$ROOT/s7-37-eval.py" \
   || { echo "FAIL: run_target이 기존 벤치 응답을 보존하지 않음"; fail=1; }
 echo "OK: 일부 벤치 재생성 시 다른 벤치 응답 보존"
 
-# 2. freshness = 요청 벤치 응답 존재
-grep -q '_missing_bench' "$ROOT/s7-37-eval.sh" \
-  || { echo "FAIL: s7-37-eval.sh freshness가 벤치 존재를 검사하지 않음"; fail=1; }
-grep -q 'has no rows for bench(es)' "$ROOT/s7-37-eval.sh" \
-  || { echo "FAIL: 벤치 누락 시 stale 로그 없음"; fail=1; }
-bash -n "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh 문법 오류"; fail=1; }
+# 2. freshness = 요청 벤치 응답 존재 (base/quantized 양쪽)
+for _sh in s7-37-eval-base.sh s7-38-eval-quantized.sh; do
+  grep -q '_missing_bench' "$ROOT/$_sh" \
+    || { echo "FAIL: $_sh freshness가 벤치 존재를 검사하지 않음"; fail=1; }
+  grep -q 'has no rows for bench(es)' "$ROOT/$_sh" \
+    || { echo "FAIL: $_sh 벤치 누락 시 stale 로그 없음"; fail=1; }
+  bash -n "$ROOT/$_sh" || { echo "FAIL: $_sh 문법 오류"; fail=1; }
+done
 echo "OK: freshness가 요청 벤치 응답 존재까지 확인"
 
 # 3. 카드 가드 + PPL delta 3자리

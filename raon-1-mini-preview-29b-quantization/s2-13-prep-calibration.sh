@@ -12,8 +12,10 @@ META="$OUT.meta"
 # 동시 build(8종 wrapper 병렬 실행)가 같은 calib 파일을 동시에 만들지 않게 한다.
 # 먼저 들어온 쪽이 생성하고, 기다린 쪽은 freshness로 즉시 skip한다.
 rq_lock "$RQ_DATASETS"
-if rq_fresh "$OUT" "$RQ_ROOT/s2-13-prep-calibration.py"; then
-  rq_log "skip: fresh $OUT (FORCE=1 to rebuild)"
+# 존재하면 재빌드하지 않는다 (mtime 비교 안 함 — 스크립트 체크아웃 등으로
+# mtime만 바뀌어도 산출물은 그대로 유효하므로. 강제 재생성은 FORCE=1).
+if [ -f "$OUT" ] && [ "${FORCE:-0}" != 1 ]; then
+  rq_log "skip: exists $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -lh "$OUT")
   (set -x; wc -l "$OUT")

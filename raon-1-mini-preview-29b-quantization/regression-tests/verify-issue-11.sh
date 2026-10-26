@@ -30,9 +30,11 @@ grep -q 's7-36-prep-gsm8k.sh' "$ROOT/s7-37-eval.py" || { echo "FAIL: s7-37-eval.
 for tok in 'batch_size' 'padding=bs > 1' 'padding_side = "left"' 'attention_mask=mask'; do
   grep -qF -- "$tok" "$ROOT/s7-37-eval.py" || { echo "FAIL: s7-37-eval.py에 '$tok' 없음"; fail=1; }
 done
-grep -q 'EVAL_BENCHMARKS' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh에 EVAL_BENCHMARKS 없음"; fail=1; }
-grep -q 'prompts-\$_b.jsonl' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh freshness에 프롬프트 파일 없음"; fail=1; }
-echo "OK: s7-37-eval 표준 GSM8K + 배치 생성"
+for _sh in s7-37-eval-base.sh s7-38-eval-quantized.sh; do
+  grep -q 'EVAL_BENCHMARKS' "$ROOT/$_sh" || { echo "FAIL: $_sh에 EVAL_BENCHMARKS 없음"; fail=1; }
+  grep -q 'prompts-\$_b.jsonl' "$ROOT/$_sh" || { echo "FAIL: $_sh freshness에 프롬프트 파일 없음"; fail=1; }
+done
+echo "OK: s7-37-base/s7-38 표준 GSM8K + 배치 생성"
 
 # 3. s7-56-prep-upload.py 카드 2종 검사
 for tok in '## Check 1 - PPL' '## Check 2 - GSM8K' '## Quantization spec' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do

@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-GUARDED="s6-34-measure-ppl.sh s7-37-eval.sh
+GUARDED="s6-34-measure-ppl.sh s7-38-eval-quantized.sh
   s7-55-bench-transformers.sh s7-56-prep-upload.sh s7-57-verify-upload.sh
   s8-49-upload-hf.sh s8-70-serve-infer-all.sh"
 

@@ -4,7 +4,7 @@ PPL은 teacher-forced, GSM8K/KMMLU는 "정답이 맞는가"만 본다. **"요청
 는 어느 검사도 하지 않는다 — 실제 배포에서 가장 흔한 실패 모드다(언어 지정 무시,
 지시 무시, Rambling, JSON 미출력).
 
-고정된 케이스(내장)를 prompts-format.jsonl로 만들어 s7-37-eval.sh가 생성하고,
+고정된 케이스(내장)를 prompts-format.jsonl로 만들어 s7-37-eval-base.sh/s7-38-eval-quantized.sh가 생성하고,
 이 스크립트가 응답을 검사해 pass_rate를 산출한다.
 
   --prepare : 프롬프트 세트 생성(파이프라인의 eval 단계 앞에서 1회)

@@ -486,7 +486,7 @@ def _check_metrics(
 
     if not score_fp.is_file():
         if not allow_missing_metrics:
-            errors.append(f"{score_fp}: 파일 없음 (s7-37-eval.sh / s7-40-gsm8k.sh 먼저 실행)")
+            errors.append(f"{score_fp}: 파일 없음 (s7-37-eval-base.sh / s7-38-eval-quantized.sh / s7-40-gsm8k.sh 먼저 실행)")
     else:
         score_data = json.loads(score_fp.read_text(encoding="utf-8"))
         bad_keys = [k for k in score_data if k.startswith("prompts-")]
@@ -559,30 +559,33 @@ def _check_readme(
         rule["format"],
         f"{size_gb} GB",
         "## Quantization spec",
-        "## Acceptance criteria (Stage 1 contract)",
-        "## Check 1 - PPL",
-        "## Check 2 - GSM8K",
-        "## Check 3 - KMMLU",
-        "## Check 4 - Instruction and format compliance",
+        "## Base vs this model",
+        "| Item | This Model | Base | Verdict or Notes |",
         "## Usage - transformers",
         "## Usage - vLLM",
         "## License and source",
         "--trust-remote-code",
         "--quantization compressed-tensors",
+        "--max-model-len 262144",
     ):
         if req_body not in text:
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
 
-    # 검사 표에서 현재 타겟 강조 행 확인 (Model 컬럼 = 정식 HF repo id)
+    # 비교표에서 현재 타겟 수치 확인 (This Model 컬럼 = 측정값, 미기입 '—' 금지)
     repo_id = hf_repo_id(target, mode)
-    row_re = re.compile(rf"^\|\s*\*\*{re.escape(repo_id)}\*\*\s*\|(.+)\|$", re.MULTILINE)
-    m = row_re.search(text)
-    if not m:
-        errors.append(f"{readme_fp}: 검사 표에 현재 타겟 강조 행('| **{repo_id}** |') 없음")
-    elif not allow_missing_metrics:
-        cells = [c.strip() for c in m.group(1).split("|")]
-        if any(c in ("—", "", "None", "nan") for c in cells):
-            errors.append(f"{readme_fp}: 검사 표의 '**{repo_id}**' 행에 미기입 결측치('—') 존재: {cells}")
+    if repo_id not in text:
+        errors.append(f"{readme_fp}: 카드에 현재 타겟 repo id('{repo_id}') 없음")
+    if "| Item | This Model | Base | Verdict or Notes |" in text:
+        body_rows = [ln for ln in text.splitlines() if ln.startswith("| ") and " | " in ln[2:]]
+        metric_rows = [r for r in body_rows if not r.startswith("| Item") and not r.startswith("| ---")]
+        if not metric_rows:
+            errors.append(f"{readme_fp}: 비교표에 측정 행 없음")
+        elif not allow_missing_metrics:
+            for r in metric_rows:
+                cells = [c.strip() for c in r.strip().strip("|").split("|")]
+                if len(cells) >= 2 and cells[1] in ("—", "", "None", "nan"):
+                    errors.append(f"{readme_fp}: 비교표 This Model 컬럼에 미기입 결측치: {r}")
+                    break
 
     # 모델 카드는 base + 이 타깃 1개만 비교한다 (전체 버전 비교는 models/README-<mode>.md)
     for other in ALL_TARGETS:

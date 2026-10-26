@@ -46,13 +46,14 @@ EOF
   echo "FAIL: s7-37-eval.py QUANT_OF mapping wrong"; fail=1
 fi
 
-# 5. s7-37-eval.sh 콤마 분리 + 문법 검사
-if grep -q "tr ',' ' '" "$ROOT/s7-37-eval.sh"; then
-  echo "OK: s7-37-eval.sh splits comma TARGETS"
+# 5. s7-38-eval-quantized.sh 콤마 분리 + 문법 검사 (base는 s7-37 단일 타깃이라 해당 없음)
+if grep -q "tr ',' ' '" "$ROOT/s7-38-eval-quantized.sh"; then
+  echo "OK: s7-38-eval-quantized.sh splits comma TARGETS"
 else
-  echo "FAIL: s7-37-eval.sh missing tr ',' ' ' split"; fail=1
+  echo "FAIL: s7-38-eval-quantized.sh missing tr ',' ' ' split"; fail=1
 fi
-bash -n "$ROOT/s7-37-eval.sh" && echo "OK: s7-37-eval.sh bash -n" || { echo "FAIL: s7-37-eval.sh bash -n"; fail=1; }
+bash -n "$ROOT/s7-37-eval-base.sh" && echo "OK: s7-37-eval-base.sh bash -n" || { echo "FAIL: s7-37-eval-base.sh bash -n"; fail=1; }
+bash -n "$ROOT/s7-38-eval-quantized.sh" && echo "OK: s7-38-eval-quantized.sh bash -n" || { echo "FAIL: s7-38-eval-quantized.sh bash -n"; fail=1; }
 bash -n "$ROOT/s8-64-serve-vllm.sh" && echo "OK: s8-64-serve-vllm.sh bash -n" || { echo "FAIL: s8-64-serve-vllm.sh bash -n"; fail=1; }
 
 exit $fail

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # s8-64-serve-vllm.sh [smoke|full] [target] — 전 타깃 커버 서빙 디스패처 (개별 래퍼 s8-52/55/58/61에 위임).
-# README 모델카드의 vLLM 명령을 그대로 실행 (검증 겸 서빙).
+# README 모델카드의 vLLM 명령(production)을 그대로 실행.
 # 인자 없이 실행하면 복사-붙여넣기용 실행 명령 목록 출력 (서빙 안 함).
 # target: base|nvfp4-awq|nvfp4-gptq|awq-w5|awq-w3 (기본 nvfp4-gptq).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙 → README 명령과 문자열 동일).
-# VTP/PORT/VLLM_REF로 서빙 TP·포트·포크 브랜치 오버라이드. VLLM_USE_PRECOMPILED=1 고정.
+# VTP/PORT/VLLM_REF/VLLM_MAX_LEN/GPU_UTIL로 오버라이드. VLLM_USE_PRECOMPILED=1 고정.
 # 예: ./s8-64-serve-vllm.sh                    # 목록만 출력
 #     ./s8-64-serve-vllm.sh smoke nvfp4-gptq
 #     SOURCE=hf ./s8-64-serve-vllm.sh full nvfp4-awq   # README 명령 as-is 검증
@@ -52,7 +52,7 @@ WRAPPER="$RQ_ROOT/s8-$NUM-vllm-serve-${BASE_MODEL##*/}-${TARGET}.sh"
 if [ "$SOURCE" = hf ] && [ "$MODE" = full ] && [ -f "$WRAPPER" ] \
   && [ "${PORT:-8000}" = 8000 ] && [ "${VTP:-$VTP_DEF}" = "$VTP_DEF" ] \
   && [ "${VLLM_REF:-raon-1-mini-preview}" = raon-1-mini-preview ] \
-  && [ "${VLLM_MAX_LEN:-8192}" = 8192 ] && [ "${GPU_UTIL:-0.9}" = 0.9 ]; then
+  && [ "${VLLM_MAX_LEN:-262144}" = 262144 ] && [ "${GPU_UTIL:-0.85}" = 0.85 ]; then
   rq_log "delegating to frozen card command: $WRAPPER"
   set -x
   exec "$WRAPPER"
@@ -61,8 +61,6 @@ VTP="${VTP:-$VTP_DEF}"
 VLLM_REF="${VLLM_REF:-raon-1-mini-preview}"
 
 rq_log "serving model=$MODEL quant=${QUANT:-none} tp=$VTP port=$PORT fork=krafton-ai/vllm@$VLLM_REF"
-export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-FLASH_ATTN}"
-export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_USE_PRECOMPILED=1
 set -x
 exec uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" vllm serve "$MODEL" \
@@ -70,6 +68,14 @@ exec uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" 
   --served-model-name "$REPO" \
   --tensor-parallel-size "$VTP" \
   ${QUANT:+--quantization "$QUANT"} \
-  --max-model-len "${VLLM_MAX_LEN:-8192}" \
-  --gpu-memory-utilization "${GPU_UTIL:-0.9}" \
-  --trust-remote-code
+  --max-model-len "${VLLM_MAX_LEN:-262144}" \
+  --max-num-batched-tokens 16384 \
+  --max-num-seqs 128 \
+  --gpu-memory-utilization "${GPU_UTIL:-0.85}" \
+  --kv-cache-dtype fp8_e4m3 \
+  --enable-prefix-caching \
+  --reasoning-parser raon_1 \
+  --tool-call-parser raon_1 \
+  --enable-auto-tool-choice \
+  --trust-remote-code \
+  --default-chat-template-kwargs '{"enable_thinking": true, "truncate_history_thinking": false}'

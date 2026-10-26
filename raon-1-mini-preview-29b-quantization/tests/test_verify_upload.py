@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -279,12 +280,10 @@ def test_rejects_readme_with_missing_metric_dashes(ws):
     mdir = _make_valid_workspace(ws, "nvfp4-awq", "full")
     prep.run("full", "nvfp4-awq")
     readme = (mdir / "README.md").read_text(encoding="utf-8")
-    # Model 컬럼 = 정식 HF repo id (full → 접미사 없음)
-    readme = readme.replace(
-        "| **tayaee/Raon-1-mini-preview-nvfp4-awq** | 6.650 | 0.150 |",
-        "| **tayaee/Raon-1-mini-preview-nvfp4-awq** | — | — |",
-    )
-    (mdir / "README.md").write_text(readme, encoding="utf-8")
+    # 비교표 PPL 행의 This Model 셀을 결측치로 바꾼다
+    readme2, n = re.subn(r"(\| PPL \(in-domain\) \| )[^|]+\|", r"\1— |", readme, count=1)
+    assert n == 1, "PPL 행을 찾지 못함"
+    (mdir / "README.md").write_text(readme2, encoding="utf-8")
     rep = ver.verify_target("full", "nvfp4-awq")
     assert rep["ok"] is False
     assert rep["checks"]["readme"] is False

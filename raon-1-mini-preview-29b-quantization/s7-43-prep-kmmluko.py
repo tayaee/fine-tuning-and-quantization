@@ -3,7 +3,7 @@
 GSM8K가 영어 수학이라 이 모델(한국어 우선)의 한국어 능력을 아무것도 재지 않는다.
 여기서는 **표준 한국어 벤치마크** `HAERAE-HUB/KMMLU`(44개 과목 4지선다 MCQ)에서
 과목별로 고르게 표본을 뽑아 `outputs/eval-<mode>/prompts-kmmluko.jsonl`을 만든다.
-생성은 s7-37-eval.sh(벤치 공통), 채점은 s7-46-kmmluko.sh.
+생성은 s7-37-eval-base.sh/s7-38-eval-quantized.sh(벤치 공통), 채점은 s7-46-kmmluko.sh.
 
   - 프롬프트: Raon chat template + 4지선다 + "정답은 X" 지시
   - gold: 정답 인덱스(0~3) → 채점 시 A/B/C/D로 매핑

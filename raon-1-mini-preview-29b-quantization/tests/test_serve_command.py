@@ -49,10 +49,11 @@ def _norm(block: str, model: str) -> str:
 
 
 def test_readme_commands_share_one_template():
-    """4종 카드의 vLLM 명령은 repo id만 다르고 플래그는 동일하다."""
+    """4종 카드의 vLLM 명령은 repo id만 다르고 플래그는 동일하다 (production 단일 명령)."""
     blocks = {}
     for t in QUANT_TARGETS:
         r = prep.render_readme(t, "full", {}, {}, 20.0)
+        assert "## Production serving" not in r, "production 분리가 잔존"
         blocks[t] = _vllm_block(r)
     norms = {_norm(b, prep.hf_repo_id(t, "full")) for t, b in blocks.items()}
     assert len(norms) == 1, f"타깃별 명령 분기 발생: {norms}"
@@ -61,7 +62,12 @@ def test_readme_commands_share_one_template():
     assert "--tensor-parallel-size 1" in cmd
     assert "--quantization compressed-tensors" in cmd
     assert "--trust-remote-code" in cmd
-    assert "--served-model-name" in cmd and "--max-model-len 8192" in cmd
+    assert "--served-model-name" in cmd and "--max-model-len 262144" in cmd
+    for f in ("--max-num-batched-tokens 16384", "--max-num-seqs 128",
+              "--gpu-memory-utilization 0.85", "--kv-cache-dtype fp8_e4m3",
+              "--enable-prefix-caching", "--reasoning-parser raon_1",
+              "--tool-call-parser raon_1", "--enable-auto-tool-choice"):
+        assert f in cmd, f
 
 
 def test_s864_matches_readme_spec():
@@ -76,12 +82,16 @@ def test_s864_matches_readme_spec():
     assert "krafton-ai/vllm.git@${VLLM_REF}" in S864
     assert "--tensor-parallel-size \"$VTP\"" in S864
     assert "--host 127.0.0.1" in S864
+    assert "--max-model-len \"${VLLM_MAX_LEN:-262144}\"" in S864
+    assert "--gpu-memory-utilization \"${GPU_UTIL:-0.85}\"" in S864
     # README 렌더 명령과 s8-64 exec 명령의 플래그 집합이 같다 (모델 ref 제외).
     r = prep.render_readme("nvfp4-awq", "full", {}, {}, 20.0)
     readme_flags = sorted(re.findall(r"--[\w-]+(?:\s+[^\s\\]+)?", _vllm_block(r)))
     s864_flags = sorted(re.findall(r"--[\w-]+(?:\s+\"?[^\s\"\\]+\"?)?", S864))
     for f in ("--tensor-parallel-size", "--quantization", "--trust-remote-code",
-              "--served-model-name", "--max-model-len", "--gpu-memory-utilization"):
+              "--served-model-name", "--max-model-len", "--gpu-memory-utilization",
+              "--max-num-batched-tokens", "--max-num-seqs", "--kv-cache-dtype",
+              "--enable-prefix-caching", "--reasoning-parser", "--tool-call-parser"):
         assert any(x.startswith(f) for x in readme_flags), f
         assert any(x.startswith(f) for x in s864_flags), f
 
@@ -101,29 +111,18 @@ def test_s864_delegates_to_wrapper_for_card_command():
     assert 'WRAPPER="$RQ_ROOT/s8-$NUM-vllm-serve-${BASE_MODEL##*/}-${TARGET}.sh"' in S864
     assert 'exec "$WRAPPER"' in S864
     assert '[ "$SOURCE" = hf ] && [ "$MODE" = full ]' in S864
+    assert '"${VLLM_MAX_LEN:-262144}" = 262144' in S864
+    assert '"${GPU_UTIL:-0.85}" = 0.85' in S864
 
 
-def test_card_production_block_matches_s865():
-    """카드 Production 블록 ≡ s8-65 스크립트 (GB10 풀 컨텍스트)."""
-    r = prep.render_readme("nvfp4-awq", "full", {}, {}, 20.0)
-    assert "## Production serving (DGX Spark, 128 GB unified)" in r
-    prod_sec = r.split("## Production serving", 1)[1].split("## License", 1)[0]
-    blocks = re.findall(r"```bash\n(.*?)```", prod_sec, re.DOTALL)
-    assert blocks, "production bash 블록 없음"
-    prod = blocks[0]
-    for flag in ("--max-model-len 262144", "--max-num-batched-tokens 16384",
-                 "--max-num-seqs 128", "--gpu-memory-utilization 0.85",
-                 "--kv-cache-dtype fp8_e4m3", "--enable-prefix-caching",
-                 "--reasoning-parser raon_1", "--tool-call-parser raon_1",
-                 "--enable-auto-tool-choice"):
-        assert flag in prod, flag
-    assert "s8-65-serve-vllm-production.sh" not in prod_sec  # consumer card: no internal script refs
-    assert "s8-64-serve-vllm.sh" not in r and "SOURCE=" not in r
-    s865 = (ROOT / "s8-65-serve-vllm-production.sh").read_text(encoding="utf-8")
-    for flag in ("--max-model-len 262144", "--kv-cache-dtype fp8_e4m3",
-                 "--enable-prefix-caching", "--reasoning-parser raon_1",
-                 "--default-chat-template-kwargs"):
-        assert flag in s865, flag
+def test_no_separate_production_script():
+    """production 별도 스크립트(s8-65) 없음 — 52/55/58/61 래퍼 자체가 production이다."""
+    assert not (ROOT / "s8-65-serve-vllm-production.sh").exists()
+    for t in QUANT_TARGETS:
+        slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
+        wrapper = (ROOT / f"s8-{WRAPPER_NUM[t]}-vllm-serve-{slug}.sh").read_text(encoding="utf-8")
+        assert "--max-model-len 262144" in wrapper, t
+        assert "--kv-cache-dtype fp8_e4m3" in wrapper, t
 
 
 if __name__ == "__main__":

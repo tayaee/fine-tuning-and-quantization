@@ -32,10 +32,10 @@ grep -q 'PPL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"' "$ROOT/s6-34
 if grep -qE '_t=all(\s|$)' "$ROOT/s6-34-measure-ppl.sh"; then
   echo "FAIL: s6-34-measure-ppl.sh가 'all'을 단일 타겟으로 통과시킴 (프로세스 격리 무효화)"; fail=1
 fi
-grep -q 'EVAL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"' "$ROOT/s7-37-eval.sh" \
-  || { echo "FAIL: s7-37-eval.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 5개 로드)"; fail=1; }
-if grep -v '^\s*#' "$ROOT/s7-37-eval.sh" | grep -q -- '--target all'; then
-  echo "FAIL: s7-37-eval.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
+grep -q 'EVAL_ALL_TARGETS="awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"' "$ROOT/s7-38-eval-quantized.sh" \
+  || { echo "FAIL: s7-38-eval-quantized.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 4개 로드)"; fail=1; }
+if grep -v '^\s*#' "$ROOT/s7-38-eval-quantized.sh" | grep -q -- '--target all'; then
+  echo "FAIL: s7-38-eval-quantized.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
 fi
 # 실제 루프가 몇 개 프로세스를 띄우는지 검증 (모델 로드 없이)
 for _case in all "" nvfp4-awq nvfp4-gptq,nvfp4-awq; do
@@ -55,9 +55,10 @@ for _case in all "" nvfp4-awq nvfp4-gptq,nvfp4-awq; do
   _got=$(echo "$_n" | wc -w)
   [ "$_got" = "$_want" ] || { echo "FAIL: s6-34-measure-ppl.sh targets='$_case' → $_got procs (expected $_want)"; fail=1; }
 done
-echo "OK: s6-34-measure-ppl.sh/s7-37-eval.sh 프로세스 격리 + 'all' 펼침 + 캐시 집계"
+echo "OK: s6-34-measure-ppl.sh/s7-38-eval-quantized.sh 프로세스 격리 + 'all' 펼침 + 캐시 집계"
 bash -n "$ROOT/s6-34-measure-ppl.sh" || { echo "FAIL: s6-34-measure-ppl.sh bash -n"; fail=1; }
-bash -n "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh bash -n"; fail=1; }
+bash -n "$ROOT/s7-37-eval-base.sh" || { echo "FAIL: s7-37-eval-base.sh bash -n"; fail=1; }
+bash -n "$ROOT/s7-38-eval-quantized.sh" || { echo "FAIL: s7-38-eval-quantized.sh bash -n"; fail=1; }
 
 # 3. s7-37-eval.py 백엔드
 for tok in 'def run_transformers(' 'def run_vllm(' 'def generate(' \
@@ -83,8 +84,10 @@ echo "OK: s7-40-gsm8k.py 벤치마크 정확도 산출"
 for f in run-smoke.sh run-full.sh; do
   grep -q 's6-34-measure-ppl.sh "\$MODE" "\$_eval_targets"' "$ROOT/$f" \
     || { echo "FAIL: $f 가 TARGETS(=base 포함)를 34-ppl에 전달하지 않음"; fail=1; }
-  grep -q 's7-37-eval.sh "\$MODE" "\$_eval_targets"' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 TARGETS(=base 포함)를 s7-37-eval에 전달하지 않음"; fail=1; }
+  grep -q 's7-37-eval-base.sh "\$MODE"' "$ROOT/$f" \
+    || { echo "FAIL: $f 가 base eval을 호출하지 않음"; fail=1; }
+  grep -q 's7-38-eval-quantized.sh "\$MODE" "\$_targets"' "$ROOT/$f" \
+    || { echo "FAIL: $f 가 TARGETS를 s7-38-eval-quantized에 전달하지 않음"; fail=1; }
   grep -q 'QUANT_CPU_ONLY' "$ROOT/$f" || { echo "FAIL: $f 에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
   grep -q '_quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$ROOT/$f" \
     || { echo "FAIL: $f 가 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }

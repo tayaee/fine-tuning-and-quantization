@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # s7-49-format.sh [smoke|full] [--prepare] — 지시/형식 준수 스위트 (Tier 2).
 #   --prepare : 고정 케이스 프롬프트 세트(prompts-format.jsonl)만 만든다 (eval 단계 앞)
-#   (기본)    : s7-37-eval.sh가 생성한 응답을 검사해 pass_rate를 산출한다
+#   (기본)    : s7-37-eval-base.sh/s7-38-eval-quantized.sh가 생성한 응답을 검사해 pass_rate를 산출한다
 # 결과: outputs/eval-<mode>/checks.json 의 "format" 섹션.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"

@@ -18,7 +18,7 @@
 | 4 | 베이스 복원 | `s4-19-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
-| 7 | 벤치마크 평가·카드·감사 | `s7-37-eval.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` + `s7-55-bench-transformers.sh` → `s7-56-prep-upload.sh` → `s7-57-verify-upload.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
+| 7 | 벤치마크 평가·카드·감사 | `s7-37-eval-base.sh` + `s7-38-eval-quantized.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` + `s7-55-bench-transformers.sh` → `s7-56-prep-upload.sh` → `s7-57-verify-upload.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
 | 8 | 릴리스·배포 | `s8-49-upload-hf.sh` → `s8-52-vllm-serve-*.sh`(개별) / `s8-64-serve-vllm.sh`(전 타깃) / `s8-67-infer-examples.sh` / `s8-70-serve-infer-all.sh` | Hub 업로드, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
 
 ## 0. 파일 명명 규칙
@@ -104,7 +104,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|
 | Check 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `s6-34-measure-ppl.sh` |
-| Check 2 — GSM8K | 표준 테스트셋 정확도 (+답 마커율·절단률) | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s7-37-eval.sh` + `s7-40-gsm8k.sh` |
+| Check 2 — GSM8K | 표준 테스트셋 정확도 (+답 마커율·절단률) | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s7-37-eval-base.sh` + `s7-38-eval-quantized.sh` + `s7-40-gsm8k.sh` |
 | Check 3 — KMMLU | 표준 한국어 정확도 | base 대비 하락 ≤ `kmmluko_acc_drop_max` | `s7-43-prep-kmmluko.sh` + `s7-46-kmmluko.sh` |
 | Check 4 — 형식/지시 준수 | 고정 10케이스 통과율 | ≥ `format_pass_rate_min` | `s7-49-format.sh` |
 | (참고) 서빙 성능 | 출력 tok/s · 요청 지연 | 방향성(공개 처리량과 같은 축) | `s7-52-servebench.sh` |

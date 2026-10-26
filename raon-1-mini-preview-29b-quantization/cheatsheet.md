@@ -60,9 +60,9 @@ GSM8K_N=300 EVAL_N=200 ./s7-36-prep-gsm8k.sh full   # 표본 300 중 200문제�
 # 5. eval + score (백엔드: auto = vLLM → 커스텀 아키텍처 미지원 시 transformers)
 #    EVAL_BATCH=8 로 배치 생성(표준 GSM8K 실측에 필수)
 #    EVAL_BENCHMARKS 기본값 = gsm8k,kmmluko,format (3개 벤치 동시 평가)
-./s7-37-eval.sh smoke nvfp4-gptq
+./s7-38-eval-quantized.sh smoke nvfp4-gptq
 ./s7-40-gsm8k.sh smoke
-RQ_EVAL_BACKEND=transformers ./s7-37-eval.sh smoke nvfp4-gptq
+RQ_EVAL_BACKEND=transformers ./s7-38-eval-quantized.sh smoke nvfp4-gptq
 
 # 7.5 검사 채점 (40 GSM8K / 46 한국어 / 49 형식) + 서빙 처리량(52, 서버 필요)
 ./s7-40-gsm8k.sh smoke        # → outputs/eval-<mode>/score.json

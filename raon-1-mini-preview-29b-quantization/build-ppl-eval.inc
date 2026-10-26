@@ -146,7 +146,8 @@ rq_bpe_main() {
       rq_bpe_step "$mode" "$BPE_TIMING" "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$mode"
       rq_bpe_step "$mode" "$BPE_TIMING" "49-format-prepare" ./s7-49-format.sh "$mode" --prepare
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "s7-37-eval" ./s7-37-eval.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "37-eval-base" ./s7-37-eval-base.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "38-eval-quantized" ./s7-38-eval-quantized.sh "$mode" "$target"
     rq_bpe_step "$mode" "$BPE_TIMING" "40-gsm8k" ./s7-40-gsm8k.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "46-kmmluko" ./s7-46-kmmluko.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "49-format" ./s7-49-format.sh "$mode"

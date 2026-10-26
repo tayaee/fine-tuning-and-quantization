@@ -579,6 +579,10 @@ pins that exact fork without touching your environment
 (`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start
 compiles the model's kernels and takes about 10 minutes).
 
+Full-context serving on a single GB10: flags follow the vendor B300 profile,
+scaled to 128 GB. The 18 RDA layers hold fixed-size state and only the 7 MLA
+layers keep KV cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
+
 ```bash
 VLLM_REF="{VLLM_REF}"
 VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
@@ -586,31 +590,6 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
   --host 127.0.0.1 --port 8000 \\
   --served-model-name {repo_id} \\
   --tensor-parallel-size {VLLM_SERVE[target]['tp']} \\
-  --quantization {VLLM_SERVE[target]['quant']} \\
-  --max-model-len 8192 \\
-  --gpu-memory-utilization 0.9 \\
-  --trust-remote-code
-```
-
-> Compatibility note: the fork is verified against KRAFTON's own checkpoints
-> (`modelopt_fp4` NVFP4). This repository's checkpoints use the
-> `compressed-tensors` format (`{spec['format']}`), which is a different loader
-> path — serving them on the fork is untested.
-
-## Production serving (DGX Spark, 128 GB unified)
-
-Full-context serving on a single GB10 (the stock 8K limit above is for
-verification only). Flags follow the vendor B300 profile, scaled to 128 GB:
-the 18 RDA layers hold fixed-size state and only the 7 MLA layers keep KV
-cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
-
-```bash
-VLLM_REF="{VLLM_REF}"
-VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
-  vllm serve {repo_id} \\
-  --host 127.0.0.1 --port 8000 \\
-  --served-model-name {repo_id} \\
-  --tensor-parallel-size 1 \\
   --quantization {VLLM_SERVE[target]['quant']} \\
   --max-model-len 262144 \\
   --max-num-batched-tokens 16384 \\
@@ -628,6 +607,10 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
 > `--kv-cache-dtype fp8_e4m3` and the `raon_1` parsers are fork features —
 > verified on KRAFTON checkpoints, untested on `compressed-tensors` builds.
 > On a busy node lower `--gpu-memory-utilization` (e.g. `0.3`).
+> Compatibility note: the fork is verified against KRAFTON's own checkpoints
+> (`modelopt_fp4` NVFP4). This repository's checkpoints use the
+> `compressed-tensors` format (`{spec['format']}`), which is a different loader
+> path — serving them on the fork is untested.
 
 ## License and source
 
@@ -760,15 +743,17 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
         if target not in ppl:
             report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s6-34-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-37-eval/s7-40-gsm8k first)")
+            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s7-38-eval-quantized.sh/s7-40-gsm8k.sh first)")
         else:
             # score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 카드의 Check 2가 빈다
             # (일부 벤치만 다시 생성한 경우). base도 있어야 하락폭을 판정할 수 있다.
             for r in ("base", target):
+                rerun = (f"./s7-37-eval-base.sh {mode}" if r == "base"
+                         else f"./s7-38-eval-quantized.sh {mode} {r}")
                 if _gsm8k_acc(scores, r) is None:
                     report["errors"].append(
                         f"no GSM8K accuracy for '{r}' in outputs/eval-{mode}/score.json "
-                        f"(rerun: EVAL_BENCHMARKS=gsm8k ./s7-37-eval.sh {mode} {r} && ./s7-40-gsm8k.sh {mode})"
+                        f"(rerun: EVAL_BENCHMARKS=gsm8k {rerun} && ./s7-40-gsm8k.sh {mode})"
                     )
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])

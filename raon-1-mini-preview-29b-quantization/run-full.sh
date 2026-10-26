@@ -113,7 +113,7 @@ fi
 _eval_targets="base,$_targets"
 
 # 양자화만 CPU 강제(QUANT_CPU_ONLY=1): env로 자식 프로세스에만 빈 값을 넘겨
-# 34-ppl/s7-37-eval은 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
+# 34-ppl/s7-37-base·38-quantized는 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then
   _quant_cmd=(env CUDA_VISIBLE_DEVICES=)
   rq_log "QUANT_CPU_ONLY=1 — 양자화 단계만 GPU 숨김, PPL/eval은 GPU 사용"
@@ -158,7 +158,8 @@ if want_step eval; then
   want_step evalset && rq_step "36-evalset" ./s7-36-prep-gsm8k.sh "$MODE"
   want_step evalset && rq_step "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$MODE"
   want_step evalset && rq_step "49-format-prepare" ./s7-49-format.sh "$MODE" --prepare
-  rq_step "37-eval" ./s7-37-eval.sh "$MODE" "$_eval_targets"
+  rq_step "37-eval-base" ./s7-37-eval-base.sh "$MODE"
+  rq_step "38-eval-quantized" ./s7-38-eval-quantized.sh "$MODE" "$_targets"
   # 채점(40 GSM8K / 46 한국어 / 49 형식)
   rq_step "40-gsm8k" ./s7-40-gsm8k.sh "$MODE"
   rq_step "46-kmmluko" ./s7-46-kmmluko.sh "$MODE"

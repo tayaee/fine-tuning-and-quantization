@@ -1,6 +1,6 @@
 """s7-46-kmmluko.py — 표준 한국어 KMMLU 채점 + 수용 기준 대조 (Tier 2: 한국어 커버리지).
 
-s7-37-eval.sh가 생성한 응답(eval-<mode>/<target>.jsonl) 중 bench=="kmmluko" 행만 모아
+s7-37-eval-base.sh/s7-38-eval-quantized.sh가 생성한 응답(eval-<mode>/<target>.jsonl) 중 bench=="kmmluko" 행만 모아
 4지선다 정답을 파싱해 정확도를 계산하고, Stage 1 계약(base 대비 하락 허용폭)과 대조한다.
 결과는 checks.json의 "kmmluko" 섹션으로 병합한다(카드·릴리스 노트가 읽는다).
 
