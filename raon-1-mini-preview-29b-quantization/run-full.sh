@@ -188,6 +188,6 @@ rq_log "run-$MODE done"
 # --- 선택 (수동) ---
 # ./s8-49-upload-hf.sh full --dry-run   # 56-prep 산출물 검증만 (네트워크 없음)
 # ./s8-49-upload-hf.sh full              # smoke는 업로드하지 않음
-# ./s8-52-serve-vllm.sh full nvfp4-awq     # 터미널1 (상주, TP=2)
+# ./s8-52-serve-vllm.sh full nvfp4-awq     # 터미널1 (상주, README 카드 명령과 동일, 양자화 타깃 TP=1)
 # ./s8-55-infer-examples.sh 3              # 터미널2
 # ./s8-58-serve-infer-all.sh는 TARGETS 필수: TARGETS=all ./s8-58-serve-infer-all.sh full 3

@@ -101,6 +101,19 @@ def model_dir(mode: str, target: str) -> Path:
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
 
+#: vLLM 서빙 명령 스펙 — s8-52-serve-vllm.sh의 case 테이블과 값을 공유한다.
+#: 4종 양자화 타깃은 repo id를 제외하고 동일 명령이다. TP=1 (KRAFTON NVFP4 단일 GPU
+#: 프로파일; 20GB급 체크포인트는 단일 GPU에 올라간다). base는 Hub 카드가 없어
+#: 여기서 다루지 않는다 (s8-52에서만 로컬 서빙, TP는 infra 기본값).
+VLLM_SERVE = {
+    "awq-w3": {"tp": 1, "quant": "compressed-tensors"},
+    "awq-w5": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-awq": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-gptq": {"tp": 1, "quant": "compressed-tensors"},
+}
+VLLM_REF = "raon-1-mini-preview"
+VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
+
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
@@ -604,14 +617,33 @@ print(tok.decode(model.generate(inputs, max_new_tokens=256)[0], skip_special_tok
 
 ## Usage - vLLM
 
-The Raon-1-mini family uses a custom architecture, so the KRAFTON vLLM fork is required.
+The Raon-1-mini family uses a custom architecture, so stock vLLM cannot serve
+it. Use the KRAFTON vLLM fork (`{VLLM_REF}` branch). `uvx --from`
+pins that exact fork without touching your environment
+(`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start
+compiles the model's kernels and takes about 10 minutes).
 
 ```bash
-vllm serve {repo_id} \\
-  --trust-remote-code \\
-  --quantization compressed-tensors \\
-  --tensor-parallel-size 2
+VLLM_REF="{VLLM_REF}"
+VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
+  vllm serve {repo_id} \\
+  --host 127.0.0.1 --port 8000 \\
+  --served-model-name {repo_id} \\
+  --tensor-parallel-size {VLLM_SERVE[target]['tp']} \\
+  --quantization {VLLM_SERVE[target]['quant']} \\
+  --max-model-len 8192 \\
+  --gpu-memory-utilization 0.9 \\
+  --trust-remote-code
 ```
+
+> Verification: `SOURCE=hf ./s8-52-serve-vllm.sh {mode} {target}` runs the
+> command above verbatim (only the model ref is already the Hub repo id).
+> With `SOURCE=local` (default) the same flags serve the local checkpoint.
+
+> Compatibility note: the fork is verified against KRAFTON's own checkpoints
+> (`modelopt_fp4` NVFP4). This repository's checkpoints use the
+> `compressed-tensors` format (`{spec['format']}`), which is a different loader
+> path — serving them on the fork is untested.
 
 ## License and source
 
