@@ -380,7 +380,7 @@ def _check_tables(
 def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
     """서빙 성능 비교표 + 측정 하드웨어 조건.
 
-    `s7-53-serve-compare.sh`가 타깃별로 누적한 checks.json servebench.targets를
+    `s7-55-bench-transformers.py`가 타깃별로 누적한 checks.json servebench.targets를
     타깃 × concurrency 표로 렌더링한다. 구 형태(단일 측정 payload)도 fallback 지원.
     """
     hw = sb.get("hardware") or {}

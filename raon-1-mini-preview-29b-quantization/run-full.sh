@@ -67,16 +67,16 @@ rq_log "run-$MODE start (steps=${STEPS:-all})"
 # TARGETS는 **명시해야 한다**: 미지정 시 4종 전체(각 20~40분)를 조용히 돌지 않는다.
 RQ_TARGETS_ALL="awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"
 if [ -z "${TARGETS:-}" ]; then
-  echo "TARGETS 미지정 — 양자화 대상을 명시해야 합니다 (issue-12)." >&2
+  echo "TARGETS is not specified — you must name the quantization targets (issue-12)." >&2
   echo "" >&2
-  echo "사용 가능한 값:" >&2
+  echo "Available values:" >&2
   for _t in $RQ_TARGETS_ALL; do echo "  - $_t" >&2; done
-  echo "  - all            # 위 4종 전부" >&2
+  echo "  - all            # all 4 targets above" >&2
   echo "" >&2
-  echo "예:" >&2
-  echo "  TARGETS=nvfp4-awq ./run-*.sh              # 1종만" >&2
-  echo "  TARGETS=awq-w3,awq-w5 ./run-*.sh           # 2노드 분담" >&2
-  echo "  TARGETS=all ./run-*.sh                     # 전부(각 타깃별 시간이 큼)" >&2
+  echo "Examples:" >&2
+  echo "  TARGETS=nvfp4-awq ./run-*.sh              # a single target" >&2
+  echo "  TARGETS=awq-w3,awq-w5 ./run-*.sh           # split across 2 nodes" >&2
+  echo "  TARGETS=all ./run-*.sh                     # all (slow per target)" >&2
   exit 2
 fi
 _targets="$TARGETS"
@@ -85,7 +85,7 @@ case ",${_targets}," in *,all,*) _targets="awq-w3,awq-w5,nvfp4-awq,nvfp4-gptq" ;
 for _t in $(echo "$_targets" | tr ',' ' '); do
   case " $RQ_TARGETS_ALL " in
     *" $_t "*) ;;
-    *) echo "알 수 없는 TARGETS: $_t (사용 가능: $RQ_TARGETS_ALL | all)" >&2; exit 2 ;;
+    *) echo "Unknown TARGETS: $_t (allowed: $RQ_TARGETS_ALL | all)" >&2; exit 2 ;;
   esac
 done
 

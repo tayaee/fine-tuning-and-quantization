@@ -21,7 +21,7 @@ for _t in $(echo "$RQ_WANT" | tr ',' ' '); do
   if [ "$_t" = all ]; then TARGETS=(base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq); break; fi
   case " base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq " in
     *" $_t "*) TARGETS+=("$_t") ;;
-    *) echo "알 수 없는 TARGETS: $_t (사용 가능: base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq | all)" >&2; exit 2 ;;
+    *) echo "Unknown TARGETS: $_t (allowed: base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq | all)" >&2; exit 2 ;;
   esac
 done
 LOAD_TIMEOUT="${LOAD_TIMEOUT:-1200}"
