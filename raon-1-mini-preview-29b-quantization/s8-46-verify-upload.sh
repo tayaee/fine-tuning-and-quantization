@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # s8-46-verify-upload.sh [smoke|full] [targets] — 업로드 전 모델·지표·README·vLLM 호환성 종합 감사.
+# targets 필수 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
 # s8-43-prep-upload.sh 실행 후, s8-49-upload-hf.sh 실행 전에 모든 산출물의 결함 여부를 전수 점검한다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="${2:-${TARGETS:-all}}"
+TARGETS="$(rq_require_targets "./s8-46-verify-upload.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 : "${ALLOW_MISSING_METRICS:=0}"
 : "${ALLOW_DISCARD:=0}"
 : "${ALLOW_TINY:=0}"

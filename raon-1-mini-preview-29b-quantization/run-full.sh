@@ -190,4 +190,4 @@ rq_log "run-$MODE done"
 # ./s8-49-upload-hf.sh full              # smoke는 업로드하지 않음
 # ./s8-52-serve-vllm.sh full nvfp4-awq     # 터미널1 (상주, TP=2)
 # ./s8-55-infer-examples.sh 3              # 터미널2
-# ./s8-58-serve-infer-all.sh full 3        # 전 타깃 순회
+# ./s8-58-serve-infer-all.sh는 TARGETS 필수: TARGETS=all ./s8-58-serve-infer-all.sh full 3

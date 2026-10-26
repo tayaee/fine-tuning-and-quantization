@@ -6,8 +6,8 @@
 그것도 없으면 `smoke`다.
 
 ```bash
-./s8-43-prep-upload.sh full              # 인자 우선
-MODE=full ./s8-43-prep-upload.sh         # 환경변수 (아무 인자 없이)
+./s8-43-prep-upload.sh full nvfp4-awq     # 인자 우선 (targets 필수)
+MODE=full ./s8-43-prep-upload.sh full nvfp4-awq   # 환경변수 MODE (타깃 인자는 그대로 필수)
 MODE=full TARGETS=nvfp4-awq ./s8-43-prep-upload.sh   # 타깃도 함께
 ```
 
@@ -41,8 +41,8 @@ uv run hf auth login
 RQ_AWQ_FIRST=0 ./s5-22-quant-awq-w3.sh smoke   # custom_arch AWQ 실패 시 pure-GPTQ 폴백
 RQ_TARGETS=all ./s5-31-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Linear
 
-# 4. PPL (일부 타깃만 — 타겟마다 별도 프로세스, 마지막에 캐시 집계)
-./s6-34-measure-ppl.sh smoke
+# 4. PPL (일부 타깃만 — 타겟마다 별도 프로세스, 마지막에 캐시 집계, targets 필수)
+TARGETS=all ./s6-34-measure-ppl.sh smoke
 ./s6-34-measure-ppl.sh smoke nvfp4-gptq,nvfp4-awq
 
 # 게이트 (run-{smoke,full}.sh가 자동 호출 — 수동으로 확인할 때)
@@ -69,21 +69,23 @@ RQ_EVAL_BACKEND=transformers ./s7-37-eval.sh smoke nvfp4-gptq
 ./s7-46-kmmluko.sh smoke     # → checks.json "kmmluko"
 ./s7-49-format.sh smoke      # → checks.json "format"
 STEPS=serve ./run-smoke.sh   # 서빙 처리량 측정(s7-52, 서버가 떠 있어야)
+# transformers 인프로세스 처리량 (서버 불필요, Raon 정석 스택 — stock vLLM은 커스텀 아키 미지원)
+./s7-55-bench-transformers.sh smoke base,nvfp4-awq   # → bench-transformers-<mode>.json + checks.json servebench
 
-# 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증)
+# 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증, targets 필수)
 #    - 모델 디렉터리 README.md = base + 그 모델 1개 비교 (Hub 업로드 대상)
 #    - models/README-<mode>.md      = 그 모드의 전체 양자화 버전 비교 리포트 (업로드 아님)
-./s8-43-prep-upload.sh smoke
+TARGETS=all ./s8-43-prep-upload.sh smoke
 ./s8-43-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
 ./s8-46-verify-upload.sh smoke nvfp4-awq
 ./s8-46-verify-upload.sh full nvfp4-awq
 
-# 7. 업로드·서빙 (full만 업로드, 43-prep 산출물이 있어야 함)
-DRY_RUN=1 ./s8-49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증
-./s8-49-upload-hf.sh full
+# 7. 업로드·서빙 (full만 업로드, 43-prep 산출물이 있어야 함, targets 필수)
+TARGETS=all DRY_RUN=1 ./s8-49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증
+TARGETS=all ./s8-49-upload-hf.sh full
 ./s8-52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1
 ./s8-55-infer-examples.sh 3             # 터미널2
-./s8-58-serve-infer-all.sh smoke 3      # 순회
+TARGETS=all ./s8-58-serve-infer-all.sh smoke 3      # 순회
 
 # 8. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / 배포 후 서빙 검증
 python s8-61-release-notes.py --mode smoke     # outputs/release-notes-smoke.md

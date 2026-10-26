@@ -1,22 +1,32 @@
 #!/bin/bash
 # s8-58-serve-infer-all.sh [mode] [n] — 전 타깃 순회 서빙+추론 (단일 터미널).
+# 대상은 TARGETS 환경변수로 필수 지정 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
 # 모델마다: serve 기동 → 로딩 대기 → s8-55-infer-examples → logs/55.<slug>.log → kill.
 # 29B 로드 감안: LOAD_TIMEOUT 기본 1200.
-# 사용: ./s8-58-serve-infer-all.sh smoke 3
+# 사용: TARGETS=all ./s8-58-serve-infer-all.sh smoke 3
+#       TARGETS=nvfp4-awq ./s8-58-serve-infer-all.sh full 3
 set -uo pipefail
 cd "$(dirname "$0")"
 MODE_ARG="${1:-${MODE:-smoke}}"
 N="${2:-3}"
 source "$(dirname "$0")/config/common.env" "$MODE_ARG"
+RQ_WANT="$(rq_require_targets "./s8-58-serve-infer-all.sh $MODE 3" "" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 rq_banner "s8-58-serve-infer-all" "Stage 8/9 - serve every target in sequence and smoke-test inference"
 PORT="${PORT:-8000}"
 BASE_URL="${BASE_URL:-http://localhost:${PORT}/v1}"
 export PORT BASE_URL
+# TARGETS 환경변수(필수)를 순회 목록으로 편다. all이면 5종 전부.
+TARGETS=()
+for _t in $(echo "$RQ_WANT" | tr ',' ' '); do
+  if [ "$_t" = all ]; then TARGETS=(base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq); break; fi
+  case " base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq " in
+    *" $_t "*) TARGETS+=("$_t") ;;
+    *) echo "알 수 없는 TARGETS: $_t (사용 가능: base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq | all)" >&2; exit 2 ;;
+  esac
+done
 LOAD_TIMEOUT="${LOAD_TIMEOUT:-1200}"
 INFER_TIMEOUT="${INFER_TIMEOUT:-900}"
 mkdir -p logs
-
-TARGETS=(base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)
 
 slugify() { sed -e 's;/;__;g' | tr 'A-Z' 'a-z'; }
 expected_slug() { local s="tayaee/${BASE_MODEL##*/}-$2"; [ "$1" = smoke ] && s="$s-smoke"; printf '%s' "$s" | slugify; }

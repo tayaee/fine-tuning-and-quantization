@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # s7-54-servebench-quant.sh [mode] [target] — 양자화 모델 서빙벤치 (전용 포트).
+# target 필수 (미지정 시 사용법 출력 후 종료). base는 s7-53-servebench-base.sh를 쓴다.
 # base와 동일 절차: 기동 → 메모리 4지점 → C=1,8,32 스위프 → 종료.
 # 결과는 checks.json servebench.targets.<target>에 누적된다
 # (s7-52가 기존 기록을 보존하므로 base 결과가 지워지지 않는다).
@@ -7,8 +8,8 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 MODE_ARG="${1:-${MODE:-smoke}}"
-TARGET="${2:-${TARGETS:-nvfp4-awq}}"
 source "$(dirname "$0")/config/common.env" "$MODE_ARG"
+TARGET="$(rq_require_targets "./s7-54-servebench-quant.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 rq_banner "s7-54-servebench-quant" "Stage 7/9 - serve quantized model on dedicated port and sweep throughput"
 case "$TARGET" in
   base) echo "base는 s7-53-servebench-base.sh를 쓰라." >&2; exit 1 ;;

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # s6-34-measure-ppl.sh [smoke|full] [targets] — PPL 측정 + base 대비 Δ판정.
+# targets 필수 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
 # 타겟마다 별도 프로세스로 띄운다 (요구사항 1): 29B 모델 5개를 한 프로세스에서
 # 순차 로드하면 GB10(128GB 통합 메모리)에서 두 번째 로드부터 OOM이 난다.
 # 프로세스 격리로 OS 메모리까지 100% 회수한 뒤 마지막에 캐시를 집계한다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
+TARGETS="$(rq_require_targets "./s6-34-measure-ppl.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 N="${PPL_N:-8}"
-TARGETS="${2:-${TARGETS:-all}}"
 rq_repro_echo
 rq_banner "s6-34-measure-ppl" "Stage 6/9 - measure in-domain PPL and judge the delta against the bf16 base"
 SUMMARY="$RQ_OUTPUTS/ppl-$MODE/summary.json"

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # s8-43-prep-upload.sh [smoke|full] [targets] — 업로드 전 모델 디렉터리 검증 + README.md 생성.
+# targets 필수 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
 # s8-49-upload-hf.py(업로드 전담)가 요구하는 전제 조건을 여기서 만든다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="${2:-${TARGETS:-all}}"
+TARGETS="$(rq_require_targets "./s8-43-prep-upload.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 : "${ALLOW_MISSING_METRICS:=0}"
 ALLOW_MISSING=""
 [ "$ALLOW_MISSING_METRICS" = 1 ] && ALLOW_MISSING="--allow-missing-metrics"

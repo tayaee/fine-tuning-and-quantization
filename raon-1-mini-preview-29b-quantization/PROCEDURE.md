@@ -58,10 +58,17 @@
 (`awq-w3`/`awq-w5`/`nvfp4-awq`/`nvfp4-gptq`/`all`)을 찍고 exit 2 한다 —
 "인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
+같은 규칙이 타깃을 받는 모든 개별 스크립트에도 적용된다
+(`s6-34-measure-ppl` · `s7-37-eval` · `s7-54-servebench-quant` · `s7-55-bench-transformers` ·
+`s8-43-prep-upload` · `s8-46-verify-upload` · `s8-49-upload-hf` · `s8-58-serve-infer-all`):
+`$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
+(`s8-58`은 `[mode] [n]` 형태라 `TARGETS` 환경변수로만 받는다.)
+
 ```bash
 TARGETS=nvfp4-awq ./run-smoke.sh        # 1종
 TARGETS=awq-w3,awq-w5 ./run-full.sh     # 2노드 분담
 TARGETS=all ./run-full.sh               # 4종 전부
+./s6-34-measure-ppl.sh smoke base,nvfp4-awq   # 개별 스크립트도 동일 ($2 또는 TARGETS)
 ```
 
 ## smoke/full 스케일 (`config/common.env`)

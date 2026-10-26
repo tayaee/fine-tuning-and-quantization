@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# s7-37-eval.sh [smoke|full] [target...] — 벤치마크 프롬프트 생성. target 기본 all.
+# s7-37-eval.sh [smoke|full] [target...] — 벤치마크 프롬프트 생성. targets 필수.
 # s7-37-eval.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="${2:-${TARGETS:-all}}"
+TARGETS="$(rq_require_targets "./s7-37-eval.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
 N="$EVAL_N"
 : "${VLLM_GPU_MEM_UTIL:=0.9}"
 : "${RQ_EVAL_BACKEND:=auto}"
