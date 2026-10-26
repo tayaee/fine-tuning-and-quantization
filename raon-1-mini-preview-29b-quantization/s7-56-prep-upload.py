@@ -256,58 +256,6 @@ def _format_contract_verdict(checks: dict, target: str) -> str:
     return "PASS" if float(rate) >= min_rate else "FAIL"
 
 
-def _acceptance_rows(target: str, mode: str, ppl: dict, size_gb: float, checks: dict) -> list[str]:
-    """Stage 1 수용 기준(acceptance.toml) vs 실측 대조표(모델 카드용)."""
-    try:
-        from sdlc import load_acceptance, target_spec, verdict_for_delta
-
-        data = load_acceptance()
-    except Exception:  # noqa: BLE001 — 계약 파일이 없으면 기준 표를 생략
-        return ["_Acceptance contract file (config/acceptance.toml) not found - comparison table omitted._"]
-    spec = target_spec(data, target)
-    row = (ppl or {}).get(target) or {}
-    delta = row.get("delta")
-    verdict = row.get("verdict")
-    if delta is not None and not verdict:
-        try:
-            verdict = verdict_for_delta(float(delta), spec)
-        except Exception:  # noqa: BLE001
-            verdict = None
-    lo, hi = (spec.get("size_gb") or [None, None])[:2]
-    size_ok = "n/a"
-    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
-        size_ok = "PASS" if float(lo) <= float(size_gb) <= float(hi) else "FAIL"
-    rows = [
-        "| Criterion | Threshold | Measured | Verdict |",
-        "| --- | --- | --- | --- |",
-        (
-            f"| PPL delta vs base | < {spec.get('ppl_delta_max')} (Conditional limit) | "
-            f"{_fmt(delta, 3)} | {verdict or 'n/a'} |"
-        ),
-        (
-            f"| PPL delta (warning line) | < {spec.get('ppl_delta_warn')} (Accept limit) | "
-            f"{_fmt(delta, 3)} | {'Accept' if verdict == 'Accept' else 'n/a'} |"
-        ),
-        f"| Checkpoint size (GB) | {lo} ~ {hi} | {size_gb} | {size_ok} |",
-        (
-            f"| Storage format | `{spec.get('quant_format')}` | `{SPECS[target]['format']}` | "
-            f"{'PASS' if spec.get('quant_format') == SPECS[target]['format'] else 'FAIL'} |"
-        ),
-        (
-            f"| GSM8K accuracy drop vs base | <= {spec.get('gsm8k_acc_drop_max', 0.02)} | "
-            f"{_fmt(_gsm8k_drop(checks, target), 3)} | {_gsm8k_contract_verdict(checks, target)} |"
-        ),
-        (
-            f"| KMMLU (Korean) accuracy drop vs base | <= {spec.get('kmmluko_acc_drop_max', 0.03)} | "
-            f"{_fmt(_kmmluko_drop(checks, target), 3)} | {_kmmluko_contract_verdict(checks, target)} |"
-        ),
-        (
-            f"| Instruction/format compliance | >= {spec.get('format_pass_rate_min', 0.9)} | "
-            f"{_fmt(_format_rate(checks, target), 3)} | {_format_contract_verdict(checks, target)} |"
-        ),
-    ]
-    return rows
-
 
 def _existing_targets(mode: str, ppl: dict, scores: dict) -> list[str]:
     """이 모드에서 **존재하는** 양자화 버전(모델 디렉터리 또는 실측 지표가 있는 것)."""
@@ -316,6 +264,82 @@ def _existing_targets(mode: str, ppl: dict, scores: dict) -> list[str]:
         if model_dir(mode, t).is_dir() or t in ppl or t in scores:
             out.append(t)
     return out
+
+
+def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: float,
+                      checks: dict) -> str:
+    """Base 대비 바뀐 점 1표 (모델 카드용).
+
+    Acceptance criteria ~ Serving performance 섹션을 이 1표로 대체한다.
+    기준값과 Verdict는 컬럼 4에 함께 적는다. 카드는 영어 유지.
+    """
+    spec = _acceptance_target_spec(target)
+    base_p = (ppl.get("base") or {})
+    cur_p = (ppl.get(target) or {})
+    delta = cur_p.get("delta")
+    warn = spec.get("ppl_delta_warn", 0.3)
+    maxd = spec.get("ppl_delta_max", 1.0)
+    ppl_note = f"\u0394 {_fmt(delta, 3)} \u2014 {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd})"
+
+    base_size = _dir_size_gb(Path(BF16_DIR()))
+    lo, hi = (spec.get("size_gb") or [None, None])[:2]
+    size_ok = "PASS" if (isinstance(lo, (int, float)) and isinstance(hi, (int, float))
+                         and float(lo) <= float(size_gb) <= float(hi)) else "-"
+    size_note = f"{size_ok} (contract {lo} ~ {hi} GB)"
+
+    fmt_ok = "PASS" if spec.get("quant_format") == SPECS[target]["format"] else "FAIL"
+    fmt_note = f"{fmt_ok} (contract `{spec.get('quant_format')}`)"
+
+    b_acc, b_cnt = _gsm8k_acc_n(scores, "base")
+    c_acc, c_cnt = _gsm8k_acc_n(scores, target)
+    gdrop_max = spec.get("gsm8k_acc_drop_max", 0.02)
+    gsm_v = _gsm8k_verdict(c_acc, b_acc, gdrop_max)
+    gsm_drop = "-" if b_acc is None or c_acc is None else f"{float(b_acc) - float(c_acc):.3f}"
+    gsm_note = f"{gsm_v} (drop {gsm_drop} <= {gdrop_max})"
+
+    k_acc = _kmmluko_acc(checks, target)
+    kb_acc = _kmmluko_acc(checks, "base")
+    k_row = ((checks.get("kmmluko") or {}).get("targets") or {}).get(target) or {}
+    kb_row = ((checks.get("kmmluko") or {}).get("targets") or {}).get("base") or {}
+    kdrop_max = spec.get("kmmluko_acc_drop_max", 0.03)
+    k_v = _kmmluko_contract_verdict(checks, target)
+    k_cnt = "-" if not k_row.get("n") else f"{round(float(k_acc or 0) * float(k_row['n']))}/{k_row['n']}"
+    kb_cnt = "-" if not kb_row.get("n") else f"{round(float(kb_acc or 0) * float(kb_row['n']))}/{kb_row['n']}"
+    k_note = f"{k_v} (drop {_fmt(_kmmluko_drop(checks, target), 3)} <= {kdrop_max})"
+
+    f_row = ((checks.get("format") or {}).get("targets") or {}).get(target) or {}
+    fb_row = ((checks.get("format") or {}).get("targets") or {}).get("base") or {}
+    f_rate = _format_rate(checks, target)
+    fb_rate = _format_rate(checks, "base")
+    f_cnt = "-" if not f_row.get("n") else f"{round((f_rate or 0) * f_row['n'])}/{f_row['n']}"
+    fb_cnt = "-" if not fb_row.get("n") else f"{round((fb_rate or 0) * fb_row['n'])}/{fb_row['n']}"
+    f_min = float(f_row.get("pass_rate_min", spec.get("format_pass_rate_min", 0.9)))
+    f_note = f"{_format_contract_verdict(checks, target)} (>= {f_min})"
+
+    sb = checks.get("servebench") or {}
+    sbt = sb.get("targets") or {}
+    run = (sbt.get(target) or {}).get("1") or {}
+    brun = (sbt.get("base") or {}).get("1") or {}
+    bkend = sb.get("backend") or (sb.get("hardware") or {}).get("backend") or "transformers"
+    tps = f"{run.get('tok_per_s_p50', '—')} tok/s"
+    btps = f"{brun.get('tok_per_s_p50', '—')} tok/s"
+    lat = f"{run.get('req_latency_s_p50', '—')} s"
+    blat = f"{brun.get('req_latency_s_p50', '—')} s"
+    serve_note = f"in-process {bkend} (no fused kernels; not a serving claim)"
+
+    rows = [
+        "| Item | This Model | Base | Verdict or Notes |",
+        "| --- | ---: | ---: | --- |",
+        f"| PPL (in-domain) | {_fmt(cur_p.get('ppl'), 3)} | {_fmt(base_p.get('ppl'), 3)} | {ppl_note} |",
+        f"| Checkpoint size | {size_gb} GB | {base_size} GB | {size_note} |",
+        f"| Storage format | `{SPECS[target]['format']}` | BF16 (dequantized) | {fmt_note} |",
+        f"| GSM8K accuracy | {_fmt(c_acc, 3)} ({c_cnt}) | {_fmt(b_acc, 3)} ({b_cnt}) | {gsm_note} |",
+        f"| KMMLU accuracy | {_fmt(k_acc, 3)} ({k_cnt}) | {_fmt(kb_acc, 3)} ({kb_cnt}) | {k_note} |",
+        f"| Format compliance | {_fmt(f_rate, 3)} ({f_cnt}) | {_fmt(fb_rate, 3)} ({fb_cnt}) | {f_note} |",
+        f"| Throughput C=1 | {tps} | {btps} | {serve_note} |",
+        f"| Latency p50 | {lat} | {blat} | same fixed workload |",
+    ]
+    return "\n".join(rows) + "\n"
 
 
 def _check_tables(
@@ -466,26 +490,6 @@ def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _serve_prose(rows: list[str], mode: str, checks: dict) -> str:
-    """Serving 섹션 도입 문구 — 측정 backend(인프로세스/vLLM)에 따라 달라진다."""
-    sb = checks.get("servebench") or {}
-    backend = sb.get("backend") or (sb.get("hardware") or {}).get("backend") or ""
-    if backend == "transformers":
-        return (
-            "Measured in-process with `transformers` + `trust_remote_code` "
-            "(`s7-55-bench-transformers.sh`, no server — stock vLLM cannot serve "
-            "the Raon custom architecture). The table below compares the bf16 base "
-            "model against this build on the same fixed workload, so the two rows "
-            "are directly comparable.\n"
-            "KRAFTON publishes throughput numbers for the base model, but on a different stack "
-            "(vLLM 0.28.0 with an MXFP8 target), so they are directional context only."
-        )
-    return (
-        "Measured against a running OpenAI-compatible server (`s7-52-servebench.sh`).\n"
-        "KRAFTON publishes throughput numbers for the base model, but on a different stack "
-        "(vLLM 0.28.0 with an MXFP8 target), so they are directional context only."
-    )
-
 
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
     """HuggingFace 모델 카드 (요구사항 2.1-3).
@@ -495,19 +499,9 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     """
     spec = SPECS[target]
     checks = _checks(mode)
-    _spec = _acceptance_target_spec(target)
-    ppl_delta_warn = _spec.get("ppl_delta_warn", 0.3)
-    ppl_delta_max = _spec.get("ppl_delta_max", 1.0)
-    gsm8k_drop = _spec.get("gsm8k_acc_drop_max", 0.02)
-    kmmluko_drop = _spec.get("kmmluko_acc_drop_max", 0.03)
-    format_min = _spec.get("format_pass_rate_min", 0.9)
     gsm8k_meta = _evalset_meta(mode)
-    acceptance_rows = _acceptance_rows(target, mode, ppl, size_gb, checks)
-    rows = ["base", target]
-    ppl_table, gsm_table, ko_table, fmt_table, serve_lines = _check_tables(
-        rows, {target}, mode, ppl, scores, checks, gsm8k_drop
-    )
     repo_id = hf_repo_id(target, mode)
+    comparison = _comparison_table(target, mode, ppl, scores, size_gb, checks)
 
     tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
     fm = [
@@ -548,56 +542,12 @@ loads directly with `transformers`' `AutoModelForCausalLM`.
 | Checkpoint size | {size_gb} GB |
 | Storage format | `{spec['format']}` |
 
-## Acceptance criteria (Stage 1 contract)
+## Base vs this model
 
-The acceptance criteria are the pipeline contract defined in `config/acceptance.toml`.
-The table below contrasts that contract with the measured values.
+What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
+({gsm8k_meta}). Thresholds from `config/acceptance.toml`.
 
-{chr(10).join(acceptance_rows)}
-
-## Check 1 - PPL (in-domain perplexity)
-
-In-domain perplexity measured on the calibration corpus. The verdict is based on the
-delta against the bf16 base model (`delta < {ppl_delta_warn}` Accept,
-`< {ppl_delta_max}` Conditional, otherwise Discard; thresholds from
-`config/acceptance.toml`). The **bold** row is the model published in this repository.
-
-{chr(10).join(ppl_table)}
-
-## Check 2 - GSM8K (standard test set accuracy)
-
-Accuracy on a deterministic sample of the standard GSM8K test set
-(`openai/gsm8k`, main/test). The prompts are generated deterministically by
-`s7-36-prep-gsm8k.sh` ({gsm8k_meta}) and scored by s7-37-eval / s7-40-gsm8k.
-The verdict is PASS when the accuracy drop against the base model stays within
-`{gsm8k_drop}`.
-
-{chr(10).join(gsm_table)}
-
-## Check 3 - KMMLU (standard Korean benchmark)
-
-Accuracy on a deterministic sample of the standard Korean KMMLU benchmark
-(`HAERAE-HUB/KMMLU`, 4-option multiple choice, several subjects). The prompts are
-generated by `s7-43-prep-kmmluko.sh` and scored by `s7-46-kmmluko.sh`.
-The verdict is PASS when the accuracy drop against the base model stays within
-`{kmmluko_drop}`.
-
-{chr(10).join(ko_table)}
-
-## Check 4 - Instruction and format compliance
-
-A fixed suite of 10 cases checks whether the model follows the requested format:
-output language, JSON-only output, `#### N` markers, length limits, bullet lists,
-two-line reproduction, no preamble, and asking back on an empty question.
-The verdict is PASS when the pass rate stays at or above `{format_min}`.
-
-{chr(10).join(fmt_table)}
-
-## Serving performance
-
-{_serve_prose(rows, mode, checks)}
-
-{serve_lines}
+{comparison}
 
 ## Usage - transformers
 
@@ -644,6 +594,40 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
 > (`modelopt_fp4` NVFP4). This repository's checkpoints use the
 > `compressed-tensors` format (`{spec['format']}`), which is a different loader
 > path — serving them on the fork is untested.
+
+## Production serving (DGX Spark, 128 GB unified)
+
+Full-context serving on a single GB10 (the stock 8K limit above is for
+verification only). Flags follow the vendor B300 profile, scaled to 128 GB:
+the 18 RDA layers hold fixed-size state and only the 7 MLA layers keep KV
+cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
+
+```bash
+VLLM_REF="{VLLM_REF}"
+VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
+  vllm serve {repo_id} \\
+  --host 127.0.0.1 --port 8000 \\
+  --served-model-name {repo_id} \\
+  --tensor-parallel-size 1 \\
+  --quantization {VLLM_SERVE[target]['quant']} \\
+  --max-model-len 262144 \\
+  --max-num-batched-tokens 16384 \\
+  --max-num-seqs 128 \\
+  --gpu-memory-utilization 0.85 \\
+  --kv-cache-dtype fp8_e4m3 \\
+  --enable-prefix-caching \\
+  --reasoning-parser raon_1 \\
+  --tool-call-parser raon_1 \\
+  --enable-auto-tool-choice \\
+  --trust-remote-code \\
+  --default-chat-template-kwargs '{{"enable_thinking": true, "truncate_history_thinking": false}}'
+```
+
+> Run it with `./s8-65-serve-vllm-production.sh {mode} {target}`
+> (`SOURCE=hf` default; `SOURCE=local` serves the local checkpoint).
+> `--kv-cache-dtype fp8_e4m3` and the `raon_1` parsers are fork features —
+> verified on KRAFTON checkpoints, untested on `compressed-tensors` builds.
+> On a busy node lower `--gpu-memory-utilization` (e.g. `GPU_UTIL=0.3`).
 
 ## License and source
 

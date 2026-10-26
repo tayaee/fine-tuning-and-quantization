@@ -103,5 +103,27 @@ def test_s864_delegates_to_wrapper_for_card_command():
     assert '[ "$SOURCE" = hf ] && [ "$MODE" = full ]' in S864
 
 
+def test_card_production_block_matches_s865():
+    """카드 Production 블록 ≡ s8-65 스크립트 (GB10 풀 컨텍스트)."""
+    r = prep.render_readme("nvfp4-awq", "full", {}, {}, 20.0)
+    assert "## Production serving (DGX Spark, 128 GB unified)" in r
+    prod_sec = r.split("## Production serving", 1)[1].split("## License", 1)[0]
+    blocks = re.findall(r"```bash\n(.*?)```", prod_sec, re.DOTALL)
+    assert blocks, "production bash 블록 없음"
+    prod = blocks[0]
+    for flag in ("--max-model-len 262144", "--max-num-batched-tokens 16384",
+                 "--max-num-seqs 128", "--gpu-memory-utilization 0.85",
+                 "--kv-cache-dtype fp8_e4m3", "--enable-prefix-caching",
+                 "--reasoning-parser raon_1", "--tool-call-parser raon_1",
+                 "--enable-auto-tool-choice"):
+        assert flag in prod, flag
+    assert "s8-65-serve-vllm-production.sh" in prod_sec
+    s865 = (ROOT / "s8-65-serve-vllm-production.sh").read_text(encoding="utf-8")
+    for flag in ("--max-model-len 262144", "--kv-cache-dtype fp8_e4m3",
+                 "--enable-prefix-caching", "--reasoning-parser raon_1",
+                 "--default-chat-template-kwargs"):
+        assert flag in s865, flag
+
+
 if __name__ == "__main__":
     raise SystemExit(run_standalone(dict(globals())))

@@ -189,19 +189,20 @@ def test_prep_generates_readme_with_required_sections(workspace):
                 "Apache"):
         assert tok in readme, f"README에 '{tok}' 없음"
     assert "extra_gated" not in readme, "원본 KRAFTON gated 필드를 복사하면 안 된다"
-    # 검사 2종(PPL/GSM8K) 표가 있어야 한다 (영문 카드)
-    assert "## Check 1 - PPL" in readme, "PPL check section missing"
-    assert "## Check 2 - GSM8K" in readme, "GSM8K check section missing"
+    # 단일 비교표(베이스 대비 바뀐 점)가 있어야 한다 (영문 카드)
+    assert "## Base vs this model" in readme, "comparison section missing"
+    assert "| Item | This Model | Base | Verdict or Notes |" in readme
+    assert "## Acceptance criteria" not in readme, "old criteria section remains"
+    assert "## Check 1" not in readme, "old check sections remain"
+    assert "## Serving performance" not in readme, "old serving section remains"
     assert "## Quantization spec" in readme, "quantization spec section missing"
-    assert "## Acceptance criteria (Stage 1 contract)" in readme, "acceptance section missing"
     # 모델 카드는 업로드되는 산출물 → 전부 영어여야 한다
     ko = re.compile(r"[가-힣]")
     korean_lines = [ln for ln in readme.splitlines() if ko.search(ln)]
     assert not korean_lines, f"README must be fully English, found: {korean_lines[:3]}"
-    # 기준선(base) 수치와 현재 모델 수치가 표에 함께 있어야 한다
+    # 기준선(base) 수치와 현재 모델 수치가 비교표에 함께 있어야 한다
     assert "8.11" in readme and "8.42" in readme
-    for b in BENCHES:
-        assert b in readme
+    assert "GSM8K accuracy" in readme and "0.800" in readme and "0.900" in readme
 
 
 def test_prep_requires_metrics_unless_allowed(workspace):
@@ -243,7 +244,8 @@ def test_prep_readme_ppl_delta_has_three_decimals(workspace):
     fp.write_text(json.dumps(data), encoding="utf-8")
     assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
     readme = (d / "README.md").read_text(encoding="utf-8")
-    assert "| PPL delta vs base | < " in readme and "| -0.001 | Accept |" in readme
+    assert "| PPL (in-domain) | 8.109 | 8.110 |" in readme
+    assert "Δ -0.001" in readme and "Accept" in readme
     assert "-0.00 |" not in readme
     _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
     _write_metrics(workspace, "smoke")
@@ -402,13 +404,13 @@ def test_prep_readme_compares_base_and_target_only(workspace):
     report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
     assert report["ok"] is True, report["errors"]
     readme = (workspace / "models" / "raon-nvfp4-awq-smoke" / "README.md").read_text(encoding="utf-8")
-    # Model 컬럼은 정식 HF 모델명(Hub repo id)이어야 한다
-    assert "| **KRAFTON/Raon-1-mini-preview** (base) |" in readme
-    assert "| **tayaee/Raon-1-mini-preview-nvfp4-awq-smoke** |" in readme
-    # 다른 양자화 버전 행은 없어야 한다(업로드용 카드는 이 모델 1개만)
-    assert "| **tayaee/Raon-1-mini-preview-awq-w5-smoke** |" not in readme
-    assert "| **tayaee/Raon-1-mini-preview-awq-w3-smoke** |" not in readme
-    assert "| **tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke** |" not in readme
+    # 모델 카드 비교표에는 base와 이 타겟만 언급된다 (정식 HF 모델명)
+    assert "KRAFTON/Raon-1-mini-preview" in readme
+    assert "tayaee/Raon-1-mini-preview-nvfp4-awq-smoke" in readme
+    # 다른 양자화 버전 repo는 언급되지 않아야 한다(업로드용 카드는 이 모델 1개만)
+    assert "Raon-1-mini-preview-awq-w5-smoke" not in readme
+    assert "Raon-1-mini-preview-awq-w3-smoke" not in readme
+    assert "Raon-1-mini-preview-nvfp4-gptq-smoke" not in readme
 
 
 def test_prep_writes_mode_summary_comparison(workspace):
