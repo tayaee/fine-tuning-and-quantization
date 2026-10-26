@@ -545,11 +545,17 @@ loads directly with `transformers`' `AutoModelForCausalLM`.
 ## Base vs this model
 
 What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
-({gsm8k_meta}). Thresholds from `config/acceptance.toml`.
+({gsm8k_meta}). Verdict thresholds are listed in the table notes.
 
 {comparison}
 
 ## Usage - transformers
+
+```bash
+uv pip install "torch" --index-url https://download.pytorch.org/whl/cu130  # GB10/Blackwell; CPU-only hosts can skip the index-url
+uv pip install "transformers==5.14.1" "compressed-tensors" accelerate huggingface_hub
+uvx --from huggingface_hub hf auth login  # the base repo is gated (approval is automatic)
+```
 
 ```python
 import torch
@@ -558,7 +564,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 model_id = "{repo_id}"  # or the published repo id below
 tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 model = AutoModelForCausalLM.from_pretrained(
-    model_id, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+    model_id, dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
 )
 messages = [{{"role": "user", "content": "What is 2+2?"}}]
 inputs = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(model.device)
@@ -585,10 +591,6 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
   --gpu-memory-utilization 0.9 \\
   --trust-remote-code
 ```
-
-> Verification: `SOURCE=hf ./s8-64-serve-vllm.sh {mode} {target}` runs the
-> command above verbatim (only the model ref is already the Hub repo id).
-> With `SOURCE=local` (default) the same flags serve the local checkpoint.
 
 > Compatibility note: the fork is verified against KRAFTON's own checkpoints
 > (`modelopt_fp4` NVFP4). This repository's checkpoints use the
@@ -623,11 +625,9 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
   --default-chat-template-kwargs '{{"enable_thinking": true, "truncate_history_thinking": false}}'
 ```
 
-> Run it with `./s8-65-serve-vllm-production.sh {mode} {target}`
-> (`SOURCE=hf` default; `SOURCE=local` serves the local checkpoint).
 > `--kv-cache-dtype fp8_e4m3` and the `raon_1` parsers are fork features —
 > verified on KRAFTON checkpoints, untested on `compressed-tensors` builds.
-> On a busy node lower `--gpu-memory-utilization` (e.g. `GPU_UTIL=0.3`).
+> On a busy node lower `--gpu-memory-utilization` (e.g. `0.3`).
 
 ## License and source
 

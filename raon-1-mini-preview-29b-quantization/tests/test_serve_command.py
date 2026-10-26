@@ -117,7 +117,8 @@ def test_card_production_block_matches_s865():
                  "--reasoning-parser raon_1", "--tool-call-parser raon_1",
                  "--enable-auto-tool-choice"):
         assert flag in prod, flag
-    assert "s8-65-serve-vllm-production.sh" in prod_sec
+    assert "s8-65-serve-vllm-production.sh" not in prod_sec  # consumer card: no internal script refs
+    assert "s8-64-serve-vllm.sh" not in r and "SOURCE=" not in r
     s865 = (ROOT / "s8-65-serve-vllm-production.sh").read_text(encoding="utf-8")
     for flag in ("--max-model-len 262144", "--kv-cache-dtype fp8_e4m3",
                  "--enable-prefix-caching", "--reasoning-parser raon_1",

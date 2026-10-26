@@ -196,6 +196,7 @@ def test_prep_generates_readme_with_required_sections(workspace):
     assert "## Check 1" not in readme, "old check sections remain"
     assert "## Serving performance" not in readme, "old serving section remains"
     assert "## Quantization spec" in readme, "quantization spec section missing"
+    assert "pip install" in readme and "compressed-tensors" in readme
     # 모델 카드는 업로드되는 산출물 → 전부 영어여야 한다
     ko = re.compile(r"[가-힣]")
     korean_lines = [ln for ln in readme.splitlines() if ko.search(ln)]
