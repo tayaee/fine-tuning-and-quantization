@@ -182,7 +182,7 @@ def run_transformers(model_path: str, prompts: list[str], max_tokens: int, batch
     patch_unified_memory_info()
     _ensure_transformers()
     model = AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+        model_path, dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
     )
     tok = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     if getattr(tok, "pad_token_id", None) is None and getattr(tok, "eos_token", None):

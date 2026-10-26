@@ -174,7 +174,7 @@ def measure_target(target: str, model_path: Path, n: int, max_tokens: int) -> di
     patch_unified_memory_info()
     mem_before = mem_snapshot()
     model = AutoModelForCausalLM.from_pretrained(
-        str(model_path), torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+        str(model_path), dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
     )
     tok = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
     model.eval()

@@ -382,17 +382,30 @@ def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
 
     `s7-55-bench-transformers.py`가 타깃별로 누적한 checks.json servebench.targets를
     타깃 × concurrency 표로 렌더링한다. 구 형태(단일 측정 payload)도 fallback 지원.
+    backend가 transformers면 인프로세스 측정 조건을, vLLM이면 서버 조건을 표기한다
+    (하드웨어 키가 달라 `vLLM ?` 같은 빈 값을 찍지 않기 위함).
     """
     hw = sb.get("hardware") or {}
+    backend = sb.get("backend") or hw.get("backend") or ""
     if hw:
-        hw_line = (
-            f"Hardware: {hw.get('gpu', '?')} (unified {hw.get('unified_mem_gb', '?')} GB) · "
-            f"vLLM {hw.get('vllm_version', '?')} · "
-            f"TP={hw.get('tensor_parallel', '?')} · "
-            f"gpu-mem-util={hw.get('gpu_memory_utilization', '?')} · "
-            f"max-model-len={hw.get('max_model_len', '?')} · "
-            f"temperature=0.0, max_tokens=256, warmup=2, n=32 per concurrency."
-        )
+        if backend == "transformers":
+            hw_line = (
+                f"Hardware: {hw.get('gpu', '?')} (unified {hw.get('unified_mem_gb', '?')} GB) · "
+                f"{hw.get('engine', 'transformers')} · in-process (no server) · "
+                f"TP={hw.get('tensor_parallel', '?')} · "
+                f"max-model-len={hw.get('max_model_len', '?')} · "
+                f"temperature=0.0, max_tokens={sb.get('max_tokens', '?')}, "
+                f"warmup=1, n={sb.get('n', '?')} sequential (C=1 greedy)."
+            )
+        else:
+            hw_line = (
+                f"Hardware: {hw.get('gpu', '?')} (unified {hw.get('unified_mem_gb', '?')} GB) · "
+                f"vLLM {hw.get('vllm_version', '?')} · "
+                f"TP={hw.get('tensor_parallel', '?')} · "
+                f"gpu-mem-util={hw.get('gpu_memory_utilization', '?')} · "
+                f"max-model-len={hw.get('max_model_len', '?')} · "
+                f"temperature=0.0, max_tokens=256, warmup=2, n=32 per concurrency."
+            )
     else:
         hw_line = "Hardware: not recorded."
     targets = sb.get("targets") or {}
@@ -438,6 +451,27 @@ def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
     else:
         lines.append("_Not measured (no running server during the last run)._")
     return "\n".join(lines) + "\n"
+
+
+def _serve_prose(rows: list[str], mode: str, checks: dict) -> str:
+    """Serving 섹션 도입 문구 — 측정 backend(인프로세스/vLLM)에 따라 달라진다."""
+    sb = checks.get("servebench") or {}
+    backend = sb.get("backend") or (sb.get("hardware") or {}).get("backend") or ""
+    if backend == "transformers":
+        return (
+            "Measured in-process with `transformers` + `trust_remote_code` "
+            "(`s7-55-bench-transformers.sh`, no server — stock vLLM cannot serve "
+            "the Raon custom architecture). The table below compares the bf16 base "
+            "model against this build on the same fixed workload, so the two rows "
+            "are directly comparable.\n"
+            "KRAFTON publishes throughput numbers for the base model, but on a different stack "
+            "(vLLM 0.28.0 with an MXFP8 target), so they are directional context only."
+        )
+    return (
+        "Measured against a running OpenAI-compatible server (`s7-52-servebench.sh`).\n"
+        "KRAFTON publishes throughput numbers for the base model, but on a different stack "
+        "(vLLM 0.28.0 with an MXFP8 target), so they are directional context only."
+    )
 
 
 def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: float) -> str:
@@ -548,9 +582,7 @@ The verdict is PASS when the pass rate stays at or above `{format_min}`.
 
 ## Serving performance
 
-Measured against a running OpenAI-compatible server (`s7-52-servebench.sh`).
-KRAFTON publishes throughput numbers for the base model, but on a different stack
-(vLLM 0.28.0 with an MXFP8 target), so they are directional context only.
+{_serve_prose(rows, mode, checks)}
 
 {serve_lines}
 

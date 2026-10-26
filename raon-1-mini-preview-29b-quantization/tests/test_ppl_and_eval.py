@@ -238,7 +238,7 @@ def test_run_transformers_generates_only_new_tokens(tmp_out, fake_transformers):
     kw = fake_transformers["model_kwargs"]
     assert kw["trust_remote_code"] is True
     assert kw["device_map"] == "auto"
-    assert kw["torch_dtype"] is torch.bfloat16
+    assert kw["dtype"] is torch.bfloat16
     assert fake_transformers["tok_kwargs"]["trust_remote_code"] is True
 
 
