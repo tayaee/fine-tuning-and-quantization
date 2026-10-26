@@ -40,9 +40,9 @@ echo "OK: 게이트(한국어·형식)"
 
 # 4. 카드 절
 for tok in '## Check 3 - KMMLU' '## Check 4 - Instruction and format compliance' '## Serving performance'; do
-  grep -qF "$tok" "$ROOT/s8-43-prep-upload.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
+  grep -qF "$tok" "$ROOT/s7-56-prep-upload.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
 done
-grep -qF '"## Check 3 - KMMLU"' "$ROOT/s8-46-verify-upload.py" || { echo "FAIL: 46-verify에 Check 3 필수섹션 없음"; fail=1; }
+grep -qF '"## Check 3 - KMMLU"' "$ROOT/s7-57-verify-upload.py" || { echo "FAIL: 46-verify에 Check 3 필수섹션 없음"; fail=1; }
 echo "OK: 카드 Check 3/4 + 서빙 성능"
 
 # 5. 파이프라인 배선
@@ -70,8 +70,8 @@ grep -qF 'pass_rate_min' "$ROOT/s7-49-format.py" \
 grep -qF '"verdict"' "$ROOT/s7-49-format.py" \
   || { echo "FAIL: s7-49-format.py가 verdict를 산출하지 않음"; fail=1; }
 # 판정은 통과율이 아니라 계약 하한으로 — 모델 카드가 verdict를 그대로 쓴다
-grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s8-43-prep-upload.py" \
-  || { echo "FAIL: s8-43-prep-upload.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
+grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s7-56-prep-upload.py" \
+  || { echo "FAIL: s7-56-prep-upload.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
 _tmprq="$(mktemp -d)"
 if RQ_SHARED="$_tmprq" "$ROOT/s7-49-format.sh" smoke --prepare >/dev/null 2>&1; then
   :

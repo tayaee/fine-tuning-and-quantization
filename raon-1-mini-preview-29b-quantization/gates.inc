@@ -147,14 +147,14 @@ PY
 }
 
 # --- 게이트 4: Stage 8 릴리스 준비 (모델카드 + 지표 + 업로드 전 감사) ---------
-# s8-43-prep-upload(모델카드/디렉터리 보충) + s8-46-verify-upload(전수 감사)의 산출물을 대조한다.
+# s7-56-prep-upload(모델카드/디렉터리 보충) + s7-57-verify-upload(전수 감사)의 산출물을 대조한다.
 rq_gate_release() {
   local mode="${1:-$MODE}"
   local prep="$RQ_OUTPUTS/prep-upload-$mode.json"
   local ver="$RQ_OUTPUTS/verify-upload-$mode.json"
   local rc=0
-  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — s8-43-prep-upload 미수행" >&2; rc=1; }
-  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — s8-46-verify-upload 미수행" >&2; rc=1; }
+  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — s7-56-prep-upload 미수행" >&2; rc=1; }
+  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — s7-57-verify-upload 미수행" >&2; rc=1; }
   [ "$rc" -eq 0 ] || return 1
   ( set -x; rq_py - "$prep" "$ver" <<'PY'
 import json, sys

@@ -101,6 +101,36 @@ def test_main_skips_missing_models_without_gpu():
         assert "backend" in out["hardware"]
 
 
+def test_ensure_base_first_auto_adds_base():
+    """양자화만 요청 + base 기록 없음 → base 선행."""
+    with tempfile.TemporaryDirectory() as d:
+        _isolate(d)
+        assert bt.ensure_base_first("smoke", ["nvfp4-awq"]) == ["base", "nvfp4-awq"]
+
+
+def test_ensure_base_first_keeps_explicit_base():
+    with tempfile.TemporaryDirectory() as d:
+        _isolate(d)
+        assert bt.ensure_base_first("smoke", ["base", "nvfp4-awq"]) == ["base", "nvfp4-awq"]
+
+
+def test_ensure_base_first_skips_when_recorded():
+    """base 기록이 이미 있으면 재측정하지 않는다."""
+    with tempfile.TemporaryDirectory() as d:
+        _isolate(d)
+        outdir = Path(d) / "outputs" / "eval-smoke"
+        outdir.mkdir(parents=True)
+        prior = {"servebench": {"targets": {"base": {"1": {"tok_per_s_p50": 42.0}}}}}
+        (outdir / "checks.json").write_text(json.dumps(prior), encoding="utf-8")
+        assert bt.ensure_base_first("smoke", ["nvfp4-awq"]) == ["nvfp4-awq"]
+
+
+def test_ensure_base_first_base_only_untouched():
+    with tempfile.TemporaryDirectory() as d:
+        _isolate(d)
+        assert bt.ensure_base_first("smoke", ["base"]) == ["base"]
+
+
 def test_hardware_keys():
     hw = bt.hardware_info()
     for k in ("gpu", "unified_mem_gb", "backend", "engine",

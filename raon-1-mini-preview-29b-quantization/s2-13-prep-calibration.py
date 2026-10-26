@@ -35,7 +35,48 @@ def to_messages(rec: dict) -> list[dict]:
     return msgs
 
 
+def cache_valid(path: str, n: int, seed: int) -> bool:
+    """이미 저장된 산출물이 n/seed/형식 조건을 만족하면 True (HF 재다운로드 방지)."""
+    import json
+
+    if not os.path.exists(path) or not os.path.exists(path + ".meta"):
+        return False
+    try:
+        meta = {}
+        with open(path + ".meta", encoding="utf-8") as f:
+            for line in f:
+                if "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    meta[k] = v
+        if meta.get("n") != str(n) or meta.get("seed") != str(seed):
+            return False
+        count = 0
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                r = json.loads(line)
+                assert isinstance(r.get("text"), str) and r["text"].strip()
+                count += 1
+        return count == n
+    except Exception:
+        return False
+
+
+def write_meta(path: str, n: int, seed: int):
+    content = (
+        f"n={n}\nseed={seed}\nbase_model={BASE_MODEL}\n"
+        f"sources={';'.join(s[0] for s in SOURCES)}\n"
+    )
+    tmp = tmp_path(path + ".meta")
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(content)
+    commit_file(tmp, path + ".meta")
+
+
 def main(n: int, seed: int, use_template: bool):
+    out = f"{SHARED}/datasets/raon-calibration-{n}.jsonl"
+    if os.environ.get("FORCE", "0") != "1" and use_template and cache_valid(out, n, seed):
+        print(f"reuse valid-cache -> {out} (n={n} seed={seed})")
+        return
     from datasets import load_dataset
 
     tok = None
@@ -85,6 +126,7 @@ def main(n: int, seed: int, use_template: bool):
     with open(tmp, "w", encoding="utf-8") as f:
         f.writelines(json.dumps({"text": pool[i]}, ensure_ascii=False) + "\n" for i in idx[:n])
     commit_file(tmp, out)
+    write_meta(out, n, seed)
     print(f"seed={seed} n={n} template={use_template} -> {out}")
 
 

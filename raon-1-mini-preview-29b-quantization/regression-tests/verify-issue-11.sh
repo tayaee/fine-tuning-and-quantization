@@ -2,7 +2,7 @@
 # verify-issue-11.sh — issue-11(표준 GSM8K 평가 + 카드 2종 검사 + 배치 생성) 승인 기준 기계 검증
 #   1. s7-36-prep-gsm8k.{py,sh} 존재(+실행 권한) + 표준 GSM8K 매니페스트 계약
 #   2. s7-37-eval.py: BENCHMARKS=gsm8k 단일, 정식 프롬프트 필수, 배치 생성 지원
-#   3. s8-43-prep-upload.py: 카드에 검사1(PPL)/검사2(GSM8K) 두 표 + GSM8K 판정
+#   3. s7-56-prep-upload.py: 카드에 검사1(PPL)/검사2(GSM8K) 두 표 + GSM8K 판정
 #   4. acceptance.toml: gsm8k_acc_drop_max
 #   5. gates.inc: rq_gate_eval의 GSM8K 정확도 대조
 #   6. 파이프라인 배선(36 단계) + 단위 테스트
@@ -34,9 +34,9 @@ grep -q 'EVAL_BENCHMARKS' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh�
 grep -q 'prompts-\$_b.jsonl' "$ROOT/s7-37-eval.sh" || { echo "FAIL: s7-37-eval.sh freshness에 프롬프트 파일 없음"; fail=1; }
 echo "OK: s7-37-eval 표준 GSM8K + 배치 생성"
 
-# 3. s8-43-prep-upload.py 카드 2종 검사
+# 3. s7-56-prep-upload.py 카드 2종 검사
 for tok in '## Check 1 - PPL' '## Check 2 - GSM8K' '## Quantization spec' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do
-  grep -qF -- "$tok" "$ROOT/s8-43-prep-upload.py" || { echo "FAIL: s8-43-prep-upload.py에 '$tok' 없음"; fail=1; }
+  grep -qF -- "$tok" "$ROOT/s7-56-prep-upload.py" || { echo "FAIL: s7-56-prep-upload.py에 '$tok' 없음"; fail=1; }
 done
 echo "OK: 모델 카드 검사 2종(PPL·GSM8K)"
 

@@ -2,7 +2,7 @@
 # verify-issue-6.sh — issue-6(Stage 1 수용 기준 계약화) 승인 기준 기계 검증
 #   1. config/acceptance.toml 존재 + 4타깃 기준 정의 + 스키마 정상
 #   2. s1-07-acceptance.py/.sh 존재(+실행 권한), 스키마 오류 시 rc=1, 산출물 생성
-#   3. s6-34-measure-ppl.py / s8-46-verify-upload.py / s8-43-prep-upload.py 가 기준을 참조
+#   3. s6-34-measure-ppl.py / s7-57-verify-upload.py / s7-56-prep-upload.py 가 기준을 참조
 #   4. 단위 테스트 (tests/test_sdlc.py)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,8 +33,8 @@ echo "OK: s1-07-acceptance.{py,sh} + sdlc.py 계약/원장 API"
 
 # 3. 기존 판정 코드가 기준을 참조
 grep -q 'acceptance_spec' "$ROOT/s6-34-measure-ppl.py" || { echo "FAIL: s6-34-measure-ppl.py가 기준 미참조"; fail=1; }
-grep -q '_apply_acceptance_size_ranges' "$ROOT/s8-46-verify-upload.py" || { echo "FAIL: s8-46-verify-upload.py가 기준 미참조"; fail=1; }
-grep -q '_acceptance_rows' "$ROOT/s8-43-prep-upload.py" || { echo "FAIL: s8-43-prep-upload.py에 수용 기준 표 없음"; fail=1; }
+grep -q '_apply_acceptance_size_ranges' "$ROOT/s7-57-verify-upload.py" || { echo "FAIL: s7-57-verify-upload.py가 기준 미참조"; fail=1; }
+grep -q '_acceptance_rows' "$ROOT/s7-56-prep-upload.py" || { echo "FAIL: s7-56-prep-upload.py에 수용 기준 표 없음"; fail=1; }
 echo "OK: 34/43/46 이 기준(acceptance.toml)을 참조"
 
 # 4. 단위 테스트

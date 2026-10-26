@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
 GUARDED="s6-34-measure-ppl.sh s7-37-eval.sh
-  s7-55-bench-transformers.sh s8-43-prep-upload.sh s8-46-verify-upload.sh
+  s7-55-bench-transformers.sh s7-56-prep-upload.sh s7-57-verify-upload.sh
   s8-49-upload-hf.sh s8-58-serve-infer-all.sh"
 
 for f in config/common.env run-smoke.sh run-full.sh $GUARDED; do

@@ -11,25 +11,25 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
 # 1. 카드의 표 행은 base + 대상만
-grep -q 'rows = \["base", target\]' "$ROOT/s8-43-prep-upload.py" \
+grep -q 'rows = \["base", target\]' "$ROOT/s7-56-prep-upload.py" \
   || { echo "FAIL: 모델 카드의 비교 대상이 base+대상 1개로 제한되지 않음"; fail=1; }
-grep -q 'def render_summary' "$ROOT/s8-43-prep-upload.py" \
+grep -q 'def render_summary' "$ROOT/s7-56-prep-upload.py" \
   || { echo "FAIL: 전체 버전 비교 리포트(render_summary) 없음"; fail=1; }
-grep -q 'def summary_path' "$ROOT/s8-43-prep-upload.py" \
+grep -q 'def summary_path' "$ROOT/s7-56-prep-upload.py" \
   || { echo "FAIL: 요약 리포트 경로 헬퍼(summary_path) 없음"; fail=1; }
 echo "OK: 카드(대상 1개) + 요약 리포트 분리"
 
 # 2. 요약 경로가 models/README-<mode>.md
-grep -q 'README-{mode}.md' "$ROOT/s8-43-prep-upload.py" \
+grep -q 'README-{mode}.md' "$ROOT/s7-56-prep-upload.py" \
   || { echo "FAIL: 요약 리포트가 models/README-<mode>.md 가 아님"; fail=1; }
-grep -q 'summary_path(mode)' "$ROOT/s8-43-prep-upload.py" \
+grep -q 'summary_path(mode)' "$ROOT/s7-56-prep-upload.py" \
   || { echo "FAIL: prepare_target가 요약 리포트를 쓰지 않음"; fail=1; }
 echo "OK: 요약 경로 models/README-<mode>.md"
 
 # 3. 업로드 전 감사 가드
-grep -q '다른 양자화 버전 행' "$ROOT/s8-46-verify-upload.py" \
+grep -q '다른 양자화 버전 행' "$ROOT/s7-57-verify-upload.py" \
   || { echo "FAIL: 46-verify에 '다른 버전 행 금지' 검사 없음"; fail=1; }
-grep -q 'README-{mode}.md' "$ROOT/s8-46-verify-upload.py" \
+grep -q 'README-{mode}.md' "$ROOT/s7-57-verify-upload.py" \
   || { echo "FAIL: 46-verify가 요약 리포트 존재를 확인하지 않음"; fail=1; }
 echo "OK: 업로드 전 감사 가드"
 

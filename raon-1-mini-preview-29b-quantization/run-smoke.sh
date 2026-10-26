@@ -60,7 +60,7 @@ want_step() {
   case ",${STEPS:-all}," in *,all,*|*,"$1",*) return 0 ;; *) return 1 ;; esac
 }
 # 명시적으로 나열한 스텝만 실행 (STEPS=all 에는 포함되지 않는다).
-#   STEPS=verify ./run-smoke.sh   → 46-verify + gate-release 만 추가
+#   STEPS=verify ./run-smoke.sh   → 57-verify + gate-release 만 추가
 want_step_explicit() {
   case ",${STEPS:-all}," in *,"$1",*) return 0 ;; *) return 1 ;; esac
 }
@@ -128,13 +128,13 @@ if want_step validate; then
     for s in s1-07-acceptance s4-19-dequant-mxfp8 s5-25-quant-awq-w5 s5-22-quant-awq-w3 \
              s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-gsm8k s7-43-prep-kmmluko \
              s6-34-measure-ppl s7-37-eval s7-40-gsm8k s7-46-kmmluko s7-49-format s7-52-servebench \
-             s8-43-prep-upload s8-46-verify-upload \
+             s7-56-prep-upload s7-57-verify-upload \
              s8-49-upload-hf s8-61-release-notes s8-64-verify-serving; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
     for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-gsm8k s7-37-eval s7-40-gsm8k \
              s7-43-prep-kmmluko s7-46-kmmluko s7-49-format s7-52-servebench \
-             s8-43-prep-upload s8-46-verify-upload s8-49-upload-hf s8-52-serve-vllm \
+             s7-56-prep-upload s7-57-verify-upload s8-49-upload-hf s8-52-serve-vllm \
              s8-55-infer-examples; do
       bash -n "$0/$s.sh" || exit 1
     done
@@ -211,13 +211,13 @@ if want_step eval; then
   want_step_serve && rq_step "52-servebench" ./s7-52-servebench.sh "$MODE"
 fi
 if want_step prep; then
-  rq_step "43-prep" ./s8-43-prep-upload.sh "$MODE" "$_targets"
-  rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
+  rq_step "56-prep" ./s7-56-prep-upload.sh "$MODE" "$_targets"
+  rq_stage_record 7 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
 fi
 
-# Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 46이 필요하므로 기본 경로 밖).
+# Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 57이 필요하므로 기본 경로 밖).
 if want_step_explicit verify; then
-  rq_step "46-verify" ./s8-46-verify-upload.sh "$MODE" "$_targets"
+  rq_step "57-verify" ./s7-57-verify-upload.sh "$MODE" "$_targets"
   rq_step "gate-release" rq_gate_release "$MODE"
 fi
 

@@ -39,7 +39,7 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 모든 stage 스크립트는 모드(smoke/full)를 인자로 받는다. **인자를 생략하면 환경변수 `MODE`를 보고**,
 그것도 없으면 smoke다. 타깃을 받는 스크립트는 타깃도 필수다 (미지정 시 사용법 출력 후 종료,
-`TARGETS=all`로 전체) — 예: `MODE=full ./s8-43-prep-upload.sh full nvfp4-awq`.
+`TARGETS=all`로 전체) — 예: `MODE=full ./s7-56-prep-upload.sh full nvfp4-awq`.
 
 ```bash
 ./s0-10-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)

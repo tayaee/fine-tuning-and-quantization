@@ -1,4 +1,4 @@
-"""s8-43-prep-upload.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
+"""s7-56-prep-upload.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
 s8-49-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올리기만 한다
 (메타데이터는 업로드 지점에서 즉석 생성하면 요약 정보가 빠진다).
 
@@ -12,7 +12,7 @@ s8-49-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올�
      + transformers/vLLM 실행 예제 + 라이선스)
   5) 요약 매니페스트를 outputs/prep-upload-<mode>.json에 기록
 
-  uv run s8-43-prep-upload.py --mode smoke --targets nvfp4-awq --allow-missing-metrics
+  uv run s7-56-prep-upload.py --mode smoke --targets nvfp4-awq --allow-missing-metrics
 """
 
 from __future__ import annotations

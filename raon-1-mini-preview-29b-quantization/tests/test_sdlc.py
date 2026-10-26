@@ -221,11 +221,11 @@ def test_rq_stage_of_mapping_covers_nine_stages():
     out = _bash(
         "source config/common.env smoke; "
         "for s in 10-setup 07-acceptance 13-calib 16-compat 19-dequant 28-nvfp4-awq "
-        "34-ppl 37-eval 43-prep; do rq_stage_of $s; done"
+        "34-ppl 37-eval 49-upload 56-prep 57-verify; do rq_stage_of $s; done"
     )
     assert out.returncode == 0, out.stderr
     ids = [line.split()[0] for line in out.stdout.strip().splitlines() if line.strip()]
-    assert ids == ["0", "1", "2", "3", "4", "5", "6", "7", "8"]
+    assert ids == ["0", "1", "2", "3", "4", "5", "6", "7", "8", "7", "7"]
 
 
 if __name__ == "__main__":

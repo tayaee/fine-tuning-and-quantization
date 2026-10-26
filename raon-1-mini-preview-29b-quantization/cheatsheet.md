@@ -6,9 +6,9 @@
 그것도 없으면 `smoke`다.
 
 ```bash
-./s8-43-prep-upload.sh full nvfp4-awq     # 인자 우선 (targets 필수)
-MODE=full ./s8-43-prep-upload.sh full nvfp4-awq   # 환경변수 MODE (타깃 인자는 그대로 필수)
-MODE=full TARGETS=nvfp4-awq ./s8-43-prep-upload.sh   # 타깃도 함께
+./s7-56-prep-upload.sh full nvfp4-awq     # 인자 우선 (targets 필수)
+MODE=full ./s7-56-prep-upload.sh full nvfp4-awq   # 환경변수 MODE (타깃 인자는 그대로 필수)
+MODE=full TARGETS=nvfp4-awq ./s7-56-prep-upload.sh   # 타깃도 함께
 ```
 
 > `export MODE=full` 후 인자 없이 실행하면 **full**로 돈다.
@@ -75,12 +75,12 @@ STEPS=serve ./run-smoke.sh   # 서빙 처리량 측정(s7-52, 서버가 떠 있�
 # 6. 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증, targets 필수)
 #    - 모델 디렉터리 README.md = base + 그 모델 1개 비교 (Hub 업로드 대상)
 #    - models/README-<mode>.md      = 그 모드의 전체 양자화 버전 비교 리포트 (업로드 아님)
-TARGETS=all ./s8-43-prep-upload.sh smoke
-./s8-43-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
-./s8-46-verify-upload.sh smoke nvfp4-awq
-./s8-46-verify-upload.sh full nvfp4-awq
+TARGETS=all ./s7-56-prep-upload.sh smoke
+./s7-56-prep-upload.sh smoke nvfp4-gptq,nvfp4-awq
+./s7-57-verify-upload.sh smoke nvfp4-awq
+./s7-57-verify-upload.sh full nvfp4-awq
 
-# 7. 업로드·서빙 (full만 업로드, 43-prep 산출물이 있어야 함, targets 필수)
+# 7. 업로드·서빙 (full만 업로드, 56-prep 산출물이 있어야 함, targets 필수)
 TARGETS=all DRY_RUN=1 ./s8-49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증
 TARGETS=all ./s8-49-upload-hf.sh full
 ./s8-52-serve-vllm.sh smoke nvfp4-gptq  # 터미널1
@@ -90,7 +90,7 @@ TARGETS=all ./s8-58-serve-infer-all.sh smoke 3      # 순회
 # 8. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / 배포 후 서빙 검증
 python s8-61-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
 python s8-64-verify-serving.py --mode smoke   # logs/55.*.log → outputs/serve-smoke.json
-STEPS=verify TARGETS=all ./run-smoke.sh    # 46-verify + gate-release (명시 시에만)
+STEPS=verify TARGETS=all ./run-smoke.sh    # 57-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   s0-s7-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh

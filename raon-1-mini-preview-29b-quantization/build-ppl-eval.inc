@@ -6,10 +6,10 @@
 #
 # 스텝(기본 STEPS):
 #   setup(10) → calib(13) → compat(16) → dequant(19) → quant(22·25·28·31) → ppl(34) → eval(37+40)
-#   선택: prep(43 모델카드) · verify(46 업로드 전 감사)
+#   → prep(56 모델카드) → verify(57 감사) — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다.
 #
 # 환경변수:
-#   STEPS=quant,ppl        실행할 스텝만 (기본: setup,calib,compat,dequant,quant,ppl,eval)
+#   STEPS=quant,ppl        실행할 스텝만 (기본: setup,calib,compat,dequant,quant,ppl,eval,prep,verify)
 #   FORCE=1                freshness 무시(강제 재계산)
 #   SKIP_SETUP=1           s0-10-setup 생략
 #   QUANT_CPU_ONLY=1       양자화만 GPU 숨김(PPL/eval은 GPU)
@@ -18,7 +18,7 @@
 # 주의: wrapper는 config/common.env를 source한 *뒤에* 이 파일을 source한다.
 #       (common.env의 EXIT 트랩을 이 파일이 대체한다.)
 
-BPE_STEPS_DEFAULT="setup,acceptance,calib,compat,dequant,quant,ppl,eval"
+BPE_STEPS_DEFAULT="setup,acceptance,calib,compat,dequant,quant,ppl,eval,prep,verify"
 BPE_T0=$(date +%s)
 BPE_TIMING=""
 
@@ -161,11 +161,11 @@ rq_bpe_main() {
     rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "43-prep" ./s8-43-prep-upload.sh "$mode" "$target"
-    rq_stage_record 8 release pass "$RQ_OUTPUTS/prep-upload-$mode.json"
+    rq_bpe_step "$mode" "$BPE_TIMING" "56-prep" ./s7-56-prep-upload.sh "$mode" "$target"
+    rq_stage_record 7 eval pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "46-verify" ./s8-46-verify-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "57-verify" ./s7-57-verify-upload.sh "$mode" "$target"
   fi
 
   rq_log "build-ppl-eval done mode=$mode target=$target"

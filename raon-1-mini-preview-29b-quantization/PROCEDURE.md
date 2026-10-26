@@ -31,8 +31,8 @@
 | 5. PTQ | `22-awq-w3` `25-awq-w5` `28-nvfp4-awq` `31-nvfp4-gptq` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
 | 6. PPL | `s6-34-measure-ppl.sh [smoke\|full]` | base(raon-bf16) + 4종 in-domain PPL | **gate-ppl**: 유한값 + 수용 기준 Δ 판정 일치 |
 | 6.5 평가세트 | `s7-36-prep-gsm8k.sh [smoke\|full]` | 표준 GSM8K test → `outputs/eval-<mode>/prompts-gsm8k.jsonl` + 매니페스트 | 프롬프트 파일 존재(없으면 37-eval이 실패) |
-| 7. eval | `s7-36-prep-gsm8k` · `s7-43-prep-kmmluko` · `s7-49-format` → `s7-37-eval` → `s7-40-gsm8k` · `s7-46-kmmluko` · `s7-49-format` · `s7-52-servebench` | **5개 검사**: ① 표준 GSM8K(영어 수학) ② 표준 한국어 KMMLU ③ 지시/형식 준수 ④ 서빙 처리량(Tier3) — 전부 결정론 생성 | **gate-eval** · **gate-kmmluko** · **gate-format**: 응답 생성 + 정확도/통과율 계약 대조 |
-| 8. 릴리스·배포 | `s8-43-prep-upload` → `s8-46-verify-upload` → `s8-49-upload-hf` → `s8-52/55/58` | 모델카드 `README.md`(base+대상 1개) + `models/README-<mode>.md`(전체 버전 비교) + `outputs/release-notes-<mode>.md` + Hub 업로드 + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
+| 7. eval | `s7-36-prep-gsm8k` · `s7-43-prep-kmmluko` · `s7-49-format` → `s7-37-eval` → `s7-40-gsm8k` · `s7-46-kmmluko` · `s7-49-format` · `s7-55-bench-transformers` → `s7-56-prep-upload` → `s7-57-verify-upload` | **5개 검사** + 모델카드 + 업로드 전 감사: ① 표준 GSM8K(영어 수학) ② 표준 한국어 KMMLU ③ 지시/형식 준수 ④ 서빙 처리량(Tier3) ⑤ 카드·감사 — 전부 결정론 생성 | **gate-eval** · **gate-kmmluko** · **gate-format**: 응답 생성 + 정확도/통과율 계약 대조 |
+| 8. 릴리스·배포 | `s8-49-upload-hf` → `s8-52/55/58` | Hub 업로드 + `outputs/release-notes-<mode>.md` + TP=2 서빙 | **gate-release**: 모델카드·지표·업로드 전 감사 / **gate-serving**: 서빙 응답 |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
@@ -60,7 +60,7 @@
 
 같은 규칙이 타깃을 받는 모든 개별 스크립트에도 적용된다
 (`s6-34-measure-ppl` · `s7-37-eval` · `s7-55-bench-transformers` ·
-`s8-43-prep-upload` · `s8-46-verify-upload` · `s8-49-upload-hf` · `s8-58-serve-infer-all`):
+`s7-56-prep-upload` · `s7-57-verify-upload` · `s8-49-upload-hf` · `s8-58-serve-infer-all`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (`s8-58`은 `[mode] [n]` 형태라 `TARGETS` 환경변수로만 받는다.)
 
@@ -102,7 +102,7 @@ TARGETS=all ./run-full.sh               # 4종 전부
 | **gate-quant** | 패킹 계약 + `global_scale` 값 검증 — dense 폴백·미보정 expert 차단 |
 | ppl | 48(base 대비 Δ) → **gate-ppl** (유한 PPL 아니면 중단) |
 | eval | 50 + 54 → **gate-eval** (응답 미생성이면 중단) |
-| prep verify (선택) | 56 모델카드 / 57 업로드 전 감사 |
+| prep verify (기본) | 56 모델카드 / 57 업로드 전 감사 — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다 |
 
 게이트는 산출물을 **먼저 검사**한다: quant 직후 패킹 계약, PPL 직후 유한값.
 이전처럼 NaN 모델을 eval까지 흘려보내 0점 벤치만 남는 일이 없다.

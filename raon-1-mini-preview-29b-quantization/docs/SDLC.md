@@ -18,8 +18,8 @@
 | 4 | 베이스 복원 | `s4-19-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
-| 7 | 벤치마크 평가 | `s7-37-eval.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
-| 8 | 릴리스·배포 | `s8-43-prep-upload.sh` → `s8-46-verify-upload.sh` → `s8-49-upload-hf.sh` → `52/55/58` | 모델카드 `README.md`(base+대상 1개), `models/README-<mode>.md`(전체 버전 비교), `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
+| 7 | 벤치마크 평가·카드·감사 | `s7-37-eval.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` + `s7-55-bench-transformers.sh` → `s7-56-prep-upload.sh` → `s7-57-verify-upload.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
+| 8 | 릴리스·배포 | `s8-49-upload-hf.sh` → `s8-52-serve-vllm.sh` / `s8-55-infer-examples.sh` / `s8-58-serve-infer-all.sh` | Hub 업로드, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
 
 ## 0. 파일 명명 규칙
 
@@ -39,16 +39,16 @@ s<stage>-##-<slug>.{sh,py}
 | 4 | 베이스 복원 | `s4-19-dequant-mxfp8.{sh,py}` |
 | 5 | 양자화 | `s5-22-quant-awq-w3.{sh,py}` … `s5-31-quant-nvfp4-gptq.{sh,py}` |
 | 6 | PPL 게이트 | `s6-34-measure-ppl.{sh,py}` |
-| 7 | 평가 | `s7-36-prep-gsm8k.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-gsm8k.{sh,py}`, `s7-43-prep-kmmluko.{sh,py}`, `s7-46-kmmluko.{sh,py}`, `s7-49-format.{sh,py}`, `s7-52-servebench.{sh,py}` |
-| 8 | 릴리스·배포 | `s8-43-prep-upload.{sh,py}` … `s8-64-verify-serving.py` |
+| 7 | 평가 | `s7-36-prep-gsm8k.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-gsm8k.{sh,py}`, `s7-43-prep-kmmluko.{sh,py}`, `s7-46-kmmluko.{sh,py}`, `s7-49-format.{sh,py}`, `s7-52-servebench.{sh,py}`, `s7-55-bench-transformers.{sh,py}`, `s7-56-prep-upload.{sh,py}`, `s7-57-verify-upload.{sh,py}` |
+| 8 | 릴리스·배포 | `s8-49-upload-hf.{sh,py}` … `s8-64-verify-serving.py` |
 
 빌드 wrapper(`s0-s7-build-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는 진입점이라
-`s0-s7-` 접두사를 쓴다(카드·감사·업로드 등 Stage 8은 `STEPS=prep,verify`로 선택).
+`s0-s7-` 접두사를 쓴다(카드·감사까지 기본 포함, 업로드 등 Stage 8은 별도 실행).
 
 ## 1. Stage 1 — 수용 기준 (Acceptance Criteria)
 
 수용 기준은 **한 파일**에 산다: `config/acceptance.toml`.
-이 파일이 34(Δ 판정) · 43(모델 카드) · 46(용량 범위) · 61(릴리스 노트)의
+이 파일이 34(Δ 판정) · 56(모델 카드) · 57(용량 범위) · 61(릴리스 노트)의
 판정 기준을 모두 결정한다. 기준이 코드에 흩어져 있으면 "무엇이 계약인지"를
 다음 사람이 읽을 수 없다.
 
@@ -99,7 +99,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ## 1-2. 모델 카드의 검사 표
 
-`s8-43-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
+`s7-56-prep-upload`가 만드는 카드에는 **검사 2종**이 실측과 함께 박힌다.
 
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|

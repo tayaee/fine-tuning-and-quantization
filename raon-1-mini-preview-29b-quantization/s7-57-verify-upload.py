@@ -1,6 +1,6 @@
-"""s8-46-verify-upload.py — HF Hub 업로드 전 모델·지표·README·vLLM 호환성 종합 감사(Audit).
+"""s7-57-verify-upload.py — HF Hub 업로드 전 모델·지표·README·vLLM 호환성 종합 감사(Audit).
 
-s8-43-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-49-upload-hf.py로
+s7-56-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-49-upload-hf.py로
 실제 업로드하기 직전에 지금까지 발견된 모든 결함 유형을 전수 점검한다:
 
   1) 상류 BF16 복원본(models/raon-bf16) 무결성 (issue-2):
@@ -30,7 +30,7 @@ s8-43-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친
      - README.md YAML frontmatter 필수 키, extra_gated_* 금지, 실제 체크포인트 용량(GB) 및
        검사 표(PPL/GSM8K) 내 타것 행의 실제 수치 기입 여부 확인
 
-  uv run s8-46-verify-upload.py --mode full --targets nvfp4-awq
+  uv run s7-57-verify-upload.py --mode full --targets nvfp4-awq
 """
 
 from __future__ import annotations
@@ -142,7 +142,7 @@ def model_dir(mode: str, target: str) -> Path:
     return Path(f"{MODELS_DIR(mode)}/raon-{target}-{mode}")
 
 
-#: Hub repo id 규칙 — s8-49-upload-hf.py / s8-43-prep-upload.py와 같아야 한다
+#: Hub repo id 규칙 — s8-49-upload-hf.py / s7-56-prep-upload.py와 같아야 한다
 #: (full → <HF_ID>/<BASE>-<target>, smoke → ...-<target>-smoke)
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
@@ -532,7 +532,7 @@ def _check_readme(
     errors: list[str] = []
     readme_fp = d / "README.md"
     if not readme_fp.is_file():
-        return [f"{readme_fp}: 파일 없음 (s8-43-prep-upload.sh 먼저 실행)"]
+        return [f"{readme_fp}: 파일 없음 (s7-56-prep-upload.sh 먼저 실행)"]
     text = readme_fp.read_text(encoding="utf-8")
     if len(text.strip()) < 500:
         errors.append(f"{readme_fp}: 내용이 너무 짧음 ({len(text)} chars)")
@@ -719,7 +719,7 @@ def verify_target(
     # 9) 모드 전체 비교 리포트(models/README-<mode>.md) 존재 확인
     sp = Path(MODELS_DIR(mode)) / f"README-{mode}.md"
     if not sp.is_file():
-        report["errors"].append(f"{sp}: 파일 없음 (s8-43-prep-upload.sh 먼저 실행)")
+        report["errors"].append(f"{sp}: 파일 없음 (s7-56-prep-upload.sh 먼저 실행)")
     elif sp.stat().st_size < 500:
         report["errors"].append(f"{sp}: 내용이 너무 짧음 ({sp.stat().st_size} bytes)")
 
@@ -784,7 +784,7 @@ def run(
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if not all_ok:
         failed = [t for t, r in reports.items() if not r["ok"]]
-        raise SystemExit(f"s8-46-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
+        raise SystemExit(f"s7-57-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
     return summary
 
 

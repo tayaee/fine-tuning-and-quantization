@@ -263,8 +263,27 @@ def merge_target(mode: str, target: str, measured: dict, hardware: dict) -> dict
     return payload
 
 
+def base_recorded(mode: str) -> bool:
+    """base 측정값이 이미 checks.json에 있는지 (카드 2줄의 기준행)."""
+    v = load_history(mode).get("targets", {}).get("base", {}).get("1", {}).get("tok_per_s_p50")
+    return isinstance(v, (int, float))
+
+
+def ensure_base_first(mode: str, targets: list[str]) -> list[str]:
+    """양자화 타깃 요청에 base를 선행시킨다 — 모델 카드가 base+양자화 2줄이 되도록.
+
+    base 기록이 이미 있으면 생략한다 (29B 재로드를 피하기 위함).
+    """
+    rest = [t for t in targets if t != "base"]
+    if not rest or "base" in targets or base_recorded(mode):
+        return list(targets)
+    print("[auto] base 기록 없음 → base를 먼저 측정한다 (카드 비교행)")
+    return ["base", *targets]
+
+
 def main(mode: str, targets: list[str], n: int, max_tokens: int) -> dict:
     """타깃별 순차 측정. 없는 모델은 skipped로 기록하고 계속한다."""
+    targets = ensure_base_first(mode, targets)
     hardware = hardware_info()
     results: dict = {"mode": mode, "backend": "transformers", "targets": {},
                      "skipped": {}, "errors": {}}

@@ -168,9 +168,9 @@ def render(data: dict) -> str:
     acc_ok = bool(acceptance.get("targets"))
     gate_lines.append(f"| Stage 1 수용 기준 | {'PASS' if acc_ok else 'MISSING'} | `acceptance-{mode}.json` |")
     prep_ok = bool(prep.get("ok"))
-    gate_lines.append(f"| Stage 8 모델카드/디렉터리 | {'PASS' if prep_ok else 'FAIL/MISSING'} | `prep-upload-{mode}.json` |")
+    gate_lines.append(f"| Stage 7 모델카드/디렉터리 | {'PASS' if prep_ok else 'FAIL/MISSING'} | `prep-upload-{mode}.json` |")
     ver_ok = bool(verify.get("ok"))
-    gate_lines.append(f"| Stage 8 업로드 전 감사 | {'PASS' if ver_ok else 'FAIL/MISSING'} | `verify-upload-{mode}.json` |")
+    gate_lines.append(f"| Stage 7 업로드 전 감사 | {'PASS' if ver_ok else 'FAIL/MISSING'} | `verify-upload-{mode}.json` |")
 
     lines = [
         f"# Release notes — {mode}",
