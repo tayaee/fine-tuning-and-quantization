@@ -1,4 +1,4 @@
-"""tests/test_bench_transformers.py — s7-55 transformers 인프로세스 벤치 단위 테스트.
+"""tests/test_bench_transformers.py — s4-28 transformers 인프로세스 벤치 단위 테스트.
 
 합성 픽스처만 사용한다(모델 로드·GPU·네트워크 없음).
 """
@@ -28,7 +28,7 @@ def _load_script(name: str):
     return mod
 
 
-bt = _load_script("s7-55-bench-transformers.py")
+bt = _load_script("s4-28-bench-transformers.py")
 
 
 def _isolate(d: str) -> None:

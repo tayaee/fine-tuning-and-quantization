@@ -1,4 +1,4 @@
-"""tests/test_evalset.py — s7-36-prep-gsm8k(표준 GSM8K 평가 세트) 단위 테스트.
+"""tests/test_evalset.py — s4-04-prep-gsm8k(표준 GSM8K 평가 세트) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_evalset.py
@@ -34,7 +34,7 @@ def _load_script(name: str):
     return mod
 
 
-ev = _load_script("s7-36-prep-gsm8k.py")
+ev = _load_script("s4-04-prep-gsm8k.py")
 
 
 def test_gold_extraction():

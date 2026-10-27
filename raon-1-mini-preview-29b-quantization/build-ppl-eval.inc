@@ -1,17 +1,18 @@
 # build-ppl-eval.inc — 단일 (mode × target) "빌드 → PPL → eval" 공유 엔진.
 #
 # wrapper 8종이 이 파일을 source하고 rq_bpe_main을 호출한다:
-#   s0-s7-build-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
+#   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
 # run-{smoke,full}.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전이다.
 #
 # 스텝(기본 STEPS):
-#   setup(10) → calib(13) → compat(16) → dequant(19) → quant(22·25·28·31) → ppl(34) → eval(36+43+49준비,37+40+46+49)
-#   → prep(56 모델카드) → verify(57 감사 + gate-release) — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다.
+#   setup(s1-01) → acceptance(s1-04) → calib(s1-07) → compat(s1-10) → dequant(s2-01)
+#   → quant(s3-01·04·07·10) → ppl(s4-01) → eval(s4-04+16+22준비,07+10+13+19+22)
+#   → prep(s4-31 모델카드) → verify(s4-34 감사 + gate-release) — 빌드가 끝나면 검증된 모델 + 검증결과가 완료된다.
 #
 # 환경변수:
 #   STEPS=quant,ppl        실행할 스텝만 (기본: setup,calib,compat,dequant,quant,ppl,eval,prep,verify)
 #   FORCE=1                freshness 무시(강제 재계산)
-#   SKIP_SETUP=1           s0-10-setup 생략
+#   SKIP_SETUP=1           s1-01-setup 생략
 #   QUANT_CPU_ONLY=1       양자화만 GPU 숨김(PPL/eval은 GPU)
 #   CALIB_N/PPL_N/EVAL_N   규모 오버라이드(config/common.env와 동일 규약)
 #
@@ -25,10 +26,10 @@ BPE_TIMING=""
 # 타깃 → "<양자화 스크립트> <기대 압축 포맷>"
 rq_bpe_spec() {
   case "$1" in
-    awq-w3) echo "s5-22-quant-awq-w3.sh pack-quantized" ;;
-    awq-w5) echo "s5-25-quant-awq-w5.sh pack-quantized" ;;
-    nvfp4-awq) echo "s5-28-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
-    nvfp4-gptq) echo "s5-31-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
+    awq-w3) echo "s3-01-quant-awq-w3.sh pack-quantized" ;;
+    awq-w5) echo "s3-04-quant-awq-w5.sh pack-quantized" ;;
+    nvfp4-awq) echo "s3-07-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
+    nvfp4-gptq) echo "s3-10-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
     *) echo "" ;;
   esac
 }
@@ -47,7 +48,7 @@ rq_bpe_step() {
   _dt=$(( $(date +%s) - _t0 ))
   rq_log "step done: $name elapsed=${_dt}s rc=$_rc"
   printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "$mode" "$name" "$_dt" "$_rc" >>"$timing"
-  # SDLC 9단계 원장 기록(실패도 기록).
+  # SDLC 원장 기록(실패도 기록).
   local _stage _sid _sname _st _tgt
   _stage="$(rq_stage_of "$name")"
   if [ -n "$_stage" ]; then
@@ -63,7 +64,7 @@ rq_bpe_step() {
   return "$_rc"
 }
 
-# 게이트는 gates.inc의 공용 구현을 쓴다(9단계 SDLC의 단계 간 계약).
+# 게이트는 gates.inc의 공용 구현을 쓴다(SDLC의 단계 간 계약).
 #   rq_gate_acceptance : Stage 1 계약(수용 기준) 유효성
 #   rq_gate_quant      : 양자화 산출물 계약(dense 폴백·미보정 global_scale 차단)
 #   rq_gate_ppl        : PPL 유한값 + 수용 기준 판정 일치
@@ -113,60 +114,60 @@ rq_bpe_main() {
   fi
 
   if [ "${SKIP_SETUP:-0}" != 1 ] && rq_bpe_want_step setup; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "10-setup" ./s0-10-setup.sh
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-01-setup" ./s1-01-setup.sh
   fi
-  # Stage 1 — 수용 기준(s1-07-acceptance). 게이트의 판정 기준이 여기서 정해진다.
+  # Stage 1 — 수용 기준(s1-04-acceptance). 게이트의 판정 기준이 여기서 정해진다.
   if rq_bpe_want_step acceptance; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "07-acceptance" ./s1-07-acceptance.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-04-acceptance" ./s1-04-acceptance.sh "$mode"
     rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$mode.json"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-acceptance" rq_gate_acceptance "$mode"
   fi
   if rq_bpe_want_step calib; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "13-calib" ./s2-13-prep-calibration.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-07-calib" ./s1-07-prep-calibration.sh "$mode"
   fi
   if rq_bpe_want_step compat; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "16-compat" ./s3-16-compat-check.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-10-compat" ./s1-10-compat-check.sh "$mode"
   fi
   if rq_bpe_want_step dequant; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "19-dequant" ./s4-19-dequant-mxfp8.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s2-01-dequant" ./s2-01-dequant-mxfp8.sh "$mode"
   fi
   if rq_bpe_want_step quant; then
     rq_bpe_step "$mode" "$BPE_TIMING" "${qscript%.sh}" "${quant_cmd[@]}" "./$qscript" "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-quant" rq_gate_quant "$model_dir" "$qformat"
-    rq_stage_target 5 quant pass "$target" "$model_dir"
+    rq_stage_target 3 quant pass "$target" "$model_dir"
   fi
   if rq_bpe_want_step ppl; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "34-ppl" ./s6-34-measure-ppl.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-01-ppl" ./s4-01-measure-ppl.sh "$mode" "$eval_targets"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$mode/$target.json" "$target"
-    rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
+    rq_stage_record 4 measure pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
   fi
   if rq_bpe_want_step eval; then
     if rq_bpe_want_step evalset; then
-      rq_bpe_step "$mode" "$BPE_TIMING" "36-evalset" ./s7-36-prep-gsm8k.sh "$mode"
-      rq_bpe_step "$mode" "$BPE_TIMING" "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$mode"
-      rq_bpe_step "$mode" "$BPE_TIMING" "49-format-prepare" ./s7-49-format.sh "$mode" --prepare
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-04-evalset" ./s4-04-prep-gsm8k.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-16-prep-kmmluko" ./s4-16-prep-kmmluko.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-format-prepare" ./s4-22-format.sh "$mode" --prepare
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "37-eval-base" ./s7-37-eval-base.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "38-eval-quantized" ./s7-38-eval-quantized.sh "$mode" "$target"
-    rq_bpe_step "$mode" "$BPE_TIMING" "40-gsm8k" ./s7-40-gsm8k.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "46-kmmluko" ./s7-46-kmmluko.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "49-format" ./s7-49-format.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-07-eval-base" ./s4-07-eval-base.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-10-eval-quantized" ./s4-10-eval-quantized.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-13-gsm8k" ./s4-13-gsm8k.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-19-kmmluko" ./s4-19-kmmluko.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-format" ./s4-22-format.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-kmmluko" rq_gate_kmmluko "$mode" "$target"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-format" rq_gate_format "$mode" "$target"
     # Tier 3: 서빙 처리량(STEPS=serve로 명시 요청 시에만 — 서버가 떠 있어야 측정된다)
     case ",${STEPS:-$BPE_STEPS_DEFAULT}," in *,serve,*)
-      rq_bpe_step "$mode" "$BPE_TIMING" "52-servebench" ./s7-52-servebench.sh "$mode" ;;
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-25-servebench" ./s4-25-servebench.sh "$mode" ;;
     esac
-    rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
+    rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "56-prep" ./s7-56-prep-upload.sh "$mode" "$target"
-    rq_stage_record 7 eval pass "$RQ_OUTPUTS/prep-upload-$mode.json"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-31-prep" ./s4-31-prep-upload.sh "$mode" "$target"
+    rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "57-verify" ./s7-57-verify-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-34-verify" ./s4-34-verify-upload.sh "$mode" "$target"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-release" rq_gate_release "$mode"
   fi
 

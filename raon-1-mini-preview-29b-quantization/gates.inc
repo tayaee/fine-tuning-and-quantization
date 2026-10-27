@@ -1,4 +1,4 @@
-# gates.inc — 9단계 SDLC 게이트 공용 모음 (bash).
+# gates.inc — SDLC 게이트 공용 모음 (bash).
 #
 # 사용처: run-{smoke,full}.sh, build-ppl-eval.inc
 #   (두 곳 모두 config/common.env를 먼저 source한 뒤 이 파일을 source한다.)
@@ -22,7 +22,7 @@ rq_gate_acceptance() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/acceptance-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-07-acceptance.sh $mode)" >&2
+    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-04-acceptance.sh $mode)" >&2
     return 1
   fi
   ( set -x; rq_py - "$f" <<'PY'
@@ -62,7 +62,7 @@ PY
 
 # --- 게이트 2: PPL 유효성 + 수용 기준 일치 ----------------------------------
 # NaN/미측정이면 '오염된 모델'을 eval에 흘려보내지 않는다.
-# (s6-34-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
+# (s4-01-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
 rq_gate_ppl() {
   local f="$1" target="${2:-}"
   if [ ! -f "$f" ]; then
@@ -147,14 +147,14 @@ PY
 }
 
 # --- 게이트 4: Stage 8 릴리스 준비 (모델카드 + 지표 + 업로드 전 감사) ---------
-# s7-56-prep-upload(모델카드/디렉터리 보충) + s7-57-verify-upload(전수 감사)의 산출물을 대조한다.
+# s4-31-prep-upload(모델카드/디렉터리 보충) + s4-34-verify-upload(전수 감사)의 산출물을 대조한다.
 rq_gate_release() {
   local mode="${1:-$MODE}"
   local prep="$RQ_OUTPUTS/prep-upload-$mode.json"
   local ver="$RQ_OUTPUTS/verify-upload-$mode.json"
   local rc=0
-  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — s7-56-prep-upload 미수행" >&2; rc=1; }
-  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — s7-57-verify-upload 미수행" >&2; rc=1; }
+  [ -s "$prep" ] || { echo "FAIL: $prep 없음 — s4-31-prep-upload 미수행" >&2; rc=1; }
+  [ -s "$ver" ] || { echo "FAIL: $ver 없음 — s4-34-verify-upload 미수행" >&2; rc=1; }
   [ "$rc" -eq 0 ] || return 1
   ( set -x; rq_py - "$prep" "$ver" <<'PY'
 import json, sys
@@ -179,7 +179,7 @@ PY
 rq_gate_kmmluko() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s7-46-kmmluko.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s4-19-kmmluko.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys
@@ -209,7 +209,7 @@ PY
 rq_gate_format() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s7-49-format.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s4-22-format.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys
@@ -235,13 +235,13 @@ PY
 }
 
 # --- 게이트 5: 배포 후 서빙 검증 ---------------------------------------------
-# s8-64-verify-serving.py가 만든 outputs/serve-<mode>.json을 대조한다.
+# s7-19-verify-serving-log.py가 만든 outputs/serve-<mode>.json을 대조한다.
 # 서빙을 아직 하지 않았다면 "미수행"은 실패가 아니라 skip으로 본다(배포는 수동 단계).
 rq_gate_serving() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/serve-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s8-58-serve-infer-all.sh 후 s8-64-verify-serving.sh)"
+    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi.sh 후 s7-19-verify-serving-log.sh)"
     return 0
   fi
   ( set -x; rq_py - "$f" <<'PY'

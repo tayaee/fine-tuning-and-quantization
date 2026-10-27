@@ -1,0 +1,85 @@
+"""tests/test_s0.py — s0 베이스검증 8절차 + 그룹 넘버링 규칙 단위 테스트.
+
+넘버링 규칙: 두 번째 번호는 그룹 내 순서로 01부터 3단위,
+각 그룹의 첫 스크립트는 항상 s#-01-.
+"""
+
+from __future__ import annotations
+
+import re
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+S0_SCRIPTS = [
+    "s0-01-load-transformers.sh",
+    "s0-04-chat-transformers.sh",
+    "s0-07-picall-control.sh",
+    "s0-10-bench-transformers.sh",
+    "s0-13-load-vllm.sh",
+    "s0-16-chat-vllm.sh",
+    "s0-19-picall-vllm.sh",
+    "s0-22-bench-vllm.sh",
+]
+
+GROUP_FIRST = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"}
+
+
+def _steps(group: str) -> list[int]:
+    nums = []
+    for p in ROOT.glob(f"{group}-*.sh"):
+        m = re.match(rf"{group}-(\d{{2}})-", p.name)
+        assert m, f"naming rule 위반: {p.name}"
+        nums.append(int(m.group(1)))
+    return sorted(nums)
+
+
+def test_s0_eight_procedures_exist_and_executable():
+    for name in S0_SCRIPTS:
+        p = ROOT / name
+        assert p.is_file(), f"{name} 없음"
+        assert p.stat().st_mode & 0o111, f"{name} 실행 권한 없음"
+
+
+def test_s0_scripts_bash_syntax():
+    for name in S0_SCRIPTS:
+        out = subprocess.run(["bash", "-n", str(ROOT / name)],
+                             capture_output=True, text=True, check=False)
+        assert out.returncode == 0, f"{name}: {out.stderr}"
+
+
+def test_s0_pi_helper_defines_fixed_question():
+    inc = (ROOT / "config" / "s0-pi.inc").read_text(encoding="utf-8")
+    assert "S0_PI_QUESTION=" in inc
+    assert "숫자 하나로 답해" in inc
+    for fn in ("s0_pi_probe_dir", "s0_pi_register", "s0_pi_ask"):
+        assert fn in inc, f"{fn} 없음"
+
+
+def test_group_numbering_starts_at_01_step_3():
+    for g in GROUP_FIRST:
+        nums = _steps(g)
+        assert nums, f"{g} 그룹에 스크립트 없음"
+        assert nums[0] == 1, f"{g} 첫 스텝이 01이 아님: {nums}"
+        assert all(n % 3 == 1 for n in nums), f"{g} 3단위 위반: {nums}"
+
+
+def test_s6_s7_customer_sets_are_parallel():
+    """s6 transformers-test-4종과 s7 vllm-fork-test-4종은 같은 스텝·타깃으로 일치한다."""
+    targets = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+    steps = ["01", "04", "07", "10"]
+    for step, target in zip(steps, targets):
+        a = ROOT / f"s6-{step}-transformers-test-{target}.sh"
+        b = ROOT / f"s7-{step}-vllm-fork-test-{target}.sh"
+        assert a.is_file(), f"{a.name} 없음"
+        assert b.is_file(), f"{b.name} 없음"
+
+
+if __name__ == "__main__":
+    test_s0_eight_procedures_exist_and_executable()
+    test_s0_scripts_bash_syntax()
+    test_s0_pi_helper_defines_fixed_question()
+    test_group_numbering_starts_at_01_step_3()
+    test_s6_s7_customer_sets_are_parallel()
+    print("test_s0 OK")

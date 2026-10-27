@@ -7,8 +7,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-# 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외)
-mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s0-to-s7-*.sh | sort)
+# 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외).
+# frozen 카드 래퍼(s9-01/04/07/10-*)는 README 명령 as-is 실행이 설계라 배너 면제
+# (배너는 s7-13-chat이 찍는다).
+mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s1-to-s4-*.sh | grep -v 'vllm-fork-test' | sort)
 [ "${#SCRIPTS[@]}" -ge 25 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (25개 이상 기대)"; fail=1; }
 
 for f in "${SCRIPTS[@]}"; do
@@ -31,20 +33,20 @@ for f in run-smoke.sh run-full.sh; do
 done
 # 빌드 wrapper 8종은 각자 배너를 출력한다(공용 엔진 .inc는 중복 방지를 위해 배너 없음)
 n_build=0
-for f in "$ROOT"/run-s0-to-s7-*.sh; do
+for f in "$ROOT"/run-s1-to-s4-*.sh; do
   grep -q 'rq_banner "' "$f" || { echo "FAIL: $(basename "$f") 에 배너 없음"; fail=1; }
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 8 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (8 기대)"; fail=1; }
-for f in s8-73-release-notes.py s8-76-verify-serving-log.py; do
-  grep -q 'print("\[s8-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
+for f in s4-37-release-notes.py s7-19-verify-serving-log.py; do
+  grep -qE 'print\("\[s[0-9]-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"
 
 # 실제 출력 확인(07)
-out="$(cd "$ROOT" && ./s1-07-acceptance.sh smoke 2>&1 || true)"
-echo "$out" | grep -qE '^\[s1-07-acceptance\] Stage 1/9 - .*[A-Za-z]' \
-  || { echo "FAIL: s1-07-acceptance.sh 시작 배너 출력 형식 불일치"; fail=1; }
-echo "OK: s1-07-acceptance.sh 실제 출력"
+out="$(cd "$ROOT" && ./s1-04-acceptance.sh smoke 2>&1 || true)"
+echo "$out" | grep -qE '^\[s1-04-acceptance\] Stage 1 - .*[A-Za-z]' \
+  || { echo "FAIL: s1-04-acceptance.sh 시작 배너 출력 형식 불일치"; fail=1; }
+echo "OK: s1-04-acceptance.sh 실제 출력"
 
 exit $fail

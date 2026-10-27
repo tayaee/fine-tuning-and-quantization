@@ -1,4 +1,4 @@
-"""tests/test_sdlc.py — 9단계 SDLC 공통 모듈(sdlc.py · s1-07-acceptance.py · gates.inc) 단위 테스트.
+"""tests/test_sdlc.py — SDLC 공통 모듈(sdlc.py · s1-04-acceptance.py · gates.inc) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_sdlc.py
@@ -7,7 +7,7 @@ pytest가 없는 환경에서도 단독 실행된다:
   - config/acceptance.toml 스키마 검증 + 기본값 폴백
   - Δ 판정(verdict_for_delta)
   - 단계 원장(ledger) 기록/병합/타깃 집계
-  - s1-07-acceptance.py 산출물(acceptance-<mode>.json)
+  - s1-04-acceptance.py 산출물(acceptance-<mode>.json)
   - gates.inc 게이트(acceptance/ppl/eval)의 통과·차단 동작
 """
 
@@ -38,7 +38,7 @@ def _load_script(name: str):
     return mod
 
 
-acc = _load_script("s1-07-acceptance.py")
+acc = _load_script("s1-04-acceptance.py")
 
 
 # ---------------------------------------------------------------- 수용 기준
@@ -116,14 +116,14 @@ def test_ledger_missing_file_is_empty():
         assert data["stages"] == {}
 
 
-# ---------------------------------------------------------------- s1-07-acceptance
+# ---------------------------------------------------------------- s1-04-acceptance
 
 
 def test_07_acceptance_writes_snapshot():
     with tempfile.TemporaryDirectory() as d:
         env = dict(os.environ, RQ_SHARED=d)
         out = subprocess.run(
-            [sys.executable, str(ROOT / "s1-07-acceptance.py"), "--mode", "smoke"],
+            [sys.executable, str(ROOT / "s1-04-acceptance.py"), "--mode", "smoke"],
             capture_output=True, text=True, env=env, cwd=str(ROOT), check=False,
         )
         assert out.returncode == 0, out.stderr
@@ -131,7 +131,7 @@ def test_07_acceptance_writes_snapshot():
         assert p.is_file()
         payload = json.loads(p.read_text(encoding="utf-8"))
         assert payload["mode"] == "smoke"
-        assert len(payload["stages"]) == 9
+        assert len(payload["stages"]) == 8
         assert "nvfp4-awq" in payload["targets"]
 
 
@@ -140,7 +140,7 @@ def test_07_acceptance_rejects_bad_file():
         bad = Path(d) / "bad.toml"
         bad.write_text("[targets.awq-w3]\nquant_format = 1\n", encoding="utf-8")
         out = subprocess.run(
-            [sys.executable, str(ROOT / "s1-07-acceptance.py"), "--mode", "smoke", "--path", str(bad)],
+            [sys.executable, str(ROOT / "s1-04-acceptance.py"), "--mode", "smoke", "--path", str(bad)],
             capture_output=True, text=True, cwd=str(ROOT), check=False,
         )
         assert out.returncode == 1
@@ -217,15 +217,16 @@ def test_gate_acceptance_requires_snapshot():
         assert out.returncode == 0, out.stdout + out.stderr
 
 
-def test_rq_stage_of_mapping_covers_nine_stages():
+def test_rq_stage_of_mapping_covers_all_groups():
     out = _bash(
         "source config/common.env smoke; "
-        "for s in 10-setup 07-acceptance 13-calib 16-compat 19-dequant 28-nvfp4-awq "
-        "34-ppl 37-eval-base 38-eval-quantized 49-upload 56-prep 57-verify; do rq_stage_of $s; done"
+        "for s in s1-01-setup s1-04-acceptance s1-07-calib s1-10-compat s2-01-dequant "
+        "s3-07-quant-nvfp4-awq s4-01-ppl s4-07-eval-base s4-10-eval-quantized s5-01-upload "
+        "s4-31-prep s4-34-verify s6-13-chat s6-16-pi s7-13-chat s7-16-pi; do rq_stage_of $s; done"
     )
     assert out.returncode == 0, out.stderr
     ids = [line.split()[0] for line in out.stdout.strip().splitlines() if line.strip()]
-    assert ids == ["0", "1", "2", "3", "4", "5", "6", "7", "7", "8", "7", "7"]
+    assert ids == ["1", "1", "1", "1", "2", "3", "4", "4", "4", "5", "4", "4", "6", "6", "7", "7"]
 
 
 if __name__ == "__main__":

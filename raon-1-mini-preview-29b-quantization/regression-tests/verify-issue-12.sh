@@ -15,9 +15,9 @@ for f in run-smoke.sh run-full.sh; do
   grep -q 'Unknown TARGETS' "$ROOT/$f" || { echo "FAIL: $f 에 알 수 없는 타깃 거부 없음"; fail=1; }
   # 가드가 setup 스텝보다 앞에 있어야 한다(스텝 0건 종료)
   _guard=$(grep -n 'TARGETS is not specified' "$ROOT/$f" | head -1 | cut -d: -f1)
-  _setup=$(grep -n 'rq_step "10-setup"' "$ROOT/$f" | head -1 | cut -d: -f1)
+  _setup=$(grep -n 'rq_step "s1-01-setup"' "$ROOT/$f" | head -1 | cut -d: -f1)
   if [ -n "$_guard" ] && [ -n "$_setup" ] && [ "$_guard" -gt "$_setup" ]; then
-    echo "FAIL: $f 의 TARGETS 가드가 s0-10-setup 뒤에 있다 (스텝 실행 0건이어야 함)"; fail=1
+    echo "FAIL: $f 의 TARGETS 가드가 s1-01-setup 뒤에 있다 (스텝 실행 0건이어야 함)"; fail=1
   fi
 done
 echo "OK: TARGETS 가드 위치·내용"

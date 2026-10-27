@@ -117,4 +117,4 @@ Stage 8 릴리스 게이트 실측: `s8-43-prep-upload`·`s8-46-verify-upload` s
    (Δ 임계값·용량 범위·포맷). 코드 하드코딩 없음.
 3. **게이트는 산출물을 먼저 검사**: 다음 단계로 넘어가기 전에
    패킹 계약 위반·NaN PPL·빈 응답을 차단.
-4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `s8-73-release-notes.py` → 릴리스 노트.
+4. **증빙은 원장**: `outputs/stage-ledger-<mode>.json` → `s7-58-release-notes.py` → 릴리스 노트.

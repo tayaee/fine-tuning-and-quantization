@@ -6,7 +6,7 @@
 #   (setup → calib(2) → compat → validate, 5분 목표, 양자화 미실행).
 # 사용: ./run-smoke.sh
 #   PIPELINE_TEST=1 ./run-smoke.sh       # 빠른 점검 (양자화 제외)
-#   SKIP_SETUP=1 ./run-smoke.sh         # s0-10-setup 생략
+#   SKIP_SETUP=1 ./run-smoke.sh         # s1-01-setup 생략
 #   STEPS=setup,calib,compat ./run-smoke.sh  # 일부 스텝만
 # 스텝명: setup calib compat validate dequant quant ppl eval prep (기본 STEPS=all)
 # TARGETS: 양자화 타깃 부분집합 (콤마 구분). **미지정 시 가능한 값을 찍고 종료**(자동 전체 실행 금지). PPL/eval/prep/upload은 base를 앞에 붙여 측정한다.
@@ -41,7 +41,7 @@ rq_step() {
   if [ "$_rc" -ne 0 ] || [ "$_dt" -gt 0 ]; then
     printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "$MODE" "$_name" "$_dt" "$_rc" >>"$TIMING_LOG"
   fi
-  # SDLC 9단계 원장 기록 (실패도 기록한다 — 증빙이므로).
+  # SDLC 원장 기록 (실패도 기록한다 — 증빙이므로).
   local _stage _sid _sname _st _tgt
   _stage="$(rq_stage_of "$_name")"
   if [ -n "$_stage" ]; then
@@ -60,7 +60,7 @@ want_step() {
   case ",${STEPS:-all}," in *,all,*|*,"$1",*) return 0 ;; *) return 1 ;; esac
 }
 # 명시적으로 나열한 스텝만 실행 (STEPS=all 에는 포함되지 않는다).
-#   STEPS=verify ./run-smoke.sh   → 57-verify + gate-release 만 추가
+#   STEPS=verify ./run-smoke.sh   → s4-34-verify + gate-release 만 추가
 want_step_explicit() {
   case ",${STEPS:-all}," in *,"$1",*) return 0 ;; *) return 1 ;; esac
 }
@@ -73,7 +73,7 @@ run_done() {
 }
 trap 'RQ_RC=$?; rq_repro; run_done' EXIT
 
-rq_banner "run-$MODE" "9-stage pipeline: setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval -> release (TARGETS is required)"
+rq_banner "run-$MODE" "pipeline: s1 env-chain -> s2 dequant -> s3 quant -> s4 measure+eval (TARGETS is required)"
 rq_log "run-$MODE start (steps=${STEPS:-all})"
 
 # TARGETS 정규화 — quant/ppl/eval/prep/upload이 같은 목록을 본다 (issue-4 요구사항 3).
@@ -103,54 +103,59 @@ for _t in $(echo "$_targets" | tr ',' ' '); do
 done
 
 if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
-  rq_step "10-setup" ./s0-10-setup.sh
+  rq_step "s1-01-setup" ./s1-01-setup.sh
 fi
 
-# Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(s1-07-acceptance).
+# Stage 1 — 수용 기준. 이게 없으면 뒤 단계의 판정 기준이 없다(s1-04-acceptance).
 if want_step acceptance; then
-  rq_step "07-acceptance" ./s1-07-acceptance.sh "$MODE"
+  rq_step "s1-04-acceptance" ./s1-04-acceptance.sh "$MODE"
   rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
 fi
 
-want_step calib && rq_step "13-calib" ./s2-13-prep-calibration.sh "$MODE"
+want_step calib && rq_step "s1-07-calib" ./s1-07-prep-calibration.sh "$MODE"
 if want_step compat; then
-  rq_step "16-compat" ./s3-16-compat-check.sh "$MODE"
-  rq_stage_record 3 compat pass "$RQ_OUTPUTS/compat.stamp"
+  rq_step "s1-10-compat" ./s1-10-compat-check.sh "$MODE"
+  rq_stage_record 1 compat pass "$RQ_OUTPUTS/compat.stamp"
 fi
 
 if want_step dequant; then
-  rq_step "19-dequant" ./s4-19-dequant-mxfp8.sh "$MODE"
-  rq_stage_record 4 dequant pass "$RQ_MODELS/raon-bf16"
+  rq_step "s2-01-dequant" ./s2-01-dequant-mxfp8.sh "$MODE"
+  rq_stage_record 2 dequant pass "$RQ_MODELS/raon-bf16"
 fi
 
 if want_step validate; then
   rq_step "validate-helps" bash -c '
-    for s in s1-07-acceptance s4-19-dequant-mxfp8 s5-25-quant-awq-w5 s5-22-quant-awq-w3 \
-             s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-gsm8k s7-43-prep-kmmluko \
-             s6-34-measure-ppl s7-37-eval s7-40-gsm8k s7-46-kmmluko s7-49-format s7-52-servebench \
-             s7-56-prep-upload s7-57-verify-upload \
-             s8-49-upload-hf s8-73-release-notes s8-76-verify-serving-log; do
+    for s in s1-04-acceptance s2-01-dequant-mxfp8 s3-04-quant-awq-w5 s3-01-quant-awq-w3 \
+             s3-07-quant-nvfp4-awq s3-10-quant-nvfp4-gptq s4-04-prep-gsm8k s4-16-prep-kmmluko \
+             s4-01-measure-ppl s4-07-eval s4-13-gsm8k s4-19-kmmluko s4-22-format s4-25-servebench \
+             s4-31-prep-upload s4-34-verify-upload s4-37-release-notes \
+             s5-01-upload-hf s7-19-verify-serving-log; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
-    for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-gsm8k s7-37-eval-base s7-38-eval-quantized s7-40-gsm8k \
-             s7-43-prep-kmmluko s7-46-kmmluko s7-49-format s7-52-servebench \
-             s7-56-prep-upload s7-57-verify-upload s8-49-upload-hf s8-64-vllm-serve-one \
-             s8-67-inference-test s8-73-release-notes s8-76-verify-serving-log; do
+    for s in s0-01-load-transformers s0-04-chat-transformers s0-07-picall-control s0-10-bench-transformers \
+             s0-13-load-vllm s0-16-chat-vllm s0-19-picall-vllm s0-22-bench-vllm \
+             s1-04-acceptance s4-01-measure-ppl s4-04-prep-gsm8k s4-07-eval-base s4-10-eval-quantized s4-13-gsm8k \
+             s4-16-prep-kmmluko s4-19-kmmluko s4-22-format s4-25-servebench \
+             s4-31-prep-upload s4-34-verify-upload s4-37-release-notes s5-01-upload-hf \
+             s6-01-transformers-test-awq-w3 s6-04-transformers-test-awq-w5 s6-07-transformers-test-nvfp4-awq \
+             s6-10-transformers-test-nvfp4-gptq s6-13-chat s6-16-pi s7-01-vllm-fork-test-awq-w3 \
+             s7-04-vllm-fork-test-awq-w5 s7-07-vllm-fork-test-nvfp4-awq \
+             s7-10-vllm-fork-test-nvfp4-gptq s7-13-chat s7-16-pi s7-19-verify-serving-log; do
       bash -n "$0/$s.sh" || exit 1
     done
     bash -n "$0/gates.inc" || exit 1
-    for s in "$0"/run-s0-to-s7-*.sh; do
+    for s in "$0"/run-s1-to-s4-*.sh; do
       bash -n "$s" || exit 1
     done
     bash -n "$0/build-ppl-eval.inc" || exit 1
-    echo "validate OK (SDLC 9단계 스크립트)"' "$ROOT"
+    echo "validate OK (SDLC 스크립트)"' "$ROOT"
 fi
 
-# base(19-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
+# base(s2-01-dequant 복원본)를 항상 포함 — PPL Δ 판정과 모델 카드 비교표의 기준선이다.
 _eval_targets="base,$_targets"
 
 # 양자화만 CPU 강제(QUANT_CPU_ONLY=1): env로 자식 프로세스에만 빈 값을 넘겨
-# 34-ppl/s7-37-base·38-quantized는 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
+# s4-01-ppl/s4-07-eval-base·s4-10-eval-quantized는 그대로 GPU를 본다 (부모 셸을 바꾸면 평가가 CPU로 떨어진다).
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then
   _quant_cmd=(env CUDA_VISIBLE_DEVICES=)
   rq_log "QUANT_CPU_ONLY=1 — 양자화 단계만 GPU 숨김, PPL/eval은 GPU 사용"
@@ -162,69 +167,69 @@ if want_step quant; then
   for _t in $(echo "$_targets" | tr ',' ' '); do
     case "$_t" in
       awq-w3)
-        rq_step "22-awq-w3" "${_quant_cmd[@]}" ./s5-22-quant-awq-w3.sh "$MODE"
+        rq_step "s3-01-quant-awq-w3" "${_quant_cmd[@]}" ./s3-01-quant-awq-w3.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
-        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+        rq_stage_target 3 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       awq-w5)
-        rq_step "25-awq-w5" "${_quant_cmd[@]}" ./s5-25-quant-awq-w5.sh "$MODE"
+        rq_step "s3-04-quant-awq-w5" "${_quant_cmd[@]}" ./s3-04-quant-awq-w5.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
-        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+        rq_stage_target 3 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       nvfp4-awq)
-        rq_step "28-nvfp4-awq" "${_quant_cmd[@]}" ./s5-28-quant-nvfp4-awq.sh "$MODE"
+        rq_step "s3-07-quant-nvfp4-awq" "${_quant_cmd[@]}" ./s3-07-quant-nvfp4-awq.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
-        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+        rq_stage_target 3 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       nvfp4-gptq)
-        rq_step "31-nvfp4-gptq" "${_quant_cmd[@]}" ./s5-31-quant-nvfp4-gptq.sh "$MODE"
+        rq_step "s3-10-quant-nvfp4-gptq" "${_quant_cmd[@]}" ./s3-10-quant-nvfp4-gptq.sh "$MODE"
         rq_step "gate-quant" rq_gate_quant "$RQ_MODELS/raon-$_t-$MODE" "$(rq_quant_format "$_t")"
-        rq_stage_target 5 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
+        rq_stage_target 3 quant pass "$_t" "$RQ_MODELS/raon-$_t-$MODE" ;;
       *) echo "unknown quant target: $_t (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2; exit 1 ;;
     esac
   done
 fi
 
 if want_step ppl; then
-  rq_step "34-ppl" ./s6-34-measure-ppl.sh "$MODE" "$_eval_targets"
-  rq_stage_record 6 ppl pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
-  # Stage 6 게이트: PPL이 유한하고 수용 기준(Δ) 판정과 일치하는지 확인한다.
+  rq_step "s4-01-ppl" ./s4-01-measure-ppl.sh "$MODE" "$_eval_targets"
+  rq_stage_record 4 measure pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
+  # Stage 4 게이트: PPL이 유한하고 수용 기준(Δ) 판정과 일치하는지 확인한다.
   for _t in $(echo "$_targets" | tr ',' ' '); do
     rq_step "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$MODE/$_t.json" "$_t"
   done
 fi
 if want_step eval; then
   # 평가 세트 준비(36 GSM8K / 43 한국어 KMMLU / 49 형식 준수) — 결정론적이라 멱등.
-  want_step evalset && rq_step "36-evalset" ./s7-36-prep-gsm8k.sh "$MODE"
-  want_step evalset && rq_step "43-prep-kmmluko" ./s7-43-prep-kmmluko.sh "$MODE"
-  want_step evalset && rq_step "49-format-prepare" ./s7-49-format.sh "$MODE" --prepare
-  rq_step "37-eval-base" ./s7-37-eval-base.sh "$MODE"
-  rq_step "38-eval-quantized" ./s7-38-eval-quantized.sh "$MODE" "$_targets"
+  want_step evalset && rq_step "s4-04-evalset" ./s4-04-prep-gsm8k.sh "$MODE"
+  want_step evalset && rq_step "s4-16-prep-kmmluko" ./s4-16-prep-kmmluko.sh "$MODE"
+  want_step evalset && rq_step "s4-22-format-prepare" ./s4-22-format.sh "$MODE" --prepare
+  rq_step "s4-07-eval-base" ./s4-07-eval-base.sh "$MODE"
+  rq_step "s4-10-eval-quantized" ./s4-10-eval-quantized.sh "$MODE" "$_targets"
   # 채점(40 GSM8K / 46 한국어 / 49 형식)
-  rq_step "40-gsm8k" ./s7-40-gsm8k.sh "$MODE"
-  rq_step "46-kmmluko" ./s7-46-kmmluko.sh "$MODE"
-  rq_step "49-format" ./s7-49-format.sh "$MODE"
-  rq_stage_record 7 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
-  # Stage 7 게이트: 응답 생성 + GSM8K 정확도 + 한국어 정확도 + 형식 준수
+  rq_step "s4-13-gsm8k" ./s4-13-gsm8k.sh "$MODE"
+  rq_step "s4-19-kmmluko" ./s4-19-kmmluko.sh "$MODE"
+  rq_step "s4-22-format" ./s4-22-format.sh "$MODE"
+  rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
+  # Stage 4 게이트: 응답 생성 + GSM8K 정확도 + 한국어 정확도 + 형식 준수
   for _t in $(echo "$_eval_targets" | tr ',' ' '); do
     rq_step "gate-eval" rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$_t.jsonl" "$_t" "$MODE"
     rq_step "gate-kmmluko" rq_gate_kmmluko "$MODE" "$_t"
     rq_step "gate-format" rq_gate_format "$MODE" "$_t"
   done
   # Tier 3: 서빙 처리량(서버가 떠 있을 때만 측정 — 없으면 skip)
-  want_step_serve && rq_step "52-servebench" ./s7-52-servebench.sh "$MODE"
+  want_step_serve && rq_step "s4-25-servebench" ./s4-25-servebench.sh "$MODE"
 fi
 if want_step prep; then
-  rq_step "56-prep" ./s7-56-prep-upload.sh "$MODE" "$_targets"
-  rq_stage_record 7 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
+  rq_step "s4-31-prep" ./s4-31-prep-upload.sh "$MODE" "$_targets"
+  rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
 fi
 
-# Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 57이 필요하므로 기본 경로 밖).
+# Stage 8 릴리스 게이트는 명시 요청 시에만(업로드 전 감사 s4-34가 필요하므로 기본 경로 밖).
 if want_step_explicit verify; then
-  rq_step "57-verify" ./s7-57-verify-upload.sh "$MODE" "$_targets"
+  rq_step "s4-34-verify" ./s4-34-verify-upload.sh "$MODE" "$_targets"
   rq_step "gate-release" rq_gate_release "$MODE"
 fi
 
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---
-# ./s8-49-upload-hf.sh full              # smoke는 업로드하지 않음
-# ./s8-64-vllm-serve-one.sh smoke nvfp4-gptq  # 터미널1 (상주)
-# ./s8-67-inference-test.sh 3            # 터미널2
-# ./s8-70-vllm-serve-all-models.sh는 TARGETS 필수: TARGETS=all ./s8-70-vllm-serve-all-models.sh smoke 3
+# ./s5-01-upload-hf.sh full              # smoke는 업로드하지 않음
+# ./s7-13-chat.sh smoke nvfp4-awq  # 서버 기동 + chat 검증 (서버 상주)
+# ./s7-16-pi.sh smoke nvfp4-awq    # pi 검증 후 서버 정리
+# ./s7-19-verify-serving-log.sh smoke  # 서빙 감사

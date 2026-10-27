@@ -24,7 +24,7 @@ for f in run-smoke.sh run-full.sh; do
   grep -q '"gate-quant" rq_gate_quant' "$ROOT/$f" || { echo "FAIL: $f 에 gate-quant 없음"; fail=1; }
   grep -q '"gate-ppl" rq_gate_ppl' "$ROOT/$f" || { echo "FAIL: $f 에 gate-ppl 없음"; fail=1; }
   grep -q '"gate-eval" rq_gate_eval' "$ROOT/$f" || { echo "FAIL: $f 에 gate-eval 없음"; fail=1; }
-  grep -q '"07-acceptance" ./s1-07-acceptance.sh' "$ROOT/$f" || { echo "FAIL: $f 에 acceptance 단계 없음"; fail=1; }
+  grep -q '"s1-04-acceptance" ./s1-04-acceptance.sh' "$ROOT/$f" || { echo "FAIL: $f 에 acceptance 단계 없음"; fail=1; }
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done
 echo "OK: run-{smoke,full}.sh 게이트 + acceptance 단계"

@@ -6,9 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-GUARDED="s6-34-measure-ppl.sh s7-38-eval-quantized.sh
-  s7-55-bench-transformers.sh s7-56-prep-upload.sh s7-57-verify-upload.sh
-  s8-49-upload-hf.sh s8-70-vllm-serve-all-models.sh"
+GUARDED="s4-01-measure-ppl.sh s4-10-eval-quantized.sh
+  s4-28-bench-transformers.sh s4-31-prep-upload.sh s4-34-verify-upload.sh
+  s5-01-upload-hf.sh"
 
 for f in config/common.env run-smoke.sh run-full.sh $GUARDED; do
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }

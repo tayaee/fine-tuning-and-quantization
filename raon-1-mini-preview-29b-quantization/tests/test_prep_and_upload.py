@@ -1,4 +1,4 @@
-"""tests/test_prep_and_upload.py — issue-5 (s7-56-prep-upload / s8-49-upload-hf) 단위 테스트.
+"""tests/test_prep_and_upload.py — issue-5 (s4-31-prep-upload / s5-01-upload-hf) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_prep_and_upload.py
@@ -35,12 +35,12 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s7-56-prep-upload.py")
-up = _load_script("s8-49-upload-hf.py")
+prep = _load_script("s4-31-prep-upload.py")
+up = _load_script("s5-01-upload-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"
-# 표준 GSM8K 단일 벤치 (s7-37-eval이 표준 GSM8K만 평가)
+# 표준 GSM8K 단일 벤치 (s4-07-eval이 표준 GSM8K만 평가)
 BENCHES = ("gsm8k",)
 
 
@@ -140,7 +140,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     )
 
 
-# ---------------------------------------------------------------- s7-56-prep-upload
+# ---------------------------------------------------------------- s4-31-prep-upload
 
 
 def test_prep_rejects_dense_fallback(workspace):
@@ -269,7 +269,7 @@ def test_prep_manifest_fails_when_target_failed(workspace):
     assert manifest["targets"]["nvfp4-awq"]["errors"]
 
 
-# ---------------------------------------------------------------- s8-49-upload-hf
+# ---------------------------------------------------------------- s5-01-upload-hf
 
 
 def test_repo_name_keeps_smoke_suffix():
@@ -331,7 +331,7 @@ def test_upload_skips_missing_model(workspace, capsys):
 
 
 def test_prep_then_dry_run_succeeds(workspace, capsys):
-    """issue-5 §4: s7-56-prep 실행 후 s8-49-upload-hf --dry-run이 성공해야 한다.
+    """issue-5 §4: s4-31-prep 실행 후 s5-01-upload-hf --dry-run이 성공해야 한다.
 
     READY가 안 나오는 경우가 많아야 하는 흔한 실수는 (a) dry-run이 네트워크를 건드림,
     (b) repo_id 규칙이 깨짐, (c) prep이 README를 다른 경로에 씀 — 셋 다 여기서 잡힌다.

@@ -1,18 +1,18 @@
-"""sdlc.py — 9단계 SDLC 공용 라이브러리 (수용 기준 · 단계 원장 · 판정).
+"""sdlc.py — SDLC 공용 라이브러리 (수용 기준 · 단계 원장 · 판정).
 
-이 파이프라인의 SDLC는 9단계로 정의된다(문서: docs/SDLC.md).
+이 파이프라인의 SDLC는 8개 그룹으로 정의된다(문서: docs/SDLC.md).
 
-  0 환경 → 1 수용기준 → 2 데이터 → 3 호환성 → 4 베이스복원
-  → 5 양자화 → 6 PPL게이트 → 7 평가 → 8 릴리스·배포
+  0 베이스검증 → 1 환경체인 → 2 베이스복원 → 3 양자화 → 4 측정·평가
+  → 5 업로드 → 6 고객인수(transformers) → 7 고객인수(vLLM 서빙)
 
 이 모듈은 그중 "계약(acceptance)"과 "증빙(ledger)" 두 가지를 담당한다.
 
   - config/acceptance.toml = Stage 1 산출물(수용 기준의 단일 소스).
-    s6-34-measure-ppl.py(Δ 판정), s7-57-verify-upload.py(용량 범위),
-    s7-56-prep-upload.py(모델 카드) 모두 여기 정의된 값만 사용한다.
+    s4-01-measure-ppl.py(Δ 판정), s4-34-verify-upload.py(용량 범위),
+    s4-31-prep-upload.py(모델 카드) 모두 여기 정의된 값만 사용한다.
     파일이 없으면 DEFAULT_ACCEPTANCE로 폴백(하위 호환).
   - outputs/stage-ledger-<mode>.json = 단계 원장. 각 단계가
-    status/artifact/verdict를 남기고, s8-73-release-notes.py가 릴리스 노트로 굽는다.
+    status/artifact/verdict를 남기고, s4-37-release-notes.py가 릴리스 노트로 굽는다.
 
 표준 라이브러리만 사용한다(uv sync/lock을 건드리지 않기 위함).
 """
@@ -76,17 +76,17 @@ DEFAULT_ACCEPTANCE: dict[str, Any] = {
     },
 }
 
-#: 9단계 정의 (id → 이름/산출물). 문서·원장·릴리스 노트가 공유한다.
+#: SDLC 그룹 정의 (id → 이름/산출물). 문서·원장·릴리스 노트가 공유한다.
+#: s8(업로드)는 s5로, s9(CAT)는 s6(고객-transformers)+s7(고객-vLLM)로 재편됐다.
 STAGES: tuple[dict[str, Any], ...] = (
-    {"id": 0, "name": "setup", "title": "환경·접근성", "artifact": ".venv/.rq-setup-stamp"},
-    {"id": 1, "name": "acceptance", "title": "요구사항·수용 기준", "artifact": "outputs/acceptance-<mode>.json"},
-    {"id": 2, "name": "calib", "title": "캘리브레이션 데이터", "artifact": "datasets/raon-calibration-<N>.jsonl"},
-    {"id": 3, "name": "compat", "title": "호환성 사전 점검", "artifact": "outputs/compat.stamp"},
-    {"id": 4, "name": "dequant", "title": "베이스 복원(MXFP8→BF16)", "artifact": "models/raon-bf16"},
-    {"id": 5, "name": "quant", "title": "양자화 실행", "artifact": "models/raon-<target>-<mode>"},
-    {"id": 6, "name": "ppl", "title": "PPL 품질 게이트", "artifact": "outputs/ppl-<mode>/<target>.json"},
-    {"id": 7, "name": "eval", "title": "벤치마크 평가", "artifact": "outputs/eval-<mode>/<target>.jsonl"},
-    {"id": 8, "name": "release", "title": "릴리스·배포", "artifact": "outputs/release-notes-<mode>.md"},
+    {"id": 0, "name": "base", "title": "베이스모델 검증", "artifact": "outputs/s0-<mode>.json"},
+    {"id": 1, "name": "envchain", "title": "환경·수용기준·데이터·호환성", "artifact": "outputs/acceptance-<mode>.json"},
+    {"id": 2, "name": "dequant", "title": "베이스 복원(MXFP8→BF16)", "artifact": "models/raon-bf16"},
+    {"id": 3, "name": "quant", "title": "양자화 실행", "artifact": "models/raon-<target>-<mode>"},
+    {"id": 4, "name": "measure-eval", "title": "PPL·벤치마크 평가·카드·감사", "artifact": "outputs/eval-<mode>/<target>.jsonl"},
+    {"id": 5, "name": "upload", "title": "Hub 업로드", "artifact": "Hub (tayaee/*)"},
+    {"id": 6, "name": "cat-tf", "title": "고객인수(transformers)", "artifact": "outputs/s6-<mode>/"},
+    {"id": 7, "name": "cat-vllm", "title": "고객인수(vLLM 서빙)", "artifact": "outputs/serve-<mode>.json"},
 )
 
 VERDICT_ACCEPT = "Accept"
@@ -359,7 +359,7 @@ def _cmd_acceptance(a: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="9단계 SDLC 공용 도구 (수용 기준 · 원장)")
+    ap = argparse.ArgumentParser(description="SDLC 공용 도구 (수용 기준 · 원장)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_led = sub.add_parser("ledger", help="단계 상태를 원장에 기록")

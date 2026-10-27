@@ -1,9 +1,9 @@
 # config/acceptance.toml — Stage 1 산출물: 수용 기준의 단일 소스 (SSOT)
 #
 # 9단계 SDLC의 1단계(요구사항·수용 기준)를 코드로 옮긴 파일이다.
-# 이 값이 바뀌면 s6-34-measure-ppl.py(Δ 판정) · s7-57-verify-upload.py(용량 범위) ·
-# s7-56-prep-upload.py(모델 카드) · s8-61-release-notes.py(릴리스 노트)가 함께 따라간다.
-# 스키마 검증: s1-07-acceptance.py (sdlc.acceptance_errors)
+# 이 값이 바뀌면 s4-01-measure-ppl.py(Δ 판정) · s4-34-verify-upload.py(용량 범위) ·
+# s4-31-prep-upload.py(모델 카드) · s4-37-release-notes.py(릴리스 노트)가 함께 따라간다.
+# 스키마 검증: s1-04-acceptance.py (sdlc.acceptance_errors)
 #
 # 판정 규칙 (base 대비 ΔPPL):
 #   Δ < ppl_delta_warn  → Accept
@@ -20,7 +20,7 @@
 #   pass_rate >= format_pass_rate_min → PASS (그 외 FAIL)
 #
 # TOML을 쓴 이유: python 3.12 표준 tomllib로 읽혀 별도 의존성이 없다
-# (uv.lock을 건드리지 않아 s0-10-setup 스탬프가 무효화되지 않는다).
+# (uv.lock을 건드리지 않아 s1-01-setup 스탬프가 무효화되지 않는다).
 
 version = 1
 
@@ -63,6 +63,6 @@ format_pass_rate_min = 0.9    # 지시/형식 준수 스위트 통과율 하한
 
 # 릴리스 게이트 (Stage 8) ---------------------------------------------
 [gates.release]
-require_model_card = true      # s7-56-prep-upload이 만든 README.md 존재·비어있지 않음
+require_model_card = true      # s4-31-prep-upload이 만든 README.md 존재·비어있지 않음
 require_metrics = true         # PPL summary + eval score.json 존재
 require_finite_ppl = true      # PPL 값이 유한수
