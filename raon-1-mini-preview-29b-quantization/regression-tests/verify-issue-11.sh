@@ -54,7 +54,7 @@ grep -q 'gsm8k_acc_drop_max' "$ROOT/gates.inc" || { echo "FAIL: gates.inc의 gat
 echo "OK: gate-eval GSM8K 대조"
 
 # 6. 파이프라인 배선
-for f in run-smoke.sh run-full.sh build-ppl-eval.inc; do
+for f in build-ppl-eval.inc; do
   grep -q 's4-04-prep-gsm8k.sh' "$ROOT/$f" || { echo "FAIL: $f 에 36 단계 없음"; fail=1; }
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done

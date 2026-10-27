@@ -3,7 +3,7 @@
 #   1. s4-31-prep-upload.py/.sh 존재(+실행 권한), 검증/보충/카드 생성 계약
 #   2. README 필수 섹션(frontmatter/사양/벤치표/사용법/라이선스) + extra_gated 금지
 #   3. s5-01-upload-hf.py에 README 생성 로직이 없고 사전 검증만 한다 (+--dry-run)
-#   4. run-{smoke,full}.sh에 56-prep 단계
+#   4. build-ppl-eval.inc에 s4-31-prep 단계 (구 run-{smoke,full}.sh는 archive/)
 #   5. 단위 테스트 (tests/test_prep_and_upload.py)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -63,14 +63,14 @@ if grep -qE 'write_text\(|\.write\(|open\([^)]*[\x27"]w[\x27"]' "$ROOT/s5-01-upl
 fi
 echo "OK: s5-01-upload-hf.py 업로드 전담 (README 생성 로직 제거)"
 
-# 4. 파이프라인 연동
-for f in run-smoke.sh run-full.sh; do
-  grep -q '"s4-31-prep" ./s4-31-prep-upload.sh "\$MODE"' "$ROOT/$f" \
-    || { echo "FAIL: $f 에 56-prep 단계 없음"; fail=1; }
-  bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
+# 4. 파이프라인 연동 (단일 타깃 빌드 엔진; 구 run-{smoke,full}.sh는 archive/)
+grep -q '"s4-31-prep" ./s4-31-prep-upload.sh "\$mode"' "$ROOT/build-ppl-eval.inc" \
+  || { echo "FAIL: build-ppl-eval.inc에 s4-31-prep 단계 없음"; fail=1; }
+bash -n "$ROOT/build-ppl-eval.inc" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
+for w in "$ROOT"/run-s1-to-s4-*.sh; do
+  bash -n "$w" || { echo "FAIL: $(basename "$w") bash -n"; fail=1; }
 done
-grep -q 's4-31-prep-upload' "$ROOT/run-smoke.sh" || { echo "FAIL: run-smoke.sh validate 목록에 s4-31-prep-upload 없음"; fail=1; }
-echo "OK: run-{smoke,full}.sh s4-31-prep 단계"
+echo "OK: build-ppl-eval.inc s4-31-prep 단계 + wrapper 8종"
 
 # 5. 단위 테스트
 if "$PY" -c "import pytest" >/dev/null 2>&1; then

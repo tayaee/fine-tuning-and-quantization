@@ -18,9 +18,10 @@ done
 for tok in 'rq_stage_record()' 'rq_stage_target()' 'rq_stage_of()'; do
   grep -qF -- "$tok" "$ROOT/config/common.env" || { echo "FAIL: common.env에 '$tok' 없음"; fail=1; }
 done
-for f in run-smoke.sh run-full.sh build-ppl-eval.inc; do
+for f in build-ppl-eval.inc; do
   grep -q 'rq_stage_record' "$ROOT/$f" || { echo "FAIL: $f 가 원장을 기록하지 않음"; fail=1; }
 done
+grep -q 'rq_bpe_step' "$ROOT/build-ppl-eval.inc" || { echo "FAIL: build 엔진이 스텝별 원장을 기록하지 않음"; fail=1; }
 [ -f "$ROOT/s4-37-release-notes.py" ] || { echo "FAIL: s4-37-release-notes.py 없음"; fail=1; }
 for tok in 'release-notes-' '수용 기준' 'def render(' 'def _stage_rows(' 'def _metric_rows('; do
   grep -qF -- "$tok" "$ROOT/s4-37-release-notes.py" || { echo "FAIL: s4-37-release-notes.py에 '$tok' 없음"; fail=1; }

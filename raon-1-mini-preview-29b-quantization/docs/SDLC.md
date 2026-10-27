@@ -119,8 +119,8 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ## 2. 게이트 (그룹 간 계약)
 
-게이트 구현은 `gates.inc` 하나에 있고, `run-{smoke,full}.sh`와
-`build-ppl-eval.inc`가 **같은 함수**를 호출한다(경로별로 정책이 갈리지 않게).
+게이트 구현은 `gates.inc` 하나에 있고, `build-ppl-eval.inc`(구 `run-{smoke,full}.sh`는
+`archive/`로 은퇴)가 **같은 함수**를 호출한다(경로별로 정책이 갈리지 않게).
 
 | 게이트 | 함수 | 막는 것 |
 |---|---|---|

@@ -55,7 +55,7 @@ RQ_TARGETS=all ./s3-10-quant-nvfp4-gptq.sh smoke  # experts-only 대신 전 Line
 TARGETS=all ./s4-01-measure-ppl.sh smoke
 ./s4-01-measure-ppl.sh smoke nvfp4-gptq,nvfp4-awq
 
-# 게이트 (run-{smoke,full}.sh가 자동 호출 — 수동으로 확인할 때)
+# 게이트 (build-ppl-eval.inc가 자동 호출 — 수동으로 확인할 때)
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_quant "$RQ_MODELS/raon-nvfp4-awq-smoke" nvfp4-pack-quantized'
 bash -c 'source config/common.env smoke; source gates.inc; rq_gate_ppl "$RQ_OUTPUTS/ppl-smoke/nvfp4-awq.json" nvfp4-awq'
 
@@ -78,7 +78,7 @@ RQ_EVAL_BACKEND=transformers ./s4-10-eval-quantized.sh smoke nvfp4-gptq
 ./s4-13-gsm8k.sh smoke        # → outputs/eval-<mode>/score.json
 ./s4-19-kmmluko.sh smoke     # → checks.json "kmmluko"
 ./s4-22-format.sh smoke      # → checks.json "format"
-STEPS=serve ./run-smoke.sh   # 서빙 처리량 측정(s4-25, 서버가 떠 있어야)
+STEPS=serve ./run-s1-to-s4-smoke-nvfp4-awq.sh   # 서빙 처리량 측정(s4-25, 서버가 떠 있어야)
 # transformers 인프로세스 처리량 (서버 불필요, Raon 정석 스택 — stock vLLM은 커스텀 아키 미지원)
 ./s4-28-bench-transformers.sh smoke base,nvfp4-awq   # → bench-transformers-<mode>.json + checks.json servebench
 
@@ -109,7 +109,6 @@ TARGETS=all ./s5-01-upload-hf.sh full
 # s4/s7. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / CAT 서빙 검증
 python s4-37-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
 python s7-19-verify-serving-log.py --mode smoke   # logs/s7-*.log → outputs/serve-smoke.json
-STEPS=verify TARGETS=all ./run-smoke.sh    # s4-34-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
@@ -124,19 +123,17 @@ FORCE=1 ./run-s1-to-s4-smoke-nvfp4-awq.sh               # freshness 무시(강�
 # 공유 접두(s1-01/07/10·s2-01)는 lock+freshness/stamp로 중복 실행이 자동 회피된다.
 #   (2개 build 동시 실행 → 먼저 들어온 쪽만 수행, 나머지는 대기 후 skip)
 
-# 원샷
-# TARGETS는 반드시 명시 (미지정하면 가능한 값을 찍고 종료 — 자동 전체 실행 없음)
-TARGETS=all ./run-smoke.sh
-TARGETS=nvfp4-awq ./run-smoke.sh      # 1종만
-SKIP_SETUP=1 STEPS=quant,ppl TARGETS=all ./run-smoke.sh
-QUANT_CPU_ONLY=1 TARGETS=all ./run-smoke.sh   # 양자화만 CPU 강제, PPL/eval은 GPU
-TARGETS=all ./run-full.sh
+# 빌드 (mode × target = 8종 원샷 + STEPS 부분 실행)
+# TARGETS는 개별 스크립트에 직접 지정 (미지정하면 가능한 값을 찍고 종료 — 자동 전체 실행 없음)
+./s4-01-measure-ppl.sh smoke base,nvfp4-awq
+SKIP_SETUP=1 STEPS=quant,ppl ./run-s1-to-s4-smoke-nvfp4-awq.sh
+QUANT_CPU_ONLY=1 ./run-s1-to-s4-smoke-nvfp4-awq.sh   # 양자화만 CPU 강제, PPL/eval은 GPU
 
-# 2노드 분산 (smoke/full 동일 분할, dequant 공유·PPL/eval은 1곳)
-TARGETS=awq-w3,awq-w5 STEPS=dequant,quant ./run-smoke.sh  # spark1
-TARGETS=nvfp4-awq,nvfp4-gptq STEPS=dequant,quant ./run-smoke.sh  # spark2
-STEPS=ppl,eval TARGETS=all ./run-smoke.sh  # 전 타깃 모인 뒤 1곳에서
-# full도 동일: MODE만 full (run-full.sh + 같은 TARGETS/STEPS)
+# 2노드 분산 (타깃별 원샷을 노드에 나눔, dequant 공유·PPL/eval은 1곳)
+./run-s1-to-s4-smoke-awq-w3.sh ./run-s1-to-s4-smoke-awq-w5.sh  # spark1 (순차)
+./run-s1-to-s4-smoke-nvfp4-awq.sh ./run-s1-to-s4-smoke-nvfp4-gptq.sh  # spark2 (순차)
+# full도 동일: run-s1-to-s4-full-*.sh 8종
+# 구 모놀리식 러너(run-{smoke,full}.sh, TARGETS/STEPS 다종 실행)는 archive/로 은퇴.
 ```
 
 env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./s7-13-chat.sh smoke nvfp4-awq`

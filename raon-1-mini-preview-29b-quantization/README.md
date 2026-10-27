@@ -53,15 +53,13 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 ./s4-16-prep-kmmluko.sh full          # 표준 한국어 KMMLU 평가 세트 준비
 ./s4-22-format.sh full --prepare      # 지시/형식 준수 고정 10케이스 준비
 ./s2-01-dequant-mxfp8.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
-TARGETS=all ./run-smoke.sh           # 4종 전부 (TARGETS 미지정 시 가능한 값을 찍고 종료)
-TARGETS=nvfp4-awq ./run-smoke.sh    # 1종만
-PIPELINE_TEST=0 TARGETS=all ./run-smoke.sh   # smoke 4종 실측
-TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 
-# 단일 타깃만 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
-./run-s1-to-s4-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq
+# 단일 타깃 빌드 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
+./run-s1-to-s4-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq (TARGETS 불필요, 1종 고정)
 ./run-s1-to-s4-full-nvfp4-awq.sh   # full  × nvfp4-awq
 # 게이트: quant 직후 패킹 계약·global_scale, PPL 직후 유한값 검증 → 실패 시 즉시 중단
+# 구 모놀리식 러너(run-{smoke,full}.sh, TARGETS/STEPS 다종 실행)는 archive/로 은퇴.
+# 다종 실행은 타깃별 개별 스크립트에 TARGETS로 지정한다 (예: 아래 s4-01).
 ```
 
 상세: `PROCEDURE.md`, 명령 모음: `cheatsheet.md`.
@@ -90,7 +88,7 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 - 평가: **5개 검사** — ① 표준 GSM8K(`openai/gsm8k` test, revision·seed 고정) ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) ③ 지시/형식 준수(고정 10케이스) ④ PPL(Stage 4) ⑤ 서빙 처리량
   - 프롬프트 생성: `s4-04-prep-gsm8k.sh` · `s4-16-prep-kmmluko.sh` · `s4-22-format.sh` (모두 결정론·멱등)
 - 모델 카드: **Check 1 PPL** · **Check 2 GSM8K** · **Check 3 KMMLU** · **Check 4 형식 준수** (참고: 서빙 성능)
-- 게이트 구현: `gates.inc` — `run-{smoke,full}.sh`와 빌드 경로가 **같은 함수**를 사용
+- 게이트 구현: `gates.inc` — `build-ppl-eval.inc` 단일 경로가 **같은 함수**를 사용
 - 증빙: `outputs/stage-ledger-<mode>.json` → `s4-37-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`
 
@@ -106,6 +104,6 @@ TARGETS=all ./run-full.sh            # full 4종 (밤샘 권장)
 2. **공식 양자화 존재**: KRAFTON이 MXFP8·NVFP4를 이미 공개함. full 후 PPL 게이트에서 공식 NVFP4와 비교 권장.
 3. **W5/W3 서빙**: vLLM GPTQ 백엔드의 3/5bit 지원 여부를 smoke에서 확인. 안 되면 HF 직접 배포용으로만 사용.
 4. **10분은 smoke 목표**: 28.8B MoE 로드+양자화 4종을 10분에 끝내는 것은 calib 8·seq 512 전제.
-   느린 순서: nvfp4-gptq < nvfp4-awq < awq-w5 < awq-w3 (run-smoke는 빠른 순 실행).
+   느린 순서: nvfp4-gptq < nvfp4-awq < awq-w5 < awq-w3.
    expert 9216 모듈 대상이라 AWQ smoothing은 수 시간 가능.
 5. **NVFP4 하드웨어**: Blackwell (SM100+, DGX Spark GB10 해당)에서만 가속. 서빙은 TP=2 (2x 기준).

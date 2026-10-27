@@ -3,7 +3,7 @@
 #   1. s4-01-measure-ppl.py: --targets(콤마/공백/env)·--summarize-only·타겟별 json·summary 집계
 #   2. s4-01-measure-ppl.sh: 타겟별 서브프로세스 + 마지막 집계
 #   3. s4-07-eval.py: --backend {auto,vllm,transformers} + run_transformers + 폴백 판정
-#   4. run-{smoke,full}.sh: TARGETS 전파 + QUANT_CPU_ONLY
+#   4. build-ppl-eval.inc: 타깃 전파 + QUANT_CPU_ONLY (구 run-{smoke,full}.sh는 archive/로 은퇴)
 #   5. 단위 테스트 (tests/test_ppl_and_eval.py)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -80,22 +80,25 @@ for tok in 'def score_answer(' '"benchmarks"' 'score.json'; do
 done
 echo "OK: s4-13-gsm8k.py 벤치마크 정확도 산출"
 
-# 4. run-{smoke,full}.sh 파이프라인 연동
-for f in run-smoke.sh run-full.sh; do
-  grep -q 's4-01-measure-ppl.sh "\$MODE" "\$_eval_targets"' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 TARGETS(=base 포함)를 34-ppl에 전달하지 않음"; fail=1; }
-  grep -q 's4-07-eval-base.sh "\$MODE"' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 base eval을 호출하지 않음"; fail=1; }
-  grep -q 's4-10-eval-quantized.sh "\$MODE" "\$_targets"' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 TARGETS를 s4-10-eval-quantized에 전달하지 않음"; fail=1; }
-  grep -q 'QUANT_CPU_ONLY' "$ROOT/$f" || { echo "FAIL: $f 에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
-  grep -q '_quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$ROOT/$f" \
-    || { echo "FAIL: $f 가 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }
-  grep -q '"s4-13-gsm8k" ./s4-13-gsm8k.sh "\$MODE"' "$ROOT/$f" \
-    || { echo "FAIL: $f 에서 s4-13-gsm8k 호출 체인 끊김"; fail=1; }
-  bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
+# 4. build-ppl-eval.inc 파이프라인 연동 (단일 타깃 빌드 엔진)
+f="$ROOT/build-ppl-eval.inc"
+grep -q 's4-01-measure-ppl.sh "\$mode" "\$eval_targets"' "$f" \
+  || { echo "FAIL: build 엔진이 TARGETS(=base 포함)를 s4-01에 전달하지 않음"; fail=1; }
+grep -q 's4-07-eval-base.sh "\$mode"' "$f" \
+  || { echo "FAIL: build 엔진이 base eval을 호출하지 않음"; fail=1; }
+grep -q 's4-10-eval-quantized.sh "\$mode" "\$target"' "$f" \
+  || { echo "FAIL: build 엔진이 target을 s4-10-eval-quantized에 전달하지 않음"; fail=1; }
+grep -q 'QUANT_CPU_ONLY' "$f" || { echo "FAIL: build 엔진에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
+grep -q 'quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$f" \
+  || { echo "FAIL: build 엔진이 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }
+grep -q '"s4-13-gsm8k" ./s4-13-gsm8k.sh "\$mode"' "$f" \
+  || { echo "FAIL: build 엔진에서 s4-13-gsm8k 호출 체인 끊김"; fail=1; }
+bash -n "$f" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
+for w in "$ROOT"/run-s1-to-s4-*.sh; do
+  grep -q 'source "\$ROOT/build-ppl-eval.inc"' "$w" \
+    || { echo "FAIL: $(basename "$w")가 build 엔진을 source하지 않음"; fail=1; }
 done
-echo "OK: run-{smoke,full}.sh TARGETS 전파 + QUANT_CPU_ONLY + eval 체인"
+echo "OK: build-ppl-eval.inc 타깃 전파 + QUANT_CPU_ONLY + eval 체인"
 
 # 5. 단위 테스트 (pytest 또는 단독 실행)
 if "$PY" -c "import pytest" >/dev/null 2>&1; then

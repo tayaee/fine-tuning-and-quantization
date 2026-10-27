@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # verify-issue-7.sh — issue-7(게이트 공통화) 승인 기준 기계 검증
 #   1. gates.inc 존재 + 6종 게이트 정의
-#   2. run-{smoke,full}.sh 에 gate-quant/gate-ppl/gate-eval 연결 + acceptance 단계
+#   2. build-ppl-eval.inc에 gate-quant/gate-ppl/gate-eval 연결 + acceptance 단계
+#      (구 run-{smoke,full}.sh는 archive/로 은퇴)
 #   3. build-ppl-eval.inc 가 인라인 게이트를 버리고 rq_gate_* 사용
 #   4. 단위 테스트 (tests/test_sdlc.py)
 set -euo pipefail
@@ -19,15 +20,14 @@ grep -q 'verify_compressed_output' "$ROOT/gates.inc" || { echo "FAIL: gate-quant
 grep -q 'verdict_for_delta' "$ROOT/gates.inc" || { echo "FAIL: gate-ppl이 수용 기준 미대조"; fail=1; }
 echo "OK: gates.inc 6종 게이트"
 
-# 2. run 경로 연결
-for f in run-smoke.sh run-full.sh; do
-  grep -q '"gate-quant" rq_gate_quant' "$ROOT/$f" || { echo "FAIL: $f 에 gate-quant 없음"; fail=1; }
-  grep -q '"gate-ppl" rq_gate_ppl' "$ROOT/$f" || { echo "FAIL: $f 에 gate-ppl 없음"; fail=1; }
-  grep -q '"gate-eval" rq_gate_eval' "$ROOT/$f" || { echo "FAIL: $f 에 gate-eval 없음"; fail=1; }
-  grep -q '"s1-04-acceptance" ./s1-04-acceptance.sh' "$ROOT/$f" || { echo "FAIL: $f 에 acceptance 단계 없음"; fail=1; }
-  bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
-done
-echo "OK: run-{smoke,full}.sh 게이트 + acceptance 단계"
+# 2. build 경로 연결
+f="$ROOT/build-ppl-eval.inc"
+grep -q '"gate-quant" rq_gate_quant' "$f" || { echo "FAIL: build 엔진에 gate-quant 없음"; fail=1; }
+grep -q '"gate-ppl" rq_gate_ppl' "$f" || { echo "FAIL: build 엔진에 gate-ppl 없음"; fail=1; }
+grep -q '"gate-eval" rq_gate_eval' "$f" || { echo "FAIL: build 엔진에 gate-eval 없음"; fail=1; }
+grep -q '"s1-04-acceptance" ./s1-04-acceptance.sh' "$f" || { echo "FAIL: build 엔진에 acceptance 단계 없음"; fail=1; }
+bash -n "$f" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
+echo "OK: build-ppl-eval.inc 게이트 + acceptance 단계"
 
 # 3. build 경로
 grep -q 'rq_gate_quant' "$ROOT/build-ppl-eval.inc" || { echo "FAIL: build-ppl-eval.inc에 rq_gate_quant 없음"; fail=1; }

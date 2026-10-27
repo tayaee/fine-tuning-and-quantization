@@ -2,7 +2,7 @@
 # run-s1-to-s4-smoke-awq-w3.sh — smoke × awq-w3 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
 # 타깃: awq-w3 — AWQ smoothing + GPTQ W3 (W3A16-g128) (s3-01-quant-awq-w3.sh)
-# run-smoke.sh의 TARGETS/STEPS 조합을 한 타깃(Stage 0~7)으로 좁힌 버전:
+# 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(awq-w3) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-smoke-awq-w3.sh
 #   STEPS=quant,ppl ./run-s1-to-s4-smoke-awq-w3.sh          # 일부 스텝만

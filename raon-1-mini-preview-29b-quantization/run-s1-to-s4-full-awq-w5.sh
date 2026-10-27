@@ -2,7 +2,7 @@
 # run-s1-to-s4-full-awq-w5.sh — full × awq-w5 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
 # 타깃: awq-w5 — AWQ smoothing + GPTQ W5 (W5A16-g128) (s3-04-quant-awq-w5.sh)
-# run-full.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전:
+# 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(awq-w5) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-full-awq-w5.sh
 #   STEPS=quant,ppl ./run-s1-to-s4-full-awq-w5.sh          # 일부 스텝만

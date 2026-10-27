@@ -10,7 +10,7 @@ GUARDED="s4-01-measure-ppl.sh s4-10-eval-quantized.sh
   s4-28-bench-transformers.sh s4-31-prep-upload.sh s4-34-verify-upload.sh
   s5-01-upload-hf.sh"
 
-for f in config/common.env run-smoke.sh run-full.sh $GUARDED; do
+for f in config/common.env build-ppl-eval.inc $GUARDED; do
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
 done
 echo "OK: bash -n"

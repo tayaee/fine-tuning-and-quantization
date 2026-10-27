@@ -2,7 +2,7 @@
 #
 # wrapper 8종이 이 파일을 source하고 rq_bpe_main을 호출한다:
 #   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
-# run-{smoke,full}.sh의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 버전이다.
+# 단일 (mode × target) 빌드 진입점이다 (구 run-{smoke,full}.sh 다종 실행은 archive/).
 #
 # 스텝(기본 STEPS):
 #   setup(s1-01) → acceptance(s1-04) → calib(s1-07) → compat(s1-10) → dequant(s2-01)
@@ -38,7 +38,7 @@ rq_bpe_want_step() {
   case ",${STEPS:-$BPE_STEPS_DEFAULT}," in *,all,*|*,"$1",*) return 0 ;; *) return 1 ;; esac
 }
 
-# 스텝 실행 + timing 기록(로그 포맷은 run-{smoke,full}.sh와 동일).
+# 스텝 실행 + timing 기록.
 rq_bpe_step() {
   local mode="$1" timing="$2" name="$3"; shift 3
   local _t0 _dt _rc=0

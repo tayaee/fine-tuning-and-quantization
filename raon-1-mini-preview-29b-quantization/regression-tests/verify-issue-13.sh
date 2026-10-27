@@ -26,10 +26,10 @@ for f in "${SCRIPTS[@]}"; do
 done
 echo "OK: ${#SCRIPTS[@]}개 스크립트 시작 배너(영어 1줄)"
 
-# 공용 헬퍼 존재 + run/build 진입점 배너
+# 공용 헬퍼 존재 + build 진입점 배너 (구 run-{smoke,full}.sh는 archive/로 은퇴)
 grep -q 'rq_banner() {' "$ROOT/config/common.env" || { echo "FAIL: common.env에 rq_banner 헬퍼 없음"; fail=1; }
-for f in run-smoke.sh run-full.sh; do
-  grep -q 'rq_banner "' "$ROOT/$f" || { echo "FAIL: $f 에 배너 없음"; fail=1; }
+for f in archive/run-smoke.sh archive/run-full.sh; do
+  [ -f "$ROOT/$f" ] || { echo "FAIL: 은퇴 러너 $f 가 archive/에 없음"; fail=1; }
 done
 # 빌드 wrapper 8종은 각자 배너를 출력한다(공용 엔진 .inc는 중복 방지를 위해 배너 없음)
 n_build=0

@@ -2,7 +2,7 @@
 # run-s1-to-s4-smoke-nvfp4-gptq.sh — smoke × nvfp4-gptq 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
 # 타깃: nvfp4-gptq — GPTQModifier NVFP4 (W4A4) (s3-10-quant-nvfp4-gptq.sh)
-# run-smoke.sh의 TARGETS/STEPS 조합을 한 타깃(Stage 0~7)으로 좁힌 버전:
+# 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(nvfp4-gptq) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-smoke-nvfp4-gptq.sh
 #   STEPS=quant,ppl ./run-s1-to-s4-smoke-nvfp4-gptq.sh          # 일부 스텝만

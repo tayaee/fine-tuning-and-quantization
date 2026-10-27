@@ -93,22 +93,23 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 
 ## TARGETS는 필수
 
-`run-{smoke,full}.sh`는 **양자화 대상을 명시해야** 실행한다. 미지정 시 가능한 값
+타깃을 받는 개별 스크립트는 **양자화 대상을 명시해야** 실행한다. 미지정 시 가능한 값
 (`awq-w3`/`awq-w5`/`nvfp4-awq`/`nvfp4-gptq`/`all`)을 찍고 exit 2 한다 —
 "인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
-같은 규칙이 타깃을 받는 모든 개별 스크립트에도 적용된다
+대상 스크립트
 (`s4-01-measure-ppl` · `s4-10-eval-quantized` · `s4-28-bench-transformers` ·
 `s4-31-prep-upload` · `s4-34-verify-upload` · `s5-01-upload-hf`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (s6/s7 검증 스크립트는 `[mode] [HF repo id|short target|all]` 형태다.)
 
 ```bash
-TARGETS=nvfp4-awq ./run-smoke.sh        # 1종
-TARGETS=awq-w3,awq-w5 ./run-full.sh     # 2노드 분담
-TARGETS=all ./run-full.sh               # 4종 전부
-./s4-01-measure-ppl.sh smoke base,nvfp4-awq   # 개별 스크립트도 동일 ($2 또는 TARGETS)
+./s4-01-measure-ppl.sh smoke base,nvfp4-awq   # 개별 스크립트 ($2 또는 TARGETS)
+TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로만
 ```
+
+> 구 모놀리식 러너(`run-{smoke,full}.sh`, TARGETS/STEPS 다종 실행)는 `archive/`로
+> 은퇴했다. 다종 실행은 타깃별 개별 스크립트 + `run-s1-to-s4-*` 원샷 8종으로 나눠서 한다.
 
 ## smoke/full 스케일 (`config/common.env`)
 
@@ -118,11 +119,11 @@ TARGETS=all ./run-full.sh               # 4종 전부
 | SEQ_LEN | 512 | 2048 |
 | EVAL_N / PPL_N | 8 / 8 | 200 / 32 |
 | 실행순 | awq-w3 → awq-w5 → nvfp4-awq → nvfp4-gptq (알파벳순) | 동일 (밤샘 권장) |
-| 2노드 분할 | `TARGETS=awq-w3,awq-w5` (spark1) + `TARGETS=nvfp4-awq,nvfp4-gptq` (spark2), `STEPS=dequant,quant`로 양쪽 실행 후 1곳에서 `STEPS=ppl,eval` | 동일 분할 (`MODE=full`) |
+| 2노드 분할 | 타깃별 원샷을 노드에 나눔: `run-s1-to-s4-smoke-awq-{w3,w5}.sh` (spark1) + `run-s1-to-s4-smoke-nvfp4-{awq,gptq}.sh` (spark2). dequant는 lock+freshness로 1회만 실행된다 | 동일 분할 (`run-s1-to-s4-full-*.sh`) |
 
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)
 
-`run-{smoke,full}.sh`의 TARGETS/STEPS 조합을 한 타깃으로 좁힌 진입점 8종.
+전체 빌드를 한 타깃으로 좁힌 진입점 8종 (STEPS 부분 실행 지원).
 **두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-13-gsm8k):
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |

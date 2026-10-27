@@ -53,7 +53,7 @@ grep -qF '내용이 너무 짧음' "$ROOT/s4-34-verify-upload.py" || { echo "FAI
 echo "OK: 카드 Check 3/4 + 서빙 성능"
 
 # 5. 파이프라인 배선
-for f in run-smoke.sh run-full.sh build-ppl-eval.inc; do
+for f in build-ppl-eval.inc; do
   for tok in 's4-16-prep-kmmluko.sh' 's4-19-kmmluko.sh' 's4-22-format.sh' 's4-25-servebench.sh'; do
     grep -qF "$tok" "$ROOT/$f" || { echo "FAIL: $f 에 '$tok' 배선 없음"; fail=1; }
   done

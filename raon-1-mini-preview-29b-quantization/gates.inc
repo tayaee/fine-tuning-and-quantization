@@ -1,6 +1,6 @@
 # gates.inc — SDLC 게이트 공용 모음 (bash).
 #
-# 사용처: run-{smoke,full}.sh, build-ppl-eval.inc
+# 사용처: build-ppl-eval.inc (구 run-{smoke,full}.sh는 archive/로 은퇴)
 #   (두 곳 모두 config/common.env를 먼저 source한 뒤 이 파일을 source한다.)
 #
 # 계약: 모든 게이트는 "통과=0, 실패=1"을 반환하고, 실패 사유를 stderr에 남긴다.
