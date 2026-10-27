@@ -1,13 +1,13 @@
-"""s8-76-verify-serving.py — Stage 8 배포 후 검증(서빙 스모크 결과 대조).
+"""s8-76-verify-serving-log.py — Stage 8 배포 후 검증(서빙 스모크 결과 대조).
 
-s8-70-serve-infer-all.sh가 각 타깃에 대해 남긴 logs/67.<slug>.log를 읽어
+s8-70-vllm-serve-all-models.sh가 각 타깃에 대해 남긴 logs/67.<slug>.log를 읽어
 "모델이 실제로 서빙되고 응답을 냈는가"를 확인한다. 결과는 outputs/serve-<mode>.json
 으로 남으며 gates.inc의 rq_gate_serving이 이 파일을 대조한다.
 
 서빙을 아직 하지 않았다면(로그 없음) skipped로 기록하고 실패로 보지 않는다
 (배포는 수동 단계이므로 파이프라인을 막지 않는다).
 
-  uv run s8-76-verify-serving.py --mode smoke
+  uv run s8-76-verify-serving-log.py --mode smoke
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def main() -> int:
     ap.add_argument("--log-dir", default=str(ROOT / "logs"))
     a = ap.parse_args()
 
-    print("[s8-76-verify-serving] Stage 8/9 - verify the serving logs and write outputs/serve-<mode>.json")
+    print("[s8-76-verify-serving-log] Stage 8/9 - verify the serving logs and write outputs/serve-<mode>.json")
     log_dir = Path(a.log_dir)
     results: dict[str, dict] = {}
     for t in TARGETS:
@@ -84,7 +84,7 @@ def main() -> int:
     if failed:
         return 1
     if missing:
-        print(f"SKIP: 서빙 로그가 없는 타겟 {missing} (s8-70-serve-infer-all.sh 실행 필요)")
+        print(f"SKIP: 서빙 로그가 없는 타겟 {missing} (s8-70-vllm-serve-all-models.sh 실행 필요)")
     return 0
 
 

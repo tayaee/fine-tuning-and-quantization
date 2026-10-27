@@ -1,4 +1,4 @@
-"""tests/test_serve_command.py — README vLLM 명령 ≡ s8-64-serve-vllm.sh 실행 명령 동등성.
+"""tests/test_serve_command.py — README vLLM 명령 ≡ s8-64-vllm-serve-one.sh 실행 명령 동등성.
 
 s8-64는 README 모델카드의 vLLM 명령을 as-is로 실행해 검증한다. 양쪽이 어긋나면
 "카드대로 했는데 안 돈다"가 된다. 4종 양자화 타깃은 repo id를 제외하고 동일 명령이다.
@@ -32,7 +32,7 @@ prep = _load_script("s7-56-prep-upload.py")
 
 QUANT_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
 WRAPPER_NUM = {"awq-w3": 52, "awq-w5": 55, "nvfp4-awq": 58, "nvfp4-gptq": 61}
-S864 = (ROOT / "s8-64-serve-vllm.sh").read_text(encoding="utf-8")
+S864 = (ROOT / "s8-64-vllm-serve-one.sh").read_text(encoding="utf-8")
 
 
 def _vllm_block(readme: str) -> str:

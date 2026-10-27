@@ -36,7 +36,7 @@ for f in "$ROOT"/run-s0-to-s7-*.sh; do
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 8 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (8 기대)"; fail=1; }
-for f in s8-73-release-notes.py s8-76-verify-serving.py; do
+for f in s8-73-release-notes.py s8-76-verify-serving-log.py; do
   grep -q 'print("\[s8-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"

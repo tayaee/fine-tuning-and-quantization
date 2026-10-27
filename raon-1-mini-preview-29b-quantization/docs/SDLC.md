@@ -19,7 +19,7 @@
 | 5 | 양자화 실행 | `22/25/28/31-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 6 | PPL 품질 게이트 | `s6-34-measure-ppl.sh` | `outputs/ppl-<mode>/<target>.json` | **gate-ppl**: PPL 유한값 + 수용 기준 Δ 판정 일치 |
 | 7 | 벤치마크 평가·카드·감사 | `s7-37-eval-base.sh` + `s7-38-eval-quantized.sh` + `s7-40-gsm8k.sh` + `s7-46-kmmluko.sh` + `s7-49-format.sh` + `s7-55-bench-transformers.sh` → `s7-56-prep-upload.sh` → `s7-57-verify-upload.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json` | **gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조 |
-| 8 | 릴리스·배포 | `s8-49-upload-hf.sh` → `s8-52-vllm-serve-*.sh`(개별) / `s8-64-serve-vllm.sh`(전 타깃) / `s8-67-infer-examples.sh` / `s8-70-serve-infer-all.sh` | Hub 업로드, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
+| 8 | 릴리스·배포 | `s8-49-upload-hf.sh` → `s8-52-vllm-serve-*.sh`(개별) / `s8-64-vllm-serve-one.sh`(전 타깃) / `s8-67-inference-test.sh` / `s8-70-vllm-serve-all-models.sh` | Hub 업로드, `outputs/release-notes-<mode>.md` | **gate-release**: 모델카드·지표·업로드 전 감사 통과, **gate-serving**: 서빙 응답 확인 |
 
 ## 0. 파일 명명 규칙
 
@@ -40,7 +40,7 @@ s<stage>-##-<slug>.{sh,py}
 | 5 | 양자화 | `s5-22-quant-awq-w3.{sh,py}` … `s5-31-quant-nvfp4-gptq.{sh,py}` |
 | 6 | PPL 게이트 | `s6-34-measure-ppl.{sh,py}` |
 | 7 | 평가 | `s7-36-prep-gsm8k.{sh,py}`, `s7-37-eval.{sh,py}`, `s7-40-gsm8k.{sh,py}`, `s7-43-prep-kmmluko.{sh,py}`, `s7-46-kmmluko.{sh,py}`, `s7-49-format.{sh,py}`, `s7-52-servebench.{sh,py}`, `s7-55-bench-transformers.{sh,py}`, `s7-56-prep-upload.{sh,py}`, `s7-57-verify-upload.{sh,py}` |
-| 8 | 릴리스·배포 | `s8-49-upload-hf.{sh,py}` … `s8-76-verify-serving.py` |
+| 8 | 릴리스·배포 | `s8-49-upload-hf.{sh,py}`, `s8-64-vllm-serve-one.sh`, `s8-67-inference-test.{sh,py}`, `s8-70-vllm-serve-all-models.sh`, `s8-73-release-notes.{sh,py}`, `s8-76-verify-serving-log.{sh,py}` |
 
 빌드 wrapper(`run-s0-to-s7-<mode>-<target>.sh`)는 **Stage 0~7을 한 번에** 돌리는 진입점이라
 `s0-s7-` 접두사를 쓴다(카드·감사까지 기본 포함, 업로드 등 Stage 8은 별도 실행).

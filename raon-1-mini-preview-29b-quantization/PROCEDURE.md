@@ -60,7 +60,7 @@
 
 같은 규칙이 타깃을 받는 모든 개별 스크립트에도 적용된다
 (`s6-34-measure-ppl` · `s7-37-eval` · `s7-55-bench-transformers` ·
-`s7-56-prep-upload` · `s7-57-verify-upload` · `s8-49-upload-hf` · `s8-70-serve-infer-all`):
+`s7-56-prep-upload` · `s7-57-verify-upload` · `s8-49-upload-hf` · `s8-70-vllm-serve-all-models`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (`s8-58`은 `[mode] [n]` 형태라 `TARGETS` 환경변수로만 받는다.)
 

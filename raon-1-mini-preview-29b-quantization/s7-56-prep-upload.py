@@ -101,7 +101,7 @@ def model_dir(mode: str, target: str) -> Path:
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
 
-#: vLLM 서빙 명령 스펙 — s8-64-serve-vllm.sh의 case 테이블과 값을 공유한다.
+#: vLLM 서빙 명령 스펙 — s8-64-vllm-serve-one.sh의 case 테이블과 값을 공유한다.
 #: 4종 양자화 타깃은 repo id를 제외하고 동일 명령이다. TP=1 (KRAFTON NVFP4 단일 GPU
 #: 프로파일; 20GB급 체크포인트는 단일 GPU에 올라간다). base는 Hub 카드가 없어
 #: 여기서 다루지 않는다 (s8-64에서만 로컬 서빙, TP는 infra 기본값).

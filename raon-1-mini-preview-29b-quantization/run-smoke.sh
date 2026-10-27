@@ -129,17 +129,17 @@ if want_step validate; then
              s5-28-quant-nvfp4-awq s5-31-quant-nvfp4-gptq s7-36-prep-gsm8k s7-43-prep-kmmluko \
              s6-34-measure-ppl s7-37-eval s7-40-gsm8k s7-46-kmmluko s7-49-format s7-52-servebench \
              s7-56-prep-upload s7-57-verify-upload \
-             s8-49-upload-hf s8-73-release-notes s8-76-verify-serving; do
+             s8-49-upload-hf s8-73-release-notes s8-76-verify-serving-log; do
       uv run "$0/$s.py" --help >/dev/null || exit 1
     done
     for s in s1-07-acceptance s6-34-measure-ppl s7-36-prep-gsm8k s7-37-eval-base s7-38-eval-quantized s7-40-gsm8k \
              s7-43-prep-kmmluko s7-46-kmmluko s7-49-format s7-52-servebench \
-             s7-56-prep-upload s7-57-verify-upload s8-49-upload-hf s8-64-serve-vllm \
-             s8-67-infer-examples; do
+             s7-56-prep-upload s7-57-verify-upload s8-49-upload-hf s8-64-vllm-serve-one \
+             s8-67-inference-test s8-73-release-notes s8-76-verify-serving-log; do
       bash -n "$0/$s.sh" || exit 1
     done
     bash -n "$0/gates.inc" || exit 1
-    for s in "$0"/*-build-*.sh; do
+    for s in "$0"/run-s0-to-s7-*.sh; do
       bash -n "$s" || exit 1
     done
     bash -n "$0/build-ppl-eval.inc" || exit 1
@@ -225,6 +225,6 @@ fi
 rq_log "run-$MODE done"
 # --- 선택 (수동) ---
 # ./s8-49-upload-hf.sh full              # smoke는 업로드하지 않음
-# ./s8-64-serve-vllm.sh smoke nvfp4-gptq  # 터미널1 (상주)
-# ./s8-67-infer-examples.sh 3            # 터미널2
-# ./s8-70-serve-infer-all.sh는 TARGETS 필수: TARGETS=all ./s8-70-serve-infer-all.sh smoke 3
+# ./s8-64-vllm-serve-one.sh smoke nvfp4-gptq  # 터미널1 (상주)
+# ./s8-67-inference-test.sh 3            # 터미널2
+# ./s8-70-vllm-serve-all-models.sh는 TARGETS 필수: TARGETS=all ./s8-70-vllm-serve-all-models.sh smoke 3

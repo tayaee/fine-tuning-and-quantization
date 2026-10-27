@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# s8-64-serve-vllm.sh [smoke|full] [target] — 전 타깃 커버 서빙 디스패처 (개별 래퍼 s8-52/55/58/61에 위임).
+# s8-64-vllm-serve-one.sh [smoke|full] [target] — 전 타깃 커버 서빙 디스패처 (개별 래퍼 s8-52/55/58/61에 위임).
 # README 모델카드의 vLLM 명령(production)을 그대로 실행.
 # 인자 없이 실행하면 복사-붙여넣기용 실행 명령 목록 출력 (서빙 안 함).
 # target: base|nvfp4-awq|nvfp4-gptq|awq-w5|awq-w3 (기본 nvfp4-gptq).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙 → README 명령과 문자열 동일).
 # VTP/PORT/VLLM_REF/VLLM_MAX_LEN/GPU_UTIL로 오버라이드. VLLM_USE_PRECOMPILED=1 고정.
-# 예: ./s8-64-serve-vllm.sh                    # 목록만 출력
-#     ./s8-64-serve-vllm.sh smoke nvfp4-gptq
-#     SOURCE=hf ./s8-64-serve-vllm.sh full nvfp4-awq   # README 명령 as-is 검증
+# 예: ./s8-64-vllm-serve-one.sh                    # 목록만 출력
+#     ./s8-64-vllm-serve-one.sh smoke nvfp4-gptq
+#     SOURCE=hf ./s8-64-vllm-serve-one.sh full nvfp4-awq   # README 명령 as-is 검증
 set -euo pipefail
 if [ $# -eq 0 ]; then
   source "$(dirname "$0")/config/common.env" "${MODE:-smoke}"
@@ -20,7 +20,7 @@ if [ $# -eq 0 ]; then
   for m in full smoke; do
     for t in base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq; do
       case "$t" in base) _suf="raon-bf16" ;; *) _suf="raon-$t-$m" ;; esac
-      printf '%-38s # %s\n' "./s8-64-serve-vllm.sh $m $t" "$RQ_MODELS/$_suf"
+      printf '%-38s # %s\n' "./s8-64-vllm-serve-one.sh $m $t" "$RQ_MODELS/$_suf"
     done
   done
   exit 0
@@ -30,7 +30,7 @@ TARGET="${2:-nvfp4-gptq}"
 SOURCE="${SOURCE:-local}"
 PORT="${PORT:-8000}"
 rq_repro_echo
-rq_banner "s8-64-serve-vllm" "Stage 8/9 - serve the model with vLLM (OpenAI-compatible API)"
+rq_banner "s8-64-vllm-serve-one" "Stage 8/9 - serve the model with vLLM (OpenAI-compatible API)"
 
 case "$TARGET" in
   base)        SUF="raon-bf16"; QUANT=""; VTP_DEF="$TP"; NUM="" ;;

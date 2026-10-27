@@ -83,13 +83,13 @@ TARGETS=all ./s7-56-prep-upload.sh smoke
 # 7. 업로드·서빙 (full만 업로드, 56-prep 산출물이 있어야 함, targets 필수)
 TARGETS=all DRY_RUN=1 ./s8-49-upload-hf.sh full     # 네트워크 없이 준비 상태만 검증
 TARGETS=all ./s8-49-upload-hf.sh full
-./s8-64-serve-vllm.sh smoke nvfp4-gptq  # 터미널1
-./s8-67-infer-examples.sh 3             # 터미널2
-TARGETS=all ./s8-70-serve-infer-all.sh smoke 3      # 순회
+./s8-64-vllm-serve-one.sh smoke nvfp4-gptq  # 터미널1
+./s8-67-inference-test.sh 3             # 터미널2
+TARGETS=all ./s8-70-vllm-serve-all-models.sh smoke 3      # 순회
 
 # 8. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / 배포 후 서빙 검증
 python s8-73-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
-python s8-76-verify-serving.py --mode smoke   # logs/67.*.log → outputs/serve-smoke.json
+python s8-76-verify-serving-log.py --mode smoke   # logs/67.*.log → outputs/serve-smoke.json
 STEPS=verify TARGETS=all ./run-smoke.sh    # 57-verify + gate-release (명시 시에만)
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
@@ -120,4 +120,4 @@ STEPS=ppl,eval TARGETS=all ./run-smoke.sh  # 전 타깃 모인 뒤 1곳에서
 # full도 동일: MODE만 full (run-full.sh + 같은 TARGETS/STEPS)
 ```
 
-env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./s8-64-serve-vllm.sh smoke nvfp4-gptq`
+env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./s8-64-vllm-serve-one.sh smoke nvfp4-gptq`
