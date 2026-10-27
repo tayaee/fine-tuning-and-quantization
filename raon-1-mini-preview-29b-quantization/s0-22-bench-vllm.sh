@@ -51,11 +51,21 @@ ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null 
 [ -n "$ACTUAL" ] || { echo "FAIL: PORT=$PORT 서버 응답 없음" >&2; rq_stage_record 0 base fail "bench-vllm:no-server"; exit 1; }
 s0_bench_run "http://localhost:${PORT}/v1" "$ACTUAL" "$OUTDIR" \
   || { echo "FAIL: 벤치 실행 실패" >&2; rq_stage_record 0 base fail "bench-vllm:fail"; exit 1; }
-# s0-13 서버 정리 (pidfile이 있으면 해당 프로세스만, 없으면 포트 점유 그대로 둔다).
+# s0-13 서버 정리 (pidfile: 숫자 pid 또는 docker:<name>. 없으면 포트 점유 그대로 둔다).
 PIDF="$RQ_ROOT/logs/s0-serve-base.pid"
-if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
-  kill "$(cat "$PIDF")" 2>/dev/null || true
-  rq_log "stopped base server pid=$(cat "$PIDF")"
+if [ -f "$PIDF" ]; then
+  case "$(cat "$PIDF" 2>/dev/null)" in
+    docker:*)
+      _c="$(sed 's/^docker://' "$PIDF")"
+      docker logs --tail 10 "$_c" 2>/dev/null || true
+      docker rm -f "$_c" >/dev/null 2>&1 || true
+      rq_log "stopped container $_c" ;;
+    *)
+      if kill -0 "$(cat "$PIDF")" 2>/dev/null; then
+        kill "$(cat "$PIDF")" 2>/dev/null || true
+        rq_log "stopped base server pid=$(cat "$PIDF")"
+      fi ;;
+  esac
 fi
 rm -f "$PIDF"
 rq_stage_record 0 base pass "$OUTDIR/results.json"

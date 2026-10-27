@@ -134,7 +134,8 @@ class Handler(BaseHTTPRequestHandler):
             add_generation_prompt=True, return_tensors="pt",
             enable_thinking=True).to(self.model.device)
         with torch.no_grad():
-            gen = self.model.generate(**inputs, max_new_tokens=max(1, min(max_tokens + 256, 768)),
+            # 상한은 요청 max_tokens 그대로 (벤치 공정 비교용 — 버퍼를 얹지 않는다).
+            gen = self.model.generate(**inputs, max_new_tokens=max(1, min(max_tokens, 512)),
                                       do_sample=False)
         text = self.tok.decode(gen[0][inputs["input_ids"].shape[1]:],
                                skip_special_tokens=True)

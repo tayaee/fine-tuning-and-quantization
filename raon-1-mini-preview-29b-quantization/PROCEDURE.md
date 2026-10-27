@@ -60,7 +60,7 @@
 | 04 | `s0-04-chat-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
 | 07 | `s0-07-picall-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
 | 10 | `s0-10-bench-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
-| 13 | `s0-13-load-vllm.sh` | 포크로 베이스 서빙(백그라운드 상주, `logs/s0-serve-base.pid`) — MXFP8 릴리스는 포크 지원 프로파일. 단 검증 GPU(sm_103/sm_120) 외에서는 불가 체인(vsplit·MLA·prefill·MoE tcgen05+MODE=4 강제)이 확정돼 시도 없이 SKIP, 16/19/22 연쇄 SKIP |
+| 13 | `s0-13-load-vllm.sh` | 포크 서빙(상주): sm_103/120은 MXFP8 직접 서빙, sm_121(GB10)은 KRAFTON 카드의 NVFP4+sm121 컨테이너. 그 외 GPU는 SKIP, 16/19/22 연쇄 SKIP |
 | 16 | `s0-16-chat-vllm.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
 | 19 | `s0-19-picall-vllm.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
 | 22 | `s0-22-bench-vllm.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
