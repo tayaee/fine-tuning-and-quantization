@@ -16,7 +16,7 @@ if [ -z "$ACTUAL" ]; then
 fi
 s0_pi_register "raon-base-8000" "http://localhost:${PORT}/v1" "$ACTUAL" "EMPTY"
 PROBE="$(s0_pi_probe_dir)"
-if s0_pi_ask "raon-base-8000" "$ACTUAL" "$PROBE"; then
+if s0_pi_verify "raon-base-8000" "$ACTUAL" "$PROBE"; then
   rq_stage_record 0 base pass "pi-vllm:ok"
 else
   rq_stage_record 0 base fail "pi-vllm:fail"

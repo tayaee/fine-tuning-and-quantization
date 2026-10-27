@@ -27,7 +27,7 @@
 
 | 그룹 | 스크립트 | 입력 → 출력 | Exit 게이트 |
 |---|---|---|---|
-| 0. 베이스검증 | `s0-01-load-transformers` → `04-chat` → `07-picall-control` → `10-bench` → `13-load-vllm` → `16-chat-vllm` → `19-picall-vllm` → `22-bench-vllm` | BASE_MODEL → `outputs/s0-<mode>.json` + 벤치 하네스 2종 | chat/pi 응답 존재 (07은 키 없으면 SKIP) |
+| 0. 베이스검증 | `s0-01-serve`(상주) → `04/07/10` endpoint 검증 → `s0-13-serve`(상주) → `16/19/22` endpoint 검증 (+단독 정리 `s0-11/s0-21`, 3단위 예외) | BASE_MODEL → `outputs/s0-<mode>.json` + 벤치 결과 2종 | chat/pi/bench 응답 존재 |
 | 1. 환경체인 | `s1-01-setup` → `s1-04-acceptance` → `s1-07-calib` → `s1-10-compat` | env sync + `acceptance-<mode>.json` + calib jsonl + compat stamp | gate-acceptance(계약 스키마) |
 | 2. 복원 | `s2-01-dequant-mxfp8` | MXFP8 repo → `models/raon-bf16` (1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 3. 양자화 | `s3-01/04/07/10-quant-*` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
@@ -56,14 +56,14 @@
 
 | # | 스크립트 | 내용 |
 |---|---|---|
-| 01 | `s0-01-load-transformers.sh` | 접근+gated 인증+config/tokenizer 로드 (가중치 전체 로드는 04에서) |
-| 04 | `s0-04-chat-transformers.sh` | chat template + greedy 단문 생성, 한국어 응답 존재 → `outputs/s0-<mode>.json` |
-| 07 | `s0-07-picall-control.sh` | pi 대조군: minimax-m3 등록 후 고정 질문(`현재 디렉토리 파일이 몇 개니? 숫자 하나로 답해.`) — `MINIMAX_API_KEY` 없으면 SKIP |
-| 10 | `s0-10-bench-transformers.sh` | transformers 벤치 하네스 스캐폴드(고정 8프롬프트+파라미터+빈 baseline, 실측은 s4) |
+| 01 | `s0-01-load-transformers.sh` | transformers OpenAI 서버 기동(BASE_MODEL, endpoint 상주, s0-10이 정리) |
+| 04 | `s0-04-chat-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
+| 07 | `s0-07-picall-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
+| 10 | `s0-10-bench-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
 | 13 | `s0-13-load-vllm.sh` | 포크로 베이스 서빙(백그라운드 상주, `logs/s0-serve-base.pid`) — MXFP8 릴리스는 포크 지원 프로파일. 단 포크 검증 GPU는 sm_103/sm_120뿐이라 그 외(GB10 sm_121 등)는 실패할 수 있음(빠른 실패+원인 보존) |
 | 16 | `s0-16-chat-vllm.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
 | 19 | `s0-19-picall-vllm.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
-| 22 | `s0-22-bench-vllm.sh` | vLLM 벤치 하네스 스캐폴드 + s0-13 서버 정리 |
+| 22 | `s0-22-bench-vllm.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
 
 pi 고정 질문의 기대값은 `outputs/s0-pi-probe/` (파일 5개 고정)의 실제 파일 수와
 대조한다. 답이 단일 숫자가 아니면 FAIL(도구 호출 미동작).

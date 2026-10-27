@@ -16,14 +16,16 @@ MODE=full TARGETS=nvfp4-awq ./s4-31-prep-upload.sh   # 타깃도 함께
 
 ```bash
 # s0. 베이스모델 검증 (transformers half + vLLM half, 각 chat·pi·벤치)
-./s0-01-load-transformers.sh full      # 접근+메타데이터 (gated)
-./s0-04-chat-transformers.sh full       # chat 생성 검증 (GPU)
-./s0-07-picall-control.sh full          # pi 대조군 (MINIMAX_API_KEY 필요, 없으면 SKIP)
-./s0-10-bench-transformers.sh full      # transformers 벤치 하네스 스캐폴드
+./s0-01-load-transformers.sh full      # transformers 서버 기동 (endpoint 상주)
+./s0-04-chat-transformers.sh full       # endpoint chat 검증
+./s0-07-picall-transformers.sh full     # endpoint pi 툴콜 검증 (고정 질문)
+./s0-10-bench-transformers.sh full      # endpoint 벤치 측정 + 서버 정리
+./s0-11-stop-transformers.sh            # 잔존 transformers 서버 수동 정리 (3단위 예외)
 ./s0-13-load-vllm.sh full               # 포크로 베이스 서빙 (서버 상주)
 ./s0-16-chat-vllm.sh full               # 서빙 chat 검증
 ./s0-19-picall-vllm.sh full             # 서빙 모델 pi 툴콜 검증 (고정 질문)
-./s0-22-bench-vllm.sh full              # vLLM 벤치 하네스 스캐폴드 + 서버 정리
+./s0-22-bench-vllm.sh full              # vLLM endpoint 벤치 측정 + 서버 정리
+./s0-21-stop-vllm.sh                    # 잔존 vLLM 서버 수동 정리 (3단위 예외)
 
 # s1. 환경 체인 (setup·수용기준·calib·compat — 양 노드 setup 1회 + gated 로그인)
 ./s1-01-setup.sh

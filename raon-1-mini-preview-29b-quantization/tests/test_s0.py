@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 S0_SCRIPTS = [
     "s0-01-load-transformers.sh",
     "s0-04-chat-transformers.sh",
-    "s0-07-picall-control.sh",
+    "s0-07-picall-transformers.sh",
     "s0-10-bench-transformers.sh",
     "s0-13-load-vllm.sh",
     "s0-16-chat-vllm.sh",
@@ -29,6 +29,8 @@ GROUP_FIRST = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"}
 def _steps(group: str) -> list[int]:
     nums = []
     for p in ROOT.glob(f"{group}-*.sh"):
+        if "-stop-" in p.name:
+            continue  # 단독 정리 유틸리티(s0-11/s0-21)는 3단위 예외
         m = re.match(rf"{group}-(\d{{2}})-", p.name)
         assert m, f"naming rule 위반: {p.name}"
         nums.append(int(m.group(1)))
@@ -37,6 +39,10 @@ def _steps(group: str) -> list[int]:
 
 def test_s0_eight_procedures_exist_and_executable():
     for name in S0_SCRIPTS:
+        p = ROOT / name
+        assert p.is_file(), f"{name} 없음"
+        assert p.stat().st_mode & 0o111, f"{name} 실행 권한 없음"
+    for name in ("s0-11-stop-transformers.sh", "s0-21-stop-vllm.sh"):
         p = ROOT / name
         assert p.is_file(), f"{name} 없음"
         assert p.stat().st_mode & 0o111, f"{name} 실행 권한 없음"
@@ -53,8 +59,15 @@ def test_s0_pi_helper_defines_fixed_question():
     inc = (ROOT / "config" / "s0-pi.inc").read_text(encoding="utf-8")
     assert "S0_PI_QUESTION=" in inc
     assert "숫자 하나로 답해" in inc
-    for fn in ("s0_pi_probe_dir", "s0_pi_register", "s0_pi_ask"):
+    for fn in ("s0_pi_probe_dir", "s0_pi_register", "s0_pi_ask", "s0_pi_verify"):
         assert fn in inc, f"{fn} 없음"
+
+
+def test_s0_shared_server_and_bench():
+    import ast
+    ast.parse((ROOT / "config" / "transformers-server.py").read_text(encoding="utf-8"))
+    bench = (ROOT / "config" / "s0-bench.inc").read_text(encoding="utf-8")
+    assert "s0_bench_run()" in bench
 
 
 def test_group_numbering_starts_at_01_step_3():
@@ -76,10 +89,23 @@ def test_s6_s7_customer_sets_are_parallel():
         assert b.is_file(), f"{b.name} 없음"
 
 
+STOP_SCRIPTS = ["s0-11-stop-transformers.sh", "s0-21-stop-vllm.sh"]
+
+
+def test_s0_stop_scripts_bash_syntax():
+    import subprocess
+    for name in STOP_SCRIPTS:
+        out = subprocess.run(["bash", "-n", str(ROOT / name)],
+                             capture_output=True, text=True, check=False)
+        assert out.returncode == 0, f"{name}: {out.stderr}"
+
+
 if __name__ == "__main__":
     test_s0_eight_procedures_exist_and_executable()
+    test_s0_stop_scripts_bash_syntax()
     test_s0_scripts_bash_syntax()
     test_s0_pi_helper_defines_fixed_question()
+    test_s0_shared_server_and_bench()
     test_group_numbering_starts_at_01_step_3()
     test_s6_s7_customer_sets_are_parallel()
     print("test_s0 OK")

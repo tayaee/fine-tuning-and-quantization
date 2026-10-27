@@ -12,7 +12,7 @@
 
 | # | 그룹 | 스크립트 | 산출물 | Exit 게이트 (다음으로 가려면) |
 |---:|---|---|---|---|
-| 0 | 베이스모델 검증 | `s0-01-load-transformers.sh` → `04/07/10` → `13/16/19/22` | `outputs/s0-<mode>.json` + 벤치 하네스 2종 | chat/pi 응답 존재 (07 대조군은 키 없으면 SKIP, 13 vLLM half는 포크 검증 GPU sm_103/sm_120에서만) |
+| 0 | 베이스모델 검증 | `s0-01-serve`(상주) → `04/07/10` endpoint 검증 → `s0-13-serve`(상주) → `16/19/22` endpoint 검증 | `outputs/s0-<mode>.json` + 벤치 결과 2종 | chat/pi/bench 응답 존재 (13 vLLM half는 포크 검증 GPU sm_103/sm_120에서만) |
 | 1 | 환경 체인 | `s1-01-setup.sh` → `s1-04-acceptance.sh` → `s1-07-prep-calibration.sh` → `s1-10-compat-check.sh` | `.venv/.rq-setup-stamp`, `outputs/acceptance-<mode>.json`, calib jsonl, `outputs/compat.stamp` | 의존성 핀·계약 스키마·GPU(NVFP4=Blackwell) 확인 |
 | 2 | 베이스 복원 | `s2-01-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 3 | 양자화 실행 | `01/04/07/10-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
@@ -27,7 +27,7 @@
 s<group>-##-<slug>.{sh,py}
  │      │   └── 작업 이름
  │      └────── 그룹 내 순서 (01부터 3단위 — 각 그룹의 첫 스크립트는 항상 s#-01-)
- └───────────── 8개 그룹 중 어디인지 (0·1·2·3·4·5·6·7)
+ └───────────── 8개 그룹 중 어디인지 (0·1·2·3·4·5·6·7, 단독 정리 `-stop-` 2종은 3단위 예외)
 ```
 
 | group | 그룹 | 파일 예시 |
@@ -49,9 +49,9 @@ s<group>-##-<slug>.{sh,py}
 베이스모델(`BASE_MODEL`)이 transformers half와 vLLM half 양쪽에서 동작하는지
 양자화 전에 고정한다. 절차와 스크립트는 PROCEDURE.md의 s0 표를 따른다.
 pi 검증은 고정 질문(`현재 디렉토리 파일이 몇 개니? 숫자 하나로 답해.`) 하나로
-도구 호출 왕복을 판정한다 — s0-07은 기준 모델 대조군, s0-19는 서빙 베이스 본시험.
-벤치 하네스(s0-10/22)는 프롬프트+파라미터+빈 baseline 스캐폴드만 만들고
-실측은 s4에서 한다.
+도구 호출 왕복을 판정한다 (서버 TOOL-CALL 증거 + 답 포함).
+벤치(s0-10/22)는 고정 8프롬프트를 endpoint로 측정해 results.json을 남기고
+최초 1회 baseline을 충전한 뒤 서버를 내린다.
 
 ## 1. Stage 1 — 수용 기준 (Acceptance Criteria)
 

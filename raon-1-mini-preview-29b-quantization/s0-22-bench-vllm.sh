@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# s0-22-bench-vllm.sh [smoke|full] — vLLM용 벤치 하네스 스캐폴드 + 서버 정리 (Stage 0 절차 8).
-# 고정 probe 프롬프트 + 실행 파라미터 + 빈 baseline을 만든다. 실제 측정은 s4에서 한다.
-# 마지막에 s0-13이 띄운 베이스 서버를 내린다 (GPU 반환).
+# s0-22-bench-vllm.sh [smoke|full] — vLLM endpoint로 벤치 실행 + 서버 정리 (Stage 0 절차 8).
+# 고정 8프롬프트 하네스를 endpoint로 측정해 results.json을 남기고(최초 1회 baseline 충전),
+# 마지막에 s0-13이 띄운 베이스 서버를 내린다 (GPU 반환). PORT(기본 8000).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
+source "$RQ_ROOT/config/s0-bench.inc"
 rq_repro_echo
-rq_banner "s0-22-bench-vllm" "Stage 0 - scaffold the vLLM bench harness, then stop the base server"
+rq_banner "s0-22-bench-vllm" "Stage 0 - run the bench suite on the vLLM endpoint, then stop the base server"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
+PORT="${PORT:-8000}"
 OUTDIR="$RQ_SHARED/outputs/s0-bench-vllm"
 mkdir -p "$OUTDIR"
-uv run python - "$OUTDIR" <<'PY'
+if [ ! -s "$OUTDIR/prompts.jsonl" ]; then
+  uv run python - "$OUTDIR" <<'PY'
 import json, sys
 d = sys.argv[1]
 prompts = [
@@ -28,7 +31,7 @@ with open(f"{d}/prompts.jsonl", "w", encoding="utf-8") as f:
 params = {"runtime": "vllm-openai", "base_url": "http://localhost:8000/v1",
           "served_model": "tayaee/Raon-1-mini-preview-base",
           "max_tokens": 256, "temperature": 0.6, "top_p": 0.95,
-          "note": "실측은 s4-25-servebench에서. baseline은 첫 실측이 채운다."}
+          "note": "실측은 s0-22/s4-25에서. baseline은 첫 실측이 채운다."}
 with open(f"{d}/params.json", "w", encoding="utf-8") as f:
     json.dump(params, f, ensure_ascii=False, indent=2)
 base = f"{d}/baseline.json"
@@ -38,6 +41,15 @@ except FileExistsError:
     pass
 print(f"scaffold OK {d} prompts={len(prompts)}")
 PY
+fi
+ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null | "$RQ_PY" -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or [{}])[0].get("id",""))' 2>/dev/null || true)"
+if [ -z "$ACTUAL" ]; then
+  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-13-load-vllm.sh 먼저 실행" >&2
+  rq_stage_record 0 base fail "bench-vllm:no-server"
+  exit 1
+fi
+s0_bench_run "http://localhost:${PORT}/v1" "$ACTUAL" "$OUTDIR" \
+  || { echo "FAIL: 벤치 실행 실패" >&2; rq_stage_record 0 base fail "bench-vllm:fail"; exit 1; }
 # s0-13 서버 정리 (pidfile이 있으면 해당 프로세스만, 없으면 포트 점유 그대로 둔다).
 PIDF="$RQ_ROOT/logs/s0-serve-base.pid"
 if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
@@ -45,6 +57,6 @@ if [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null; then
   rq_log "stopped base server pid=$(cat "$PIDF")"
 fi
 rm -f "$PIDF"
-rq_stage_record 0 base pass "$OUTDIR/prompts.jsonl"
+rq_stage_record 0 base pass "$OUTDIR/results.json"
 echo ---- result ----
-rq_log "s0-22 OK scaffold=$OUTDIR"
+rq_log "s0-22 OK results=$OUTDIR/results.json"

@@ -26,7 +26,7 @@ fi
   echo "[model] $ACTUAL $(date --iso-8601=s) mode=$MODE target=$TARGET port=$PORT"
   s0_pi_register "raon-s7-$PORT" "http://localhost:${PORT}/v1" "$ACTUAL" "EMPTY"
   PROBE="$(s0_pi_probe_dir)"
-  s0_pi_ask "raon-s7-$PORT" "$ACTUAL" "$PROBE"
+  s0_pi_verify "raon-s7-$PORT" "$ACTUAL" "$PROBE"
 } > "$LOGF" 2>&1 && rc=0 || rc=$?
 if [ "$rc" -eq 0 ]; then
   echo "[OK] $TARGET" >> "$LOGF"; tail -n 2 "$LOGF"
