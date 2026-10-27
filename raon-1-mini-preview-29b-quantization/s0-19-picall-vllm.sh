@@ -8,12 +8,12 @@ source "$RQ_ROOT/config/s0-pi.inc"
 rq_repro_echo
 rq_banner "s0-19-picall-vllm" "Stage 0 - pi tool-call check against the vLLM-served base model"
 PORT="${PORT:-8000}"
+rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-load-vllm.sh" || {
+  rc=$?
+  if [ "$rc" = 2 ]; then rq_stage_record 0 base skipped "pi-vllm:no-server"; exit 0; fi
+  rq_stage_record 0 base fail "pi-vllm:server-failed"; exit 1
+}
 ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null | "$RQ_PY" -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or [{}])[0].get("id",""))' 2>/dev/null || true)"
-if [ -z "$ACTUAL" ]; then
-  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-13-load-vllm.sh 먼저 실행" >&2
-  rq_stage_record 0 base fail "pi-vllm:no-server"
-  exit 1
-fi
 s0_pi_register "raon-base-8000" "http://localhost:${PORT}/v1" "$ACTUAL" "EMPTY"
 PROBE="$(s0_pi_probe_dir)"
 if s0_pi_verify "raon-base-8000" "$ACTUAL" "$PROBE"; then

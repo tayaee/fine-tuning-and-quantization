@@ -42,12 +42,13 @@ except FileExistsError:
 print(f"scaffold OK {d} prompts={len(prompts)}")
 PY
 fi
+rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-load-vllm.sh" || {
+  rc=$?
+  if [ "$rc" = 2 ]; then rq_stage_record 0 base skipped "bench-vllm:no-server"; exit 0; fi
+  rq_stage_record 0 base fail "bench-vllm:server-failed"; exit 1
+}
 ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null | "$RQ_PY" -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or [{}])[0].get("id",""))' 2>/dev/null || true)"
-if [ -z "$ACTUAL" ]; then
-  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-13-load-vllm.sh 먼저 실행" >&2
-  rq_stage_record 0 base fail "bench-vllm:no-server"
-  exit 1
-fi
+[ -n "$ACTUAL" ] || { echo "FAIL: PORT=$PORT 서버 응답 없음" >&2; rq_stage_record 0 base fail "bench-vllm:no-server"; exit 1; }
 s0_bench_run "http://localhost:${PORT}/v1" "$ACTUAL" "$OUTDIR" \
   || { echo "FAIL: 벤치 실행 실패" >&2; rq_stage_record 0 base fail "bench-vllm:fail"; exit 1; }
 # s0-13 서버 정리 (pidfile이 있으면 해당 프로세스만, 없으면 포트 점유 그대로 둔다).

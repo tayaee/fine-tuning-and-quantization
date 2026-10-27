@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # s0-13-load-vllm.sh [smoke|full] — 베이스모델을 vLLM 포크로 서빙해 로딩 검증 (Stage 0 절차 5).
 # BASE_MODEL(Hub MXFP8 릴리스)은 포크의 mxfp8 프로파일 지원 대상이다.
+# 단 포크 검증 GPU는 sm_103(B300)/sm_120(5090)뿐이다. 그 외 GPU에서는 체인으로
+# 막혀 서빙 자체가 불가하므로 시도하지 않고 SKIP한다 (2026-10-27 실측):
+#   vsplit adaptive 미지원 → TRITON_MLA/FLASH_ATTN 강제 가능 →
+#   MoE가 CUTLASS DSL tcgen05(sm_100/103 전용) 요구 + validator가 GEMM_MODE=4 강제.
 # 서버는 백그라운드로 남겨 s0-16/s0-19가 쓰고, s0-22가 내린다.
 # VLLM_MAX_LEN(기본 32768, 카드값 262144로 오버라이드 가능) · PORT(기본 8000).
 set -euo pipefail
@@ -13,23 +17,25 @@ PIDF="$RQ_ROOT/logs/s0-serve-base.pid"
 REPO="tayaee/${BASE_MODEL##*/}-base"
 TIMEOUT="${S0_LOAD_TIMEOUT:-1200}"
 # 포크 지원 매트릭스: B300(sm_103) + RTX 5090(sm_120, NVFP4). 그 외 GPU(예: GB10 sm_121)는
-# 비호환 가능 — 경고만 하고 시도는 이어간다(실패 원인은 $SERVLOG에 보존).
+# 아래 체인으로 서빙 자체가 불가하므로 시도하지 않고 SKIP한다 (원장 기록 후 exit 0).
 _CC="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -1 | tr -d ' .')"
 case "$_CC" in
   10.*|12.0) ;;
-  *) rq_log "WARN: compute_cap=${_CC:-unknown} — 포크 검증 매트릭스(sm_103/sm_120) 밖. 실패 가능." ;;
+  *)
+    {
+      echo "SKIP: compute_cap=${_CC:-unknown} — 포크 검증 매트릭스(sm_103/sm_120) 밖."
+      echo "사유 체인: (1) vsplit adaptive 미지원 (2) FLASHINFER_MLA/TRTLLM_RAGGED sm_121 미지원"
+      echo "(3) MoE CUTLASS tcgen05가 sm_100/103 전용 + validator가 GEMM_MODE=4 강제."
+      echo "transformers half(s0-01/04/07/10)가 베이스 검증 증거다."
+    } | tee "$SERVLOG"
+    rq_stage_record 0 base skipped "vllm-half:unsupported-gpu-${_CC:-unknown}"
+    rm -f "$PIDF"
+    exit 0 ;;
 esac
 if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   rq_log "port $PORT 사용 중 — 기존 서버를 s0-16/s0-19에 재사용 (pidfile=$PIDF)"
 else
   rm -f "$SERVLOG"
-  # GB10(SM121) 등 비검증 GPU에서만 adaptive vsplit을 끈다(stocks FlashKDA 폴백).
-  # 포크가 _set_default로만 채우므로 선설정이 이긴다. 검증 GPU(sm_103/sm_120)는
-  # production 설정을 그대로 쓴다.
-  case "$_CC" in
-    10.*|12.0) ;;
-    *) export RAON_KDA_PREFILL_VSPLIT=0 ;;
-  esac
   VLLM_REF="${VLLM_REF:-raon-1-mini-preview}"
   VLLM_USE_PRECOMPILED=1 nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
     vllm serve "$BASE_MODEL" \
