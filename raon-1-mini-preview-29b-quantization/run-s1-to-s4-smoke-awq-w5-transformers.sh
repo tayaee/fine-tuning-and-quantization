@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-s1-to-s4-smoke-awq-w5-transformers.sh — smoke × awq-w5-transformers 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
-# 타깃: awq-w5-transformers — AWQ smoothing + GPTQ W5 (W5A16-g128) (s3-04-quant-awq-w5-transformers.sh)
+# 타깃: awq-w5-transformers — AWQ smoothing + GPTQ W5 (W5A16-g128) (s3-01-quant-awq-w5-transformers.sh)
 # 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(awq-w5-transformers) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-smoke-awq-w5-transformers.sh

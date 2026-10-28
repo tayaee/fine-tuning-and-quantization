@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-s1-to-s4-full-nvfp4-awq-transformers.sh — full × nvfp4-awq-transformers 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
-# 타깃: nvfp4-awq-transformers — AWQ smoothing + NVFP4 (W4A4) (s3-07-quant-nvfp4-awq-transformers.sh)
+# 타깃: nvfp4-awq-transformers — AWQ smoothing + NVFP4 (W4A4) (s3-01-quant-nvfp4-awq-transformers.sh)
 # 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(nvfp4-awq-transformers) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-full-nvfp4-awq-transformers.sh

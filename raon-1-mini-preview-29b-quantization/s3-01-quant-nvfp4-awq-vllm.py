@@ -1,10 +1,10 @@
-"""s3-06-quant-nvfp4-awq-vllm.py — BF16 원본 → AWQ Lite + NVFP4 (ModelOpt).
+"""s3-01-quant-nvfp4-awq-vllm.py — BF16 원본 → AWQ Lite + NVFP4 (ModelOpt).
 
-transformers판(s3-07)과 같은 NVFP4-AWQ지만 표지가 modelopt_fp4라 vLLM 포크
+transformers판(s3-01)과 같은 NVFP4-AWQ지만 표지가 modelopt_fp4라 vLLM 포크
 nvfp4칸으로 적재된다. 레시피 뼈대 = NVFP4_EXPERTS_ONLY (KRAFTON NVFP4와 동일
 범위: MoE expert만, router/conv/lm_head 제외, KV 무양자화) + awq_lite 탐색.
 
-  uv run s3-06-quant-nvfp4-awq-vllm.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-01-quant-nvfp4-awq-vllm.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse

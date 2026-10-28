@@ -21,7 +21,7 @@
 > (0=베이스검증, 1=환경체인, 2=복원, 3=양자화, 4=측정·평가, 5=업로드, 6=고객-transformers, 7=고객-vLLM),
 > `##`은 그룹 안 순서(**01부터 3단위**, 각 그룹의 첫 스크립트는 항상 `s#-01-`),
 > `<slug>`은 작업 이름이다.
-> 예) `s3-07-quant-nvfp4-awq-transformers.sh` = 3그룹(양자화)의 07번 스텝.
+> 예) `s3-01-quant-nvfp4-awq-transformers.sh` = 3그룹(양자화)의 07번 스텝.
 > 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는
 > 진입점이므로 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·s5 업로드·s6/s7 CAT는 별도 실행).
 
@@ -128,10 +128,10 @@ TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로�
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |
 |---|---|---|
-| `run-s1-to-s4-{smoke,full}-awq-w5-transformers.sh` | s1~s4 (env체인~측정평가) | s3-04-quant-awq-w5-transformers |
+| `run-s1-to-s4-{smoke,full}-awq-w5-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w5-transformers |
 | `run-s1-to-s4-{smoke,full}-awq-w3-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w3-transformers |
-| `run-s1-to-s4-{smoke,full}-nvfp4-awq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-07-quant-nvfp4-awq-transformers |
-| `run-s1-to-s4-{smoke,full}-nvfp4-gptq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-10-quant-nvfp4-gptq-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-awq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-nvfp4-awq-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-gptq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-nvfp4-gptq-transformers |
 
 (engine: `build-ppl-eval.inc`)
 

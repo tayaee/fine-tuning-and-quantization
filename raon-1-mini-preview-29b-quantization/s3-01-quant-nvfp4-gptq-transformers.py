@@ -1,8 +1,8 @@
-"""s3-10-quant-nvfp4-gptq-transformers.py — 원본 → GPTQ NVFP4 (llmcompressor GPTQModifier).
+"""s3-01-quant-nvfp4-gptq-transformers.py — 원본 → GPTQ NVFP4 (llmcompressor GPTQModifier).
 NVFP4 스킬 정석: actorder=static, dampening 0.01, block 128, MoE는 calib 확보가 중요.
 full 권장 calib>=256 (기본값 따름). smoke는 정확도보다 파이프 검증 목적.
 
-  uv run s3-10-quant-nvfp4-gptq-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-01-quant-nvfp4-gptq-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse

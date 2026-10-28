@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-s1-to-s4-smoke-nvfp4-gptq-transformers.sh — smoke × nvfp4-gptq-transformers 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
-# 타깃: nvfp4-gptq-transformers — GPTQModifier NVFP4 (W4A4) (s3-10-quant-nvfp4-gptq-transformers.sh)
+# 타깃: nvfp4-gptq-transformers — GPTQModifier NVFP4 (W4A4) (s3-01-quant-nvfp4-gptq-transformers.sh)
 # 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(nvfp4-gptq-transformers) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-smoke-nvfp4-gptq-transformers.sh

@@ -10,9 +10,9 @@
 | # | 스크립트 | 타깃 | 레시피 (llm-compressor) | 서빙 `--quantization` | 비고 |
 |---|---|---|---|---|---|
 | s3-01 | `s3-01-quant-awq-w3-transformers` | `awq-w3-transformers` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
-| s3-04 | `s3-04-quant-awq-w5-transformers` | `awq-w5-transformers` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
-| s3-07 | `s3-07-quant-nvfp4-awq-transformers` | `nvfp4-awq-transformers` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
-| s3-10 | `s3-10-quant-nvfp4-gptq-transformers` | `nvfp4-gptq-transformers` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
+| s3-01 | `s3-01-quant-awq-w5-transformers` | `awq-w5-transformers` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
+| s3-01 | `s3-01-quant-nvfp4-awq-transformers` | `nvfp4-awq-transformers` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
+| s3-01 | `s3-01-quant-nvfp4-gptq-transformers` | `nvfp4-gptq-transformers` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
 
 출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-transformers-full`).
 업로드명: `tayaee/Raon-1-mini-preview-<target>[-smoke]` (상세 `output-models-tree.txt`).

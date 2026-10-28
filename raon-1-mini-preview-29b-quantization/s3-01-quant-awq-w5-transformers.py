@@ -1,9 +1,9 @@
-"""s3-04-quant-awq-w5-transformers.py — 원본 → (AWQ smoothing) + GPTQ W5A16-g128 (llmcompressor oneshot).
+"""s3-01-quant-awq-w5-transformers.py — 원본 → (AWQ smoothing) + GPTQ W5A16-g128 (llmcompressor oneshot).
 비표준 5bit: AWQ smoothing 후 GPTQ W5로 양자화.
 custom arch에서 AWQ replay가 RoutedLinear와 호환되지 않아 기본 OFF
 (RQ_AWQ_FIRST=1로 명시해야 시도, 실패 시 pure-GPTQ 폴백).
 
-  uv run s3-04-quant-awq-w5-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-01-quant-awq-w5-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse

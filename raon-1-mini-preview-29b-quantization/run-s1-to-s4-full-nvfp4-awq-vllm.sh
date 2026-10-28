@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run-s1-to-s4-full-nvfp4-awq-vllm.sh — full × nvfp4-awq-vllm 단일 타깃 원샷(빌드→PPL→eval).
 # 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
-# 타깃: nvfp4-awq-vllm — AWQ Lite + NVFP4, ModelOpt (s3-06, modelopt_fp4 표지 → vLLM 포크 적재 대상)
+# 타깃: nvfp4-awq-vllm — AWQ Lite + NVFP4, ModelOpt (s3-01, modelopt_fp4 표지 → vLLM 포크 적재 대상)
 # 단일 (mode × target) 빌드 진입점:
 #   dequant(BF16 복원) → quant(nvfp4-awq-vllm) → PPL(base 대비 Δ) → eval → score
 # 사용: ./run-s1-to-s4-full-nvfp4-awq-vllm.sh

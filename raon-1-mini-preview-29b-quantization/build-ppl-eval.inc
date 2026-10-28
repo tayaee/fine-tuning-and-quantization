@@ -27,10 +27,10 @@ BPE_TIMING=""
 rq_bpe_spec() {
   case "$1" in
     awq-w3-transformers) echo "s3-01-quant-awq-w3-transformers.sh pack-quantized" ;;
-    awq-w5-transformers) echo "s3-04-quant-awq-w5-transformers.sh pack-quantized" ;;
-    nvfp4-awq-transformers) echo "s3-07-quant-nvfp4-awq-transformers.sh nvfp4-pack-quantized" ;;
-    nvfp4-gptq-transformers) echo "s3-10-quant-nvfp4-gptq-transformers.sh nvfp4-pack-quantized" ;;
-    nvfp4-awq-vllm) echo "s3-06-quant-nvfp4-awq-vllm.sh mopt-nvfp4" ;;
+    awq-w5-transformers) echo "s3-01-quant-awq-w5-transformers.sh pack-quantized" ;;
+    nvfp4-awq-transformers) echo "s3-01-quant-nvfp4-awq-transformers.sh nvfp4-pack-quantized" ;;
+    nvfp4-gptq-transformers) echo "s3-01-quant-nvfp4-gptq-transformers.sh nvfp4-pack-quantized" ;;
+    nvfp4-awq-vllm) echo "s3-01-quant-nvfp4-awq-vllm.sh mopt-nvfp4" ;;
     *) echo "" ;;
   esac
 }

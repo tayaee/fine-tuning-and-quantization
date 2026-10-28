@@ -35,7 +35,7 @@ s<group>-##-<slug>.{sh,py}
 | 0 | 베이스검증 | `s0-01-load-transformers.sh` … `s0-22-bench-vllm.sh` |
 | 1 | 환경 체인 | `s1-01-setup.sh`, `s1-04-acceptance.{sh,py}`, `s1-07-prep-calibration.{sh,py}`, `s1-10-compat-check.{sh,py}` |
 | 2 | 베이스 복원 | `s2-01-dequant-mxfp8.{sh,py}` |
-| 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-10-quant-nvfp4-gptq-transformers.{sh,py}` |
+| 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-01-quant-nvfp4-gptq-transformers.{sh,py}` |
 | 4 | 측정·평가 | `s4-01-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-13-gsm8k.{sh,py}`, `s4-16-prep-kmmluko.{sh,py}`, `s4-19-kmmluko.{sh,py}`, `s4-22-format.{sh,py}`, `s4-25-servebench.{sh,py}`, `s4-28-bench-transformers.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-34-verify-upload.{sh,py}`, `s4-37-release-notes.{sh,py}` |
 | 5 | 업로드 | `s5-01-upload-hf.{sh,py}` |
 | 6 | 고객-transformers | `s6-*-test-*-with-transformers.sh`, `s6-13-chat.sh`, `s6-16-pi-tool-call-test.sh` |

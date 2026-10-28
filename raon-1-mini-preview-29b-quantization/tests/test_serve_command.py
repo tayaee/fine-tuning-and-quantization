@@ -34,7 +34,7 @@ prep = _load_script("s4-31-prep-upload.py")
 
 QUANT_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 LLMC_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
-WRAPPER_NUM = {"awq-w3-transformers": "01", "awq-w5-transformers": "04", "nvfp4-awq-vllm": "06", "nvfp4-awq-transformers": "07", "nvfp4-gptq-transformers": "10"}
+WRAPPER_NUM = {"awq-w3-transformers": "01", "awq-w5-transformers": "01", "nvfp4-awq-vllm": "01", "nvfp4-awq-transformers": "01", "nvfp4-gptq-transformers": "01"}
 # 래퍼 파일명의 타깃 토큰 (= 타깃 슬러그)
 WRAPPER_SLUG = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
                 "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}

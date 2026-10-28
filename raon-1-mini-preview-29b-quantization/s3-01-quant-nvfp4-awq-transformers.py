@@ -1,8 +1,8 @@
-"""s3-07-quant-nvfp4-awq-transformers.py — 원본 → AWQ smoothing + NVFP4 (llmcompressor oneshot).
+"""s3-01-quant-nvfp4-awq-transformers.py — 원본 → AWQ smoothing + NVFP4 (llmcompressor oneshot).
 NVFP4는 W4A4 + calib 필수 + Blackwell(SM>=10) 전용. MoE expert calib는
 Calibration shim이 자동 처리한다.
 
-  uv run s3-07-quant-nvfp4-awq-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-01-quant-nvfp4-awq-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse

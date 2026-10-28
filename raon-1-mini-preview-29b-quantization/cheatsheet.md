@@ -47,11 +47,11 @@ uv run hf auth login
 
 # s3. PTQ 개별 (smoke 예시, calib 수 직접 지정 가능)
 ./s3-01-quant-awq-w3-transformers.sh smoke
-./s3-04-quant-awq-w5-transformers.sh smoke
-./s3-07-quant-nvfp4-awq-transformers.sh smoke
-./s3-10-quant-nvfp4-gptq-transformers.sh smoke
+./s3-01-quant-awq-w5-transformers.sh smoke
+./s3-01-quant-nvfp4-awq-transformers.sh smoke
+./s3-01-quant-nvfp4-gptq-transformers.sh smoke
 RQ_AWQ_FIRST=0 ./s3-01-quant-awq-w3-transformers.sh smoke   # custom_arch AWQ 실패 시 pure-GPTQ 폴백
-RQ_TARGETS=all ./s3-10-quant-nvfp4-gptq-transformers.sh smoke  # experts-only 대신 전 Linear
+RQ_TARGETS=all ./s3-01-quant-nvfp4-gptq-transformers.sh smoke  # experts-only 대신 전 Linear
 
 # s4. 측정·평가 — PPL (일부 타깃만 — 타겟마다 별도 프로세스, 마지막에 캐시 집계, targets 필수)
 TARGETS=all ./s4-01-measure-ppl.sh smoke
@@ -97,13 +97,13 @@ TARGETS=all DRY_RUN=1 ./s5-01-upload-hf.sh full     # 네트워크 없이 준비
 TARGETS=all ./s5-01-upload-hf.sh full
 
 # s6. 고객 시나리오 (transformers) — Hub 다운로드 → 로딩 → chat → pi
-./s6-07-test-nvfp4-awq-transformers-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
+./s6-01-test-nvfp4-awq-transformers-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
 ./s6-13-chat.sh full tayaee/Raon-1-mini-preview-nvfp4-awq-transformers   # HF 모델명 입력도 가능
 ./s6-13-chat.sh full nvfp4-awq-transformers       # chat 검증 (all이면 4종 순차)
 ./s6-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # 임시 서버+pi 툴콜 후 정리
 
 # s7. 고객 시나리오 (vLLM 서빙) — frozen 래퍼 + chat + pi
-./s7-07-test-nvfp4-awq-transformers-with-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
+./s7-01-test-nvfp4-awq-transformers-with-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
 ./s7-13-chat.sh full nvfp4-awq-transformers       # 서버 기동+chat 검증 (서버 상주)
 ./s7-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # pi 검증 후 서버 정리
 ./s7-19-verify-serving-log.sh full   # s7-13/s7-16 로그 → outputs/serve-full.json
