@@ -38,6 +38,11 @@ done
 for t in $_ts; do
   out="$RQ_OUTPUTS/eval-$MODE/$t.jsonl"
   m="$(target_model "$t")"
+  if rq_skip_transformers "$t"; then
+    rq_log "SKIP: $t — transformers 적재 불가(vLLM 전용), 품질 게이트는 s7 서빙"
+    printf '{"skipped": "transformers-unloadable (vLLM-only format)"}\n' > "$out"
+    continue
+  fi
   # 요청한 벤치 응답이 없으면 신선하지 않다 (일부 벤치만 돌린 결과).
   # 프롬프트 파일 mtime은 보지 않는다 (결정론 생성이라 내용이 같으면 재측정 불필요).
   # 모델(config.json)이 바뀌면 재측정한다.

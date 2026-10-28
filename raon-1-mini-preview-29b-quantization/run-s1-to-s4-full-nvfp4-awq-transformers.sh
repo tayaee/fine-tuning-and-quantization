@@ -1,21 +1,44 @@
 #!/usr/bin/env bash
 # run-s1-to-s4-full-nvfp4-awq-transformers.sh — full × nvfp4-awq-transformers 단일 타깃 원샷(빌드→PPL→eval).
-# 범위: Stage s1~s4 (setup → acceptance → calib → compat → dequant → quant → ppl → eval)
-# 타깃: nvfp4-awq-transformers — AWQ smoothing + NVFP4 (W4A4) (s3-01-quant-nvfp4-awq-transformers.sh)
-# 단일 (mode × target) 빌드 진입점:
-#   dequant(BF16 복원) → quant(nvfp4-awq-transformers) → PPL(base 대비 Δ) → eval → score
-# 사용: ./run-s1-to-s4-full-nvfp4-awq-transformers.sh
-#   STEPS=quant,ppl ./run-s1-to-s4-full-nvfp4-awq-transformers.sh          # 일부 스텝만
-#   FORCE=1 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh                   # freshness 무시(강제 재계산)
-#   SKIP_SETUP=1 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh             # s1-01-setup 생략
-#   QUANT_CPU_ONLY=1 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh          # 양자화만 GPU 숨김(PPL/eval은 GPU)
-#   STEPS=prep,verify ./run-s1-to-s4-full-nvfp4-awq-transformers.sh        # 모델카드(s4-31) + 업로드 전 감사(s4-34)까지
-# 게이트: gate-quant(패킹 계약·global_scale) → gate-ppl(유한 PPL) → gate-eval(응답 생성)
-# 상세: build-ppl-eval.inc / PROCEDURE.md
+# AWQ + NVFP4 (llmcompressor). STEPS 필터 없이 전 구간 실행한다 (부분 실행은 각 스크립트 직접 호출).
+#   FORCE=1 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh             # freshness 무시(강제 재계산)
+#   QUANT_CPU_ONLY=1 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh    # 양자화만 GPU 숨김
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
-export BPE_MODE=full BPE_TARGET=nvfp4-awq-transformers
-source "$ROOT/config/common.env" "$BPE_MODE"
-source "$ROOT/build-ppl-eval.inc"
+MODE="full"; TARGET="nvfp4-awq-transformers"
+QSCRIPT="s3-01-quant-nvfp4-awq-transformers.sh"; QFORMAT="nvfp4-pack-quantized"
+source "$ROOT/config/common.env" "$MODE"
 rq_banner "run-s1-to-s4-full-nvfp4-awq-transformers" "s1-s4 pipeline for a single target (setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval)"
-rq_bpe_main
+rq_repro_echo
+
+./s1-01-setup.sh "$MODE"
+./s1-04-acceptance.sh "$MODE"
+rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
+rq_gate_acceptance "$MODE"
+./s1-07-prep-calibration.sh "$MODE"
+./s1-10-compat-check.sh "$MODE"
+./s2-01-dequant-mxfp8.sh "$MODE"
+if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then QC="env CUDA_VISIBLE_DEVICES="; else QC="env"; fi
+$QC ./$QSCRIPT "$MODE"
+rq_gate_quant "$RQ_MODELS/raon-$TARGET-$MODE" "$QFORMAT"
+rq_stage_target 3 quant pass "$TARGET" "$RQ_MODELS/raon-$TARGET-$MODE"
+./s4-01-measure-ppl.sh "$MODE" "base,$TARGET"
+rq_gate_ppl "$RQ_OUTPUTS/ppl-$MODE/$TARGET.json" "$TARGET"
+rq_stage_record 4 measure pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
+./s4-04-prep-gsm8k.sh "$MODE"
+./s4-16-prep-kmmluko.sh "$MODE"
+./s4-22-format.sh "$MODE" --prepare
+./s4-07-eval-base.sh "$MODE"
+./s4-10-eval-quantized.sh "$MODE" "$TARGET"
+./s4-13-gsm8k.sh "$MODE"
+./s4-19-kmmluko.sh "$MODE"
+./s4-22-format.sh "$MODE"
+rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$TARGET.jsonl" "$TARGET" "$MODE"
+rq_gate_kmmluko "$MODE" "$TARGET"
+rq_gate_format "$MODE" "$TARGET"
+rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
+./s4-31-prep-upload.sh "$MODE" "$TARGET"
+rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
+./s4-34-verify-upload.sh "$MODE" "$TARGET"
+rq_gate_release "$MODE"
+echo "run-s1-to-s4-full-nvfp4-awq-transformers done"

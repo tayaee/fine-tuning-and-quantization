@@ -37,6 +37,11 @@ for t in $_t; do
   [ "$_norm_t" = bf16 ] || [ "$_norm_t" = raon-bf16 ] && _norm_t="base"
   out="$RQ_OUTPUTS/ppl-$MODE/${_norm_t}.json"
   m="$(target_model "$t")"
+  if rq_skip_transformers "$_norm_t"; then
+    rq_log "SKIP: $_norm_t — transformers 적재 불가(vLLM 전용), 품질 게이트는 s7 서빙"
+    printf '{"target": "%s", "skipped": "transformers-unloadable (vLLM-only format)"}\n' "$_norm_t" > "$out"
+    continue
+  fi
   if [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${FORCE:-0}" != 1 ] && rq_fresh "$out" "$m/config.json"; then
     rq_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi

@@ -10,6 +10,11 @@ rq_repro_echo
 rq_banner "s6-01-test-nvfp4-awq-vllm-with-transformers" "Stage 6 - customer scenario: download from Hub and load with transformers (nvfp4-awq-vllm)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 TARGET="nvfp4-awq-vllm"
+if rq_skip_transformers "$TARGET"; then
+  rq_log "SKIP: $TARGET — transformers 적재 불가(vLLM 전용), s7 서빙으로 검증"
+  rq_stage_record 6 cat-tf pass "customer-skip:$TARGET"
+  exit 0
+fi
 REPO="$(s6_repo "$TARGET" "$MODE")"
 OUTDIR="$RQ_OUTPUTS/s6-$MODE"
 mkdir -p "$OUTDIR"

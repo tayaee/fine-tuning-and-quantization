@@ -162,6 +162,9 @@ def summarize(outdir: str | Path, measured: set[str] | tuple[str, ...] = ()) -> 
         if t == "base":
             r["verdict"] = "ref"
             continue
+        if r.get("skipped"):
+            r["verdict"] = "skipped"
+            continue
         if base is None:
             r["verdict"] = "no-ref"
             continue

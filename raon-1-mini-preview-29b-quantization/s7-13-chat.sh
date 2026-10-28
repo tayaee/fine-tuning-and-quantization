@@ -52,14 +52,33 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
 else
   rm -f "$SERVLOG"
   WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}.sh"
-  if [ "$SOURCE" = "hf" ] && [ -f "$WRAPPER" ] \
+  # ModelOpt NVFP4는 --quantization 없이 자동 감지 (빈 QUANT면 플래그 생략)
+  QUANT_FLAG=(); [ -n "$QUANT" ] && QUANT_FLAG=(--quantization "$QUANT")
+  if [ -n "${FORK_ROOT:-}" ] && [ -x "$FORK_ROOT/.venv/bin/vllm" ]; then
+    rq_log "local gb10 fork build (background): $FORK_ROOT"
+    nohup "$FORK_ROOT/.venv/bin/vllm" serve "$MODEL" \
+      --host 127.0.0.1 --port "$PORT" \
+      --served-model-name "$REPO" \
+      --tensor-parallel-size "${VTP:-$VTP_DEF}" \
+      "${QUANT_FLAG[@]}" \
+      --max-model-len "${VLLM_MAX_LEN:-8192}" \
+      --max-num-batched-tokens 1024 \
+      --max-num-seqs 4 \
+      --gpu-memory-utilization "${GPU_UTIL:-0.6}" \
+      --kv-cache-dtype fp8_e4m3 \
+      --enable-prefix-caching \
+      --reasoning-parser raon_1 \
+      --tool-call-parser raon_1 \
+      --enable-auto-tool-choice \
+      --trust-remote-code \
+      --default-chat-template-kwargs '{"enable_thinking": true, "truncate_history_thinking": false}' \
+      >"$SERVLOG" 2>&1 &
+  elif [ "$SOURCE" = "hf" ] && [ -f "$WRAPPER" ] \
     && [ "${PORT:-8000}" = 8000 ]; then
     rq_log "frozen card command (background): $WRAPPER"
     nohup "$WRAPPER" >"$SERVLOG" 2>&1 &
   else
     VLLM_REF="${VLLM_REF:-raon-1-mini-preview}"
-    # ModelOpt NVFP4는 --quantization 없이 자동 감지 (빈 QUANT면 플래그 생략)
-    QUANT_FLAG=(); [ -n "$QUANT" ] && QUANT_FLAG=(--quantization "$QUANT")
     VLLM_USE_PRECOMPILED=1 nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
       vllm serve "$MODEL" \
       --host 127.0.0.1 --port "$PORT" \

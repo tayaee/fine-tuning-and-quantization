@@ -20,6 +20,12 @@ for _e in $RQ_HF_TARGETS_RUN; do
   esac
   t="$TAG"
   LOGF="$RQ_ROOT/logs/s6-16-$t.log"
+  _tgt="$(rq_target_of "$t")"
+  if [ -n "$_tgt" ] && rq_skip_transformers "$_tgt"; then
+    echo "[SKIP] mode=$MODE target=$t — transformers 적재 불가(vLLM 전용)" | tee "$LOGF"
+    rq_stage_record 6 cat-tf pass "customer-skip:$t"
+    continue
+  fi
   SERVLOG="$RQ_ROOT/logs/s6-16-server-$t.log"
   OUTDIR="$RQ_OUTPUTS/s6-$MODE"
   mkdir -p "$OUTDIR"

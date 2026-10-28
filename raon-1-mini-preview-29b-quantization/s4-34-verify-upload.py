@@ -490,6 +490,7 @@ def _check_metrics(
         warnings.append("allow_missing_metrics=True: PPL/eval 지표 파일 생략")
         return errors, warnings, meta
 
+    ppl_data: dict = {}
     if not ppl_fp.is_file():
         if not allow_missing_metrics:
             errors.append(f"{ppl_fp}: 파일 없음 (s4-01-measure-ppl.sh 먼저 실행)")
@@ -501,6 +502,8 @@ def _check_metrics(
                     errors.append(f"{ppl_fp}: '{req_key}' 항목 없음")
                 continue
             val = ppl_data[req_key].get("ppl")
+            if ppl_data[req_key].get("verdict") == "skipped":
+                continue  # transformers 적재 불가(vLLM 전용): 지표 검사를 생략한다
             if not isinstance(val, (int, float)) or not math.isfinite(val) or not (1.0 < val < 100.0):
                 errors.append(f"{ppl_fp}: '{req_key}' PPL 비정상 ({val!r})")
         if target in ppl_data:
@@ -508,7 +511,7 @@ def _check_metrics(
             meta["ppl"] = t_row.get("ppl")
             meta["ppl_delta"] = t_row.get("delta")
             meta["ppl_verdict"] = t_row.get("verdict")
-            if not allow_missing_metrics and (
+            if not allow_missing_metrics and meta["ppl_verdict"] != "skipped" and (
                 meta["ppl_delta"] is None or not math.isfinite(float(meta["ppl_delta"]))
             ):
                 errors.append(f"{ppl_fp}: '{target}' delta 누락 또는 비정상 ({meta['ppl_delta']!r})")
@@ -520,6 +523,10 @@ def _check_metrics(
                     errors.append(msg)
             elif meta["ppl_verdict"] == "Conditional":
                 warnings.append(f"{ppl_fp}: '{target}' PPL 판정이 Conditional (delta={meta['ppl_delta']})")
+
+    skip_target = (ppl_data.get(target) or {}).get("verdict") == "skipped"
+    if skip_target:
+        warnings.append(f"'{target}' transformers 지표 생략 (vLLM 전용, s7 서빙으로 검증)")
 
     if not score_fp.is_file():
         if not allow_missing_metrics:
@@ -534,6 +541,8 @@ def _check_metrics(
                 if not allow_missing_metrics:
                     errors.append(f"{score_fp}: '{req_key}' 항목 없음")
                 continue
+            if req_key == target and skip_target:
+                continue  # 지표 생략 타깃
             s_row = score_data[req_key]
             if float(s_row.get("done_rate") or 0.0) <= 0.0:
                 errors.append(f"{score_fp}: '{req_key}' done_rate={s_row.get('done_rate')} (빈 응답만 생성됨)")
@@ -551,7 +560,7 @@ def _check_metrics(
         lines = [json.loads(line) for line in eval_jsonl.read_text(encoding="utf-8").splitlines() if line.strip()]
         if not lines:
             errors.append(f"{eval_jsonl}: 생성 응답이 0줄임")
-        elif all(not str(r.get("output") or "").strip() for r in lines):
+        elif all(not str(r.get("output") or "").strip() for r in lines) and not skip_target:
             errors.append(f"{eval_jsonl}: 모든 생성 응답(output)이 비어 있음")
 
     return errors, warnings, meta

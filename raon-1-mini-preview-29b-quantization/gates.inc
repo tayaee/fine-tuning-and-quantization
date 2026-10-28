@@ -69,6 +69,10 @@ rq_gate_ppl() {
     echo "FAIL: $f 없음 — PPL 미측정(유한 토큰 0/NaN). 양자화 산출물이 오염됐을 가능성" >&2
     return 1
   fi
+  if grep -q '"skipped"' "$f" 2>/dev/null; then
+    echo "SKIP: $f — transformers 적재 불가 타깃, 품질 게이트는 s7 서빙"
+    return 0
+  fi
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, math, os, sys
 from sdlc import load_acceptance, target_spec, verdict_for_delta
@@ -109,6 +113,10 @@ rq_gate_eval() {
   if [ ! -s "$f" ]; then
     echo "FAIL: $f 없음/빈 파일 — eval 응답 미생성" >&2
     return 1
+  fi
+  if head -n 1 "$f" | grep -q '"skipped"'; then
+    echo "SKIP: $f — transformers 적재 불가 타깃, 품질 게이트는 s7 서빙"
+    return 0
   fi
   local n
   n=$(wc -l <"$f")
