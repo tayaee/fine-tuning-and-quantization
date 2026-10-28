@@ -3,7 +3,12 @@
 # 다운로드는 $RQ_SHARED/hf-customer/ 아래에 repo slug별로 1회 (snapshot 재사용).
 s6_repo() {
   local target="$1" mode="${2:-$MODE}"
-  local repo="tayaee/${BASE_MODEL##*/}-$target"
+  local repo
+  if [ "$target" = nvfp4-awq-modelopt ]; then
+    repo="tayaee/Raon-1-mini-preview-NVFP4-AWQ"  # 시장 관례 대문자 (s3-06 ModelOpt판)
+  else
+    repo="tayaee/${BASE_MODEL##*/}-$target"
+  fi
   [ "$mode" = smoke ] && repo="$repo-smoke"
   printf '%s' "$repo"
 }

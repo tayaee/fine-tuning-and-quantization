@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s6-16-pi.sh [mode] [model] — 고객 transformers 로딩본으로 pi 툴콜 검증 (Stage 6).
+# s6-16-pi-tool-call-test.sh [mode] [model] — 고객 transformers 로딩본으로 pi 툴콜 검증 (Stage 6).
 # model: HF repo id | short target | all (기본 nvfp4-awq).
 # 모델마다 transformers 기반 최소 OpenAI 서버(:8001)를 띄워 pi 고정 질문을 던지고 내린다.
 # 서버는 tools 왕복(chat→tool_calls→tool 결과→최종)을 지원한다. 산출물 변경 없음.
@@ -8,7 +8,7 @@ source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 source "$RQ_ROOT/config/s6-customer.inc"
 source "$RQ_ROOT/config/s0-pi.inc"
 rq_repro_echo
-rq_banner "s6-16-pi" "Stage 6 - pi tool-call check against customer-loaded models (temp server)"
+rq_banner "s6-16-pi-tool-call-test" "Stage 6 - pi tool-call check against customer-loaded models (temp server)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 rq_hf_parse "${2:-nvfp4-awq}" "$MODE"
 PORT="${PORT:-8001}"

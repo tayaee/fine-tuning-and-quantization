@@ -59,7 +59,7 @@ def resolve_targets() -> list[str]:
         return EXPERT_TARGETS
     return [which]  # custom 패턴 직접 지정
 
-TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq", "nvfp4-awq-modelopt"]
 
 
 class _PackedContract(NamedTuple):
@@ -73,6 +73,8 @@ class _PackedContract(NamedTuple):
 
 PACK_QUANTIZED = "pack-quantized"
 NVFP4_PACK_QUANTIZED = "nvfp4-pack-quantized"
+# ModelOpt NVFP4 (modelopt_fp4 표지): packed weight 구조가 컴프레서와 달라 별도 계약.
+MOPT_NVFP4 = "mopt-nvfp4"
 CUSTOM_CODE_FILES = ("configuration_raon1_mini.py", "modeling_raon1_mini.py")
 
 # nvfp4: U8 패킹 + F8_E4M3 블록 스케일 + F32 전역 스케일, 대칭 전용.
@@ -159,6 +161,8 @@ def verify_compressed_output(model_dir, expected_format: str) -> dict:
     """
     from pathlib import Path
 
+    if expected_format == MOPT_NVFP4:
+        return verify_mopt_output(model_dir)
     model_dir = Path(model_dir)
     contract = PACKED_CONTRACTS.get(expected_format)
     if contract is None:
@@ -216,6 +220,37 @@ def verify_compressed_output(model_dir, expected_format: str) -> dict:
 
     info = {"format": fmt, "packed": counts.get("weight_packed", 0), "shards": n_shards}
     print(f"verify_compressed_output OK {model_dir} {info}")
+    return info
+
+
+def verify_mopt_output(model_dir) -> dict:
+    """ModelOpt NVFP4 산출물 계약: quant_method == modelopt_fp4 + expert 가중치 존재.
+    컴프레서 계약(weight_packed 등)과 구조가 달라 별도 검사한다."""
+    from pathlib import Path
+
+    model_dir = Path(model_dir)
+    cfg_path = model_dir / "config.json"
+    if not cfg_path.is_file():
+        raise RuntimeError(f"{model_dir}: config.json 없음 — 양자화 산출물 아님")
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"{cfg_path}: config.json 파싱 실패: {e}") from e
+    qc = cfg.get("quantization_config")
+    if not isinstance(qc, dict):
+        raise RuntimeError(f"{cfg_path}: quantization_config 없음 — 양자화가 적용되지 않음")
+    method = qc.get("quant_method")
+    if method != "modelopt_fp4":
+        raise RuntimeError(f"{cfg_path}: quant_method={method!r} != 'modelopt_fp4' — ModelOpt 산출물 아님")
+    dtypes, counts, n_shards = _scan_shard_dtypes(model_dir)
+    expert_hit = sum(n for suffix, n in counts.items() if "experts" in suffix or suffix in ("weight", "weight_scale"))
+    if not expert_hit:
+        raise RuntimeError(f"{model_dir}: expert 가중치 텐서 없음 — 빈 export 가능성")
+    missing = [name for name in CUSTOM_CODE_FILES if not (model_dir / name).is_file()]
+    if missing:
+        raise RuntimeError(f"{model_dir}: custom code 누락 {missing} — trust_remote_code 재로드 불가")
+    info = {"format": MOPT_NVFP4, "quant_method": method, "tensors": sum(counts.values()), "shards": n_shards}
+    print(f"verify_mopt_output OK {model_dir} {info}")
     return info
 
 

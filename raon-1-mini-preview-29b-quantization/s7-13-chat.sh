@@ -2,8 +2,8 @@
 # s7-13-chat.sh [smoke|full] [model] — vLLM 서빙 + chat 검증 (Stage 7 CAT).
 # model: HF repo id ("tayaee/...-nvfp4-awq") | short target (기본 nvfp4-awq).
 # SOURCE=local|hf (기본 local; hf면 Hub repo로 서빙). PORT(기본 8000).
-# frozen 래퍼(s7-01/04/07/10)를 백그라운드로 띄워 chat 고정 질문을 검증하고
-# 서버는 남긴다 (s7-16-pi.sh가 재사용, 마지막에 내림).
+# frozen 래퍼(s7-<num>-test-<target>-with-vllm-fork.sh)를 백그라운드로 띄워 chat 고정 질문을 검증하고
+# 서버는 남긴다 (s7-16-pi-tool-call-test.sh가 재사용, 마지막에 내림).
 # logs/s7-13-<slug>.log + 원시 서빙 로그 logs/s7-13-serve-<slug>.log.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
@@ -28,7 +28,8 @@ else
     awq-w5)      SUF="raon-awq-w5-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=04 ;;
     nvfp4-awq)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=07 ;;
     nvfp4-gptq)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=10 ;;
-    *) echo "target: awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq" >&2; exit 2 ;;
+    nvfp4-awq-modelopt) SUF="raon-nvfp4-awq-modelopt-$MODE"; QUANT=""; VTP_DEF=1; NUM=06 ;;
+    *) echo "target: awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq|nvfp4-awq-modelopt" >&2; exit 2 ;;
   esac
 fi
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$RQ_MODELS/$SUF"; fi
@@ -50,19 +51,21 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   rq_log "port $PORT 사용 중 — 기존 서버를 재사용 (pidfile=$PIDF)"
 else
   rm -f "$SERVLOG"
-  WRAPPER="$RQ_ROOT/s7-$NUM-vllm-fork-test-${TARGET}.sh"
+  WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}-with-vllm-fork.sh"
   if [ "$SOURCE" = "hf" ] && [ -f "$WRAPPER" ] \
     && [ "${PORT:-8000}" = 8000 ]; then
     rq_log "frozen card command (background): $WRAPPER"
     nohup "$WRAPPER" >"$SERVLOG" 2>&1 &
   else
     VLLM_REF="${VLLM_REF:-raon-1-mini-preview}"
+    # ModelOpt NVFP4는 --quantization 없이 자동 감지 (빈 QUANT면 플래그 생략)
+    QUANT_FLAG=(); [ -n "$QUANT" ] && QUANT_FLAG=(--quantization "$QUANT")
     VLLM_USE_PRECOMPILED=1 nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
       vllm serve "$MODEL" \
       --host 127.0.0.1 --port "$PORT" \
       --served-model-name "$REPO" \
       --tensor-parallel-size "${VTP:-$VTP_DEF}" \
-      --quantization "$QUANT" \
+      "${QUANT_FLAG[@]}" \
       --max-model-len "${VLLM_MAX_LEN:-262144}" \
       --max-num-batched-tokens 16384 \
       --max-num-seqs 128 \
@@ -122,4 +125,4 @@ else
   exit 1
 fi
 echo ---- result ----
-rq_log "s7-13 OK slug=$slug (server kept for s7-16-pi, pidfile=$PIDF)"
+rq_log "s7-13 OK slug=$slug (server kept for s7-16-pi-tool-call-test, pidfile=$PIDF)"

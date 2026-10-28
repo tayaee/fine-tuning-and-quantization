@@ -100,12 +100,12 @@ TARGETS=all ./s5-01-upload-hf.sh full
 ./s6-07-transformers-test-nvfp4-awq.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
 ./s6-13-chat.sh full tayaee/Raon-1-mini-preview-nvfp4-awq   # HF 모델명 입력도 가능
 ./s6-13-chat.sh full nvfp4-awq       # chat 검증 (all이면 4종 순차)
-./s6-16-pi.sh full nvfp4-awq         # 임시 서버+pi 툴콜 후 정리
+./s6-16-pi-tool-call-test.sh full nvfp4-awq         # 임시 서버+pi 툴콜 후 정리
 
 # s7. 고객 시나리오 (vLLM 서빙) — frozen 래퍼 + chat + pi
 ./s7-07-vllm-fork-test-nvfp4-awq.sh   # 터미널1 (상주, 카드 명령 as-is)
 ./s7-13-chat.sh full nvfp4-awq       # 서버 기동+chat 검증 (서버 상주)
-./s7-16-pi.sh full nvfp4-awq         # pi 검증 후 서버 정리
+./s7-16-pi-tool-call-test.sh full nvfp4-awq         # pi 검증 후 서버 정리
 ./s7-19-verify-serving-log.sh full   # s7-13/s7-16 로그 → outputs/serve-full.json
 
 # s4/s7. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / CAT 서빙 검증

@@ -1,9 +1,10 @@
 """tests/test_serve_command.py — README vLLM 명령 ≡ s7 frozen 래퍼 동등성.
 
-s7-01/04/07/10 래퍼는 README 모델카드의 vLLM 명령을 as-is로 실행한다. 양쪽이
-어긋나면 "카드대로 했는데 안 돈다"가 된다. 4종 양자화 타깃은 repo id를 제외하고
-동일 명령이다. s7-13-chat.sh이 타깃→래퍼 테이블로 묶는다.
-개별 래퍼 번호: awq-w3=01, awq-w5=04, nvfp4-awq=07, nvfp4-gptq=10.
+s7 frozen 래퍼는 README 모델카드의 vLLM 명령을 as-is로 실행한다. 양쪽이
+어긋나면 "카드대로 했는데 안 돈다"가 된다. llmcompressor 4종 양자화 타깃은
+repo id를 제외하고 동일 명령이다. ModelOpt판(nvfp4-awq-modelopt)은
+--quantization 없이 자동 감지된다. s7-13-chat.sh이 타깃→래퍼 테이블로 묶는다.
+개별 래퍼 번호: awq-w3=01, awq-w5=04, nvfp4-awq-modelopt=06, nvfp4-awq=07, nvfp4-gptq=10.
 """
 
 from __future__ import annotations
@@ -31,8 +32,9 @@ def _load_script(name: str):
 
 prep = _load_script("s4-31-prep-upload.py")
 
-QUANT_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-WRAPPER_NUM = {"awq-w3": "01", "awq-w5": "04", "nvfp4-awq": "07", "nvfp4-gptq": "10"}
+QUANT_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq-modelopt", "nvfp4-awq", "nvfp4-gptq"]
+LLMC_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+WRAPPER_NUM = {"awq-w3": "01", "awq-w5": "04", "nvfp4-awq-modelopt": "06", "nvfp4-awq": "07", "nvfp4-gptq": "10"}
 S713 = (ROOT / "s7-13-chat.sh").read_text(encoding="utf-8")
 
 
@@ -50,9 +52,9 @@ def _norm(block: str, model: str) -> str:
 
 
 def test_readme_commands_share_one_template():
-    """4종 카드의 vLLM 명령은 repo id만 다르고 플래그는 동일하다 (production 단일 명령)."""
+    """llmcompressor 4종 카드의 vLLM 명령은 repo id만 다르고 플래그는 동일하다 (production 단일 명령)."""
     blocks = {}
-    for t in QUANT_TARGETS:
+    for t in LLMC_TARGETS:
         r = prep.render_readme(t, "full", {}, {}, 20.0)
         assert "## Production serving" not in r, "production 분리가 잔존"
         blocks[t] = _vllm_block(r)
@@ -71,10 +73,21 @@ def test_readme_commands_share_one_template():
         assert f in cmd, f
 
 
+def test_readme_modelopt_command_has_no_quantization_flag():
+    """ModelOpt판 카드는 --quantization 없이 자동 감지 + 대문자 repo id다."""
+    r = prep.render_readme("nvfp4-awq-modelopt", "full", {}, {}, 20.0)
+    b = _vllm_block(r)
+    assert "--quantization" not in b, "ModelOpt 카드에 --quantization 잔존"
+    assert "tayaee/Raon-1-mini-preview-NVFP4-AWQ" in b
+    for f in ("--tensor-parallel-size 1", "--trust-remote-code",
+              "--max-model-len 262144", "--reasoning-parser raon_1"):
+        assert f in b, f
+
+
 def test_s713_table_matches_readme_spec():
     """s7-13의 case 테이블이 s4-31 VLLM_SERVE 스펙과 일치한다."""
     for t in QUANT_TARGETS:
-        m = re.search(rf"^\s*{re.escape(t)}\)\s*SUF=\"([^\"]+)\";\s*QUANT=\"([^\"]+)\";\s*VTP_DEF=(\S+?);\s*NUM=(\S+)", S713, re.M)
+        m = re.search(rf"^\s*{re.escape(t)}\)\s*SUF=\"([^\"]+)\";\s*QUANT=\"([^\"]*)\";\s*VTP_DEF=(\S+?);\s*NUM=(\S+)", S713, re.M)
         assert m, f"s7-13 case arm 없음: {t}"
         assert m.group(2) == prep.VLLM_SERVE[t]["quant"], t
         assert m.group(3) == str(prep.VLLM_SERVE[t]["tp"]), t
@@ -98,10 +111,10 @@ def test_s713_table_matches_readme_spec():
 
 
 def test_wrapper_scripts_embed_readme_block():
-    """s7-<num>-vllm-fork-test-<t>.sh 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
+    """s7 frozen 래퍼 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
     for t in QUANT_TARGETS:
         slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-vllm-fork-test-{t}.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-test-{t}-with-vllm-fork.sh").read_text(encoding="utf-8")
         r = prep.render_readme(t, "full", {}, {}, 20.0)
         assert _vllm_block(r) in wrapper, f"wrapper 본문 불일치: {t}"
         assert wrapper.startswith("#!/usr/bin/env bash"), t
@@ -109,7 +122,7 @@ def test_wrapper_scripts_embed_readme_block():
 
 def test_s713_manages_wrapper_server():
     """s7-13은 frozen 래퍼를 백그라운드로 띄워 slug 확인 후 상주시킨다 (s7-16이 재사용)."""
-    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-vllm-fork-test-${TARGET}.sh"' in S713
+    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}-with-vllm-fork.sh"' in S713
     assert 'nohup "$WRAPPER" >"$SERVLOG" 2>&1 &' in S713
     assert 'model-slug.sh' in S713
     assert 's7-serve.pid' in S713
@@ -121,7 +134,7 @@ def test_no_separate_production_script():
     assert not list(ROOT.glob("*-serve-vllm-production.sh"))
     for t in QUANT_TARGETS:
         slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-vllm-fork-test-{t}.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-test-{t}-with-vllm-fork.sh").read_text(encoding="utf-8")
         assert "--max-model-len 262144" in wrapper, t
         assert "--kv-cache-dtype fp8_e4m3" in wrapper, t
 

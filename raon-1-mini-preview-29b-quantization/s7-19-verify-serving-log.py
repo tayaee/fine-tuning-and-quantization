@@ -1,6 +1,6 @@
 """s7-19-verify-serving-log.py — Stage 7 CAT 감사 (서빙 chat·pi 결과 대조).
 
-s7-13-chat.sh가 남긴 logs/s7-13.<slug>.log와 s7-16-pi.sh가 남긴
+s7-13-chat.sh가 남긴 logs/s7-13.<slug>.log와 s7-16-pi-tool-call-test.sh가 남긴
 logs/s7-16-<slug>.log를 읽어 "모델이 실제로 서빙되고 chat·tool-call 응답을
 냈는가"를 확인한다. 결과는 outputs/serve-<mode>.json으로 남으며
 gates.inc의 rq_gate_serving이 이 파일을 대조한다.
@@ -89,7 +89,7 @@ def main() -> int:
     if failed:
         return 1
     if missing:
-        print(f"SKIP: 서빙 로그가 없는 타겟 {missing} (s7-13-chat.sh/s7-16-pi.sh 실행 필요)")
+        print(f"SKIP: 서빙 로그가 없는 타겟 {missing} (s7-13-chat.sh/s7-16-pi-tool-call-test.sh 실행 필요)")
     return 0
 
 

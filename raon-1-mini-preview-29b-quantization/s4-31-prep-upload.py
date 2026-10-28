@@ -24,6 +24,7 @@ import shutil
 from pathlib import Path
 
 from quant_common import (
+    MOPT_NVFP4,
     NVFP4_PACK_QUANTIZED,
     PACK_QUANTIZED,
     verify_compressed_output,
@@ -65,6 +66,12 @@ SPECS: dict[str, dict] = {
     "nvfp4-gptq": {
         "format": NVFP4_PACK_QUANTIZED, "tags": ["nvfp4", "w4a4", "gptq"],
         "algorithm": "NVFP4 (GPTQ)", "precision": "W4A4 (FP8 dynamic activation scale)",
+        "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
+        "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
+    },
+    "nvfp4-awq-modelopt": {
+        "format": MOPT_NVFP4, "tags": ["nvfp4", "w4a4", "awq", "modelopt"],
+        "algorithm": "NVFP4 (AWQ Lite, ModelOpt)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
@@ -110,6 +117,7 @@ VLLM_SERVE = {
     "awq-w5": {"tp": 1, "quant": "compressed-tensors"},
     "nvfp4-awq": {"tp": 1, "quant": "compressed-tensors"},
     "nvfp4-gptq": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-awq-modelopt": {"tp": 1, "quant": ""},  # ModelOpt NVFP4: 자동 감지, --quantization 지정 금지
 }
 VLLM_REF = "raon-1-mini-preview"
 VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
@@ -117,7 +125,10 @@ VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
-    name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    if target == "nvfp4-awq-modelopt":
+        name = f"{HF_ID}/Raon-1-mini-preview-NVFP4-AWQ"  # 시장 관례 대문자
+    else:
+        name = f"{HF_ID}/{BASE_SLUG}-{target}"
     if mode == "smoke":
         name += "-smoke"
     return name
@@ -544,8 +555,13 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     gsm8k_meta = _evalset_meta(mode)
     repo_id = hf_repo_id(target, mode)
     comparison = _comparison_table(target, mode, ppl, scores, size_gb, checks)
+    is_mopt = target == "nvfp4-awq-modelopt"
+    quant_flag = VLLM_SERVE[target]["quant"]
+    vllm_quant_line = f"  --quantization {quant_flag} \\\n" if quant_flag else ""
+    storage_format = "modelopt_fp4" if is_mopt else "compressed-tensors"
+    install_line = '"nvidia-modelopt" ' if is_mopt else '"compressed-tensors" '
 
-    tags = ", ".join(["raon", "moe", "compressed-tensors", "llm-compressor", *spec["tags"]])
+    tags = ", ".join(["raon", "moe", storage_format, *spec["tags"]])
     fm = [
         "---",
         "license: apache-2.0",
@@ -566,7 +582,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 
 This is a **{repo_id}** quantized version of `{BASE_MODEL}`. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
-The checkpoint is stored in the `compressed-tensors` format (`{spec['format']}`), so it
+The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`), so it
 loads directly with `transformers`' `AutoModelForCausalLM`.
 
 ## Quantization spec
@@ -596,7 +612,7 @@ What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
 ```bash
 uv venv --python 3.12 .venv && source .venv/bin/activate  # ignore any active venv
 uv pip install "torch" --index-url https://download.pytorch.org/whl/cu130  # GB10/Blackwell; CPU-only hosts can skip the index-url
-uv pip install "transformers==5.14.1" "compressed-tensors" accelerate huggingface_hub
+uv pip install "transformers==5.14.1" {install_line}accelerate huggingface_hub
 uvx --from huggingface_hub hf auth login  # the base repo is gated (approval is automatic)
 ```
 
@@ -674,8 +690,7 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
   --host 127.0.0.1 --port 8000 \\
   --served-model-name {repo_id} \\
   --tensor-parallel-size {VLLM_SERVE[target]['tp']} \\
-  --quantization {VLLM_SERVE[target]['quant']} \\
-  --max-model-len 262144 \\
+{vllm_quant_line}  --max-model-len 262144 \\
   --max-num-batched-tokens 16384 \\
   --max-num-seqs 128 \\
   --gpu-memory-utilization 0.85 \\
@@ -689,12 +704,10 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
 ```
 
 > `--kv-cache-dtype fp8_e4m3` and the `raon_1` parsers are fork features —
-> verified on KRAFTON checkpoints, untested on `compressed-tensors` builds.
+> verified on KRAFTON checkpoints{'' if is_mopt else ', untested on `compressed-tensors` builds'}.
 > On a busy node lower `--gpu-memory-utilization` (e.g. `0.3`).
 > Compatibility note: the fork is verified against KRAFTON's own checkpoints
-> (`modelopt_fp4` NVFP4). This repository's checkpoints use the
-> `compressed-tensors` format (`{spec['format']}`), which is a different loader
-> path — serving them on the fork is untested.
+> (`modelopt_fp4` NVFP4).{(' This checkpoint uses the same `modelopt_fp4` loader path.' if is_mopt else ' This repository’s other checkpoints use the `compressed-tensors` format, which is a different loader path — serving them on the fork is untested.')}
 
 ## License and source
 

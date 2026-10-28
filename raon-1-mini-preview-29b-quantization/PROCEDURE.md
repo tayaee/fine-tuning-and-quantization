@@ -33,8 +33,8 @@
 | 3. 양자화 | `s3-01/04/07/10-quant-*` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
 | 4. 측정·평가 | `s4-01-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-34-verify-upload` → `s4-37-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
 | 5. 업로드 | `s5-01-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
-| 6. 고객-transformers | `s6-01/04/07/10-transformers-test-*` (Hub→로딩) / `s6-13-chat` / `s6-16-pi`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7. 고객-vLLM | `s7-01/04/07/10-vllm-fork-test-*` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주) / `s7-16-pi`(검증 후 정리) / `s7-19`(서빙감사) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
+| 6. 고객-transformers | `s6-*-test-*-with-transformers` (Hub→로딩) / `s6-13-chat` / `s6-16-pi-tool-call-test`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
+| 7. 고객-vLLM | `s7-*-test-*-with-vllm-fork` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주) / `s7-16-pi-tool-call-test`(검증 후 정리) / `s7-19`(서빙감사) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라

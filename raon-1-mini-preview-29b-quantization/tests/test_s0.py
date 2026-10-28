@@ -25,6 +25,9 @@ S0_SCRIPTS = [
 
 GROUP_FIRST = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"}
 
+# 승인된 빈칸 채움 (3단위 예외): 06은 04/07 사이 삽입용으로 예약된 칸.
+SANCTIONED_GAP_FILL = {"s3-06", "s6-06", "s7-06"}
+
 
 def _steps(group: str) -> list[int]:
     nums = []
@@ -33,6 +36,8 @@ def _steps(group: str) -> list[int]:
             continue  # 단독 정리 유틸리티(s0-11/s0-21)는 3단위 예외
         m = re.match(rf"{group}-(\d{{2}})-", p.name)
         assert m, f"naming rule 위반: {p.name}"
+        if f"{group}-{m.group(1)}" in SANCTIONED_GAP_FILL:
+            continue  # 승인된 빈칸 채움은 3단위 예외
         nums.append(int(m.group(1)))
     return sorted(nums)
 
@@ -79,12 +84,12 @@ def test_group_numbering_starts_at_01_step_3():
 
 
 def test_s6_s7_customer_sets_are_parallel():
-    """s6 transformers-test-4종과 s7 vllm-fork-test-4종은 같은 스텝·타깃으로 일치한다."""
-    targets = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-    steps = ["01", "04", "07", "10"]
+    """s6 test-*-with-transformers 5종과 s7 test-*-with-vllm-fork 5종은 같은 스텝·타깃으로 일치한다."""
+    targets = ["awq-w3", "awq-w5", "nvfp4-awq-modelopt", "nvfp4-awq", "nvfp4-gptq"]
+    steps = ["01", "04", "06", "07", "10"]
     for step, target in zip(steps, targets):
-        a = ROOT / f"s6-{step}-transformers-test-{target}.sh"
-        b = ROOT / f"s7-{step}-vllm-fork-test-{target}.sh"
+        a = ROOT / f"s6-{step}-test-{target}-with-transformers.sh"
+        b = ROOT / f"s7-{step}-test-{target}-with-vllm-fork.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
 

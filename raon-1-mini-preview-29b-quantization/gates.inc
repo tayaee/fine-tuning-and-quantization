@@ -241,7 +241,7 @@ rq_gate_serving() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/serve-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi.sh 후 s7-19-verify-serving-log.sh)"
+    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi-tool-call-test.sh 후 s7-19-verify-serving-log.sh)"
     return 0
   fi
   ( set -x; rq_py - "$f" <<'PY'

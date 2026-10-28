@@ -18,8 +18,8 @@
 | 3 | 양자화 실행 | `01/04/07/10-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 4 | 측정·평가·카드·감사 | `s4-01-measure-ppl.sh` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload.sh` → `s4-34-verify-upload.sh` → `s4-37-release-notes.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json`, `outputs/release-notes-<mode>.md` | **gate-ppl**·**gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조, **gate-release**: 카드·지표·감사 |
 | 5 | 업로드 | `s5-01-upload-hf.sh` | Hub 업로드 | 카드·감사 선행 (없으면 중단) |
-| 6 | 고객인수(transformers) | `s6-01/04/07/10-transformers-test-*.sh` (Hub→로딩) / `s6-13-chat.sh` / `s6-16-pi.sh`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7 | 고객인수(vLLM) | `s7-01/04/07/10-vllm-fork-test-*.sh` frozen 래퍼 / `s7-13-chat.sh`(서버 상주) / `s7-16-pi.sh`(검증 후 정리) / `s7-19-verify-serving-log.sh` | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
+| 6 | 고객인수(transformers) | `s6-*-test-*-with-transformers.sh` (Hub→로딩) / `s6-13-chat.sh` / `s6-16-pi-tool-call-test.sh`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
+| 7 | 고객인수(vLLM) | `s7-*-test-*-with-vllm-fork.sh` frozen 래퍼 / `s7-13-chat.sh`(서버 상주) / `s7-16-pi-tool-call-test.sh`(검증 후 정리) / `s7-19-verify-serving-log.sh` | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
 
 ## 0. 파일 명명 규칙
 
@@ -38,8 +38,8 @@ s<group>-##-<slug>.{sh,py}
 | 3 | 양자화 | `s3-01-quant-awq-w3.{sh,py}` … `s3-10-quant-nvfp4-gptq.{sh,py}` |
 | 4 | 측정·평가 | `s4-01-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-13-gsm8k.{sh,py}`, `s4-16-prep-kmmluko.{sh,py}`, `s4-19-kmmluko.{sh,py}`, `s4-22-format.{sh,py}`, `s4-25-servebench.{sh,py}`, `s4-28-bench-transformers.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-34-verify-upload.{sh,py}`, `s4-37-release-notes.{sh,py}` |
 | 5 | 업로드 | `s5-01-upload-hf.{sh,py}` |
-| 6 | 고객-transformers | `s6-01/04/07/10-transformers-test-*.sh`, `s6-13-chat.sh`, `s6-16-pi.sh` |
-| 7 | 고객-vLLM | `s7-01/04/07/10-vllm-fork-test-*.sh`, `s7-13-chat.sh`, `s7-16-pi.sh`, `s7-19-verify-serving-log.{sh,py}` |
+| 6 | 고객-transformers | `s6-*-test-*-with-transformers.sh`, `s6-13-chat.sh`, `s6-16-pi-tool-call-test.sh` |
+| 7 | 고객-vLLM | `s7-*-test-*-with-vllm-fork.sh`, `s7-13-chat.sh`, `s7-16-pi-tool-call-test.sh`, `s7-19-verify-serving-log.{sh,py}` |
 
 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는 진입점이라
 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·카드·감사까지 기본 포함, s5 업로드·s6/s7 CAT는 별도 실행).

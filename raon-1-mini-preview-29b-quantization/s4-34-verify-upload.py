@@ -44,6 +44,7 @@ import re
 from pathlib import Path
 
 from quant_common import (
+    MOPT_NVFP4,
     NVFP4_PACK_QUANTIZED,
     PACK_QUANTIZED,
     verify_compressed_output,
@@ -52,7 +53,7 @@ from quant_common import (
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
-ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq", "nvfp4-awq-modelopt"]
 # 평가 벤치 = 표준 GSM8K 단일 (s4-07-eval이 표준 GSM8K만 평가한다)
 BENCH_ORDER = ("gsm8k",)
 ROUTED_LINEAR_MARKER = "return nn.Linear(in_features, out_features, bias=False)"
@@ -97,6 +98,13 @@ TARGET_RULES: dict[str, dict] = {
         "w_type": "float",
         "size_gb_range": (15.0, 28.0),
         "needs_input_global_scale": True,
+    },
+    "nvfp4-awq-modelopt": {
+        "format": MOPT_NVFP4,
+        "num_bits": 4,
+        "w_type": "float",
+        "size_gb_range": (15.0, 28.0),
+        "needs_input_global_scale": False,
     },
 }
 
@@ -289,23 +297,35 @@ def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
             errors.append(f"{d}/config.json: vLLM/생성 필수 필드 '{key}' 누락")
 
     qc = cfg.get("quantization_config") or {}
-    if qc.get("quant_method") != "compressed-tensors":
-        errors.append(
-            f"{d}/config.json: quantization_config.quant_method={qc.get('quant_method')!r} "
-            "('compressed-tensors' 필요)"
-        )
-    if qc.get("format") != rule["format"]:
-        errors.append(
-            f"{d}/config.json: quantization_config.format={qc.get('format')!r} "
-            f"({rule['format']!r} 필요)"
-        )
+    if target == "nvfp4-awq-modelopt":
+        if qc.get("quant_method") != "modelopt_fp4":
+            errors.append(
+                f"{d}/config.json: quantization_config.quant_method={qc.get('quant_method')!r} "
+                "('modelopt_fp4' 필요)"
+            )
+    else:
+        if qc.get("quant_method") != "compressed-tensors":
+            errors.append(
+                f"{d}/config.json: quantization_config.quant_method={qc.get('quant_method')!r} "
+                "('compressed-tensors' 필요)"
+            )
+    if target == "nvfp4-awq-modelopt":
+        pass  # ModelOpt 표지에는 format/config_groups 필드가 없다 (verify_mopt_output가 계약 담당)
+    else:
+        if qc.get("format") != rule["format"]:
+            errors.append(
+                f"{d}/config.json: quantization_config.format={qc.get('format')!r} "
+                f"({rule['format']!r} 필요)"
+            )
 
     ignore = qc.get("ignore") or []
     if not any("lm_head" in str(x) for x in ignore):
         errors.append(f"{d}/config.json: quantization_config.ignore에 'lm_head' 보호 규칙 없음")
 
     groups = qc.get("config_groups") or {}
-    if not groups:
+    if target == "nvfp4-awq-modelopt":
+        pass  # ModelOpt는 config_groups 대신 quant_cfg/quantized_layers 구조
+    elif not groups:
         errors.append(f"{d}/config.json: quantization_config.config_groups 비어 있음")
     else:
         for gname, gspec in groups.items():

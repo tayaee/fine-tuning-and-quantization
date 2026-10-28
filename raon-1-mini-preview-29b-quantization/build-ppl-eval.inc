@@ -30,6 +30,7 @@ rq_bpe_spec() {
     awq-w5) echo "s3-04-quant-awq-w5.sh pack-quantized" ;;
     nvfp4-awq) echo "s3-07-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
     nvfp4-gptq) echo "s3-10-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
+    nvfp4-awq-modelopt) echo "s3-06-quant-nvfp4-awq-modelopt.sh mopt-nvfp4" ;;
     *) echo "" ;;
   esac
 }
@@ -93,7 +94,7 @@ rq_bpe_main() {
   local spec qscript qformat
   spec="$(rq_bpe_spec "$target")"
   if [ -z "$spec" ]; then
-    echo "알 수 없는 타깃: $target (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq)" >&2
+    echo "알 수 없는 타깃: $target (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq|nvfp4-awq-modelopt)" >&2
     return 1
   fi
   qscript="${spec%% *}"
