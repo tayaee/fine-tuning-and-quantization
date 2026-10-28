@@ -4,7 +4,7 @@
 # s4-07-eval.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="$(rq_require_targets "./s4-10-eval-quantized.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
+TARGETS="$(rq_require_targets "./s4-10-eval-quantized.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq)" || exit 2
 N="$EVAL_N"
 : "${VLLM_GPU_MEM_UTIL:=0.9}"
 : "${RQ_EVAL_BACKEND:=auto}"
@@ -22,7 +22,7 @@ rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES batch=${EVAL_BATCH:-1} gpu
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
 # `all`을 명시 목록으로 펴야 한다: 그대로 넘기면 s4-07-eval.py --target all이 29B 모델
 # 4개를 한 프로세스에서 로드해 GPU/통합 메모리를 다 먹는다 (s4-01-measure-ppl.sh와 동일).
-EVAL_ALL_TARGETS="awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"
+EVAL_ALL_TARGETS="awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq"
 _ts=""
 for t in $(echo "$TARGETS" | tr ',' ' '); do
   if [ "$t" = all ]; then

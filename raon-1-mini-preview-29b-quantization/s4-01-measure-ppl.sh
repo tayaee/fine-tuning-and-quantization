@@ -6,7 +6,7 @@
 # 프로세스 격리로 OS 메모리까지 100% 회수한 뒤 마지막에 캐시를 집계한다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="$(rq_require_targets "./s4-01-measure-ppl.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
+TARGETS="$(rq_require_targets "./s4-01-measure-ppl.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq)" || exit 2
 N="${PPL_N:-8}"
 rq_repro_echo
 rq_banner "s4-01-measure-ppl" "Stage 4 - measure in-domain PPL and judge the delta against the bf16 base"
@@ -21,7 +21,7 @@ target_model() {
 rq_log "ppl_n=$N targets=$TARGETS"
 # `all`을 명시 목록으로 펴야 한다: 그대로 넘기면 s4-01-measure-ppl.py가 29B 모델 5개를
 # 한 프로세스에서 로드해 (accept 기준 2가 막으려는) GB10 OOM이 재발한다.
-PPL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq"
+PPL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq"
 _t=""
 for t in $(echo "$TARGETS" | tr ',' ' '); do
   if [ "$t" = all ]; then

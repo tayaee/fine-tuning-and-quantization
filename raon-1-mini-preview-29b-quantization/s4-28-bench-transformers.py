@@ -312,7 +312,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="transformers 인프로세스 처리량 측정 (서버 불필요)")
     ap.add_argument("--mode", default=os.environ.get("MODE", "smoke"), choices=["smoke", "full"])
     ap.add_argument("--targets", default=os.environ.get("TARGETS", "base,nvfp4-awq"),
-                    help="콤마/공백 구분 (base|awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq|all)")
+                    help="콤마/공백 구분 (base|awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq|all)")
     ap.add_argument("--n", type=int, default=int(os.environ.get("TRANSFORMERS_BENCH_N", "8")))
     ap.add_argument("--max-tokens", type=int,
                     default=int(os.environ.get("TRANSFORMERS_BENCH_MAXTOK", "256")))

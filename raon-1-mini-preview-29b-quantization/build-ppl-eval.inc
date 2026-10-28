@@ -1,7 +1,7 @@
 # build-ppl-eval.inc — 단일 (mode × target) "빌드 → PPL → eval" 공유 엔진.
 #
 # wrapper 8종이 이 파일을 source하고 rq_bpe_main을 호출한다:
-#   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq}.sh
+#   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq}.sh
 # 단일 (mode × target) 빌드 진입점이다 (구 run-{smoke,full}.sh 다종 실행은 archive/).
 #
 # 스텝(기본 STEPS):
@@ -94,7 +94,7 @@ rq_bpe_main() {
   local spec qscript qformat
   spec="$(rq_bpe_spec "$target")"
   if [ -z "$spec" ]; then
-    echo "알 수 없는 타깃: $target (awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq|nvfp4-awq-modelopt)" >&2
+    echo "알 수 없는 타깃: $target (awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq)" >&2
     return 1
   fi
   qscript="${spec%% *}"

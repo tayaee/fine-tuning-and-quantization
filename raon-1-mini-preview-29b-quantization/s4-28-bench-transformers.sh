@@ -8,7 +8,7 @@
 # 양자화 타깃만 지정해도 base 기록이 없으면 base를 자동 선행 측정한다 (카드 2줄 보장).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="$(rq_require_targets "./s4-28-bench-transformers.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq nvfp4-gptq)" || exit 2
+TARGETS="$(rq_require_targets "./s4-28-bench-transformers.sh $MODE" "${2:-}" base awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq)" || exit 2
 rq_repro_echo
 rq_banner "s4-28-bench-transformers" "Stage 4 - measure in-process throughput with transformers (no server)"
 N="${TRANSFORMERS_BENCH_N:-${SERVE_BENCH_N:-8}}"

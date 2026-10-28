@@ -29,7 +29,7 @@ else
     nvfp4-awq)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=07 ;;
     nvfp4-gptq)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=10 ;;
     nvfp4-awq-modelopt) SUF="raon-nvfp4-awq-modelopt-$MODE"; QUANT=""; VTP_DEF=1; NUM=06 ;;
-    *) echo "target: awq-w3|awq-w5|nvfp4-awq|nvfp4-gptq|nvfp4-awq-modelopt" >&2; exit 2 ;;
+    *) echo "target: awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq" >&2; exit 2 ;;
   esac
 fi
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$RQ_MODELS/$SUF"; fi
