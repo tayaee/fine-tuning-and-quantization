@@ -65,7 +65,7 @@ def outdir(mode: str) -> Path:
 def infer_target(model_id: str) -> str:
     """served-model-name(tayaee/Raon-1-mini-preview[-smoke][-suffix]) → 타깃 slug."""
     mid = (model_id or "").lower()
-    for t in ("nvfp4-awq", "nvfp4-gptq", "awq-w3", "awq-w5"):
+    for t in ("nvfp4-awq-transformers", "nvfp4-gptq-transformers", "awq-w3-transformers", "awq-w5-transformers"):
         if t in mid:
             return t
     return "base"
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     ap.add_argument("--max-tokens", type=int, default=int(os.environ.get("SERVE_BENCH_MAXTOK", "256")))
     ap.add_argument("--model", default=None)
     ap.add_argument("--target", default=os.environ.get("SERVE_BENCH_TARGET", ""),
-                    help="타깃 slug (base|nvfp4-awq|...). 비우면 served-model-name에서 추론")
+                    help="타깃 slug (base|nvfp4-awq-transformers|...). 비우면 served-model-name에서 추론")
     ap.add_argument("--quantization", default=os.environ.get("SERVE_BENCH_QUANT", ""))
     ap.add_argument("--base-url", default=os.environ.get("BASE_URL", ""))
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))

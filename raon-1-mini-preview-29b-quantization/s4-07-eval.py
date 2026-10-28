@@ -12,7 +12,7 @@
   정상 로드하므로, backend=auto는 vLLM을 먼저 시도하고 커스텀 아키텍처 미지원일 때만
   transformers로 폴백한다 (CUDA OOM 같은 진짜 오류는 삼키지 않고 그대로 올린다).
 
-  uv run s4-07-eval.py --mode smoke --target nvfp4-gptq --backend auto --tp 2
+  uv run s4-07-eval.py --mode smoke --target nvfp4-gptq-transformers --backend auto --tp 2
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ import os
 from typing import Any
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
-ALL_TARGETS = ["base", "awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+ALL_TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 # 평가 벤치마크 = 표준 GSM8K (openai/gsm8k main/test).
 # 프롬프트는 s4-04-prep-gsm8k.sh가 결정론적으로 만든다(수작업 표본 금지).
 BENCHMARKS = ["gsm8k"]
-QUANT_OF = {"nvfp4-awq": "compressed-tensors",
-            "nvfp4-gptq": "compressed-tensors", "awq-w5": "compressed-tensors", "awq-w3": "compressed-tensors"}
+QUANT_OF = {"nvfp4-awq-transformers": "compressed-tensors",
+            "nvfp4-gptq-transformers": "compressed-tensors", "awq-w5-transformers": "compressed-tensors", "awq-w3-transformers": "compressed-tensors"}
 
 # transformers 심볼은 런타임에 한 번만 채운다 (테스트가 모듈 속성을 주입할 수 있게).
 AutoModelForCausalLM: Any = None
@@ -411,7 +411,7 @@ def main(mode: str, target: str, n: int, tp: int, calib_file: str | None, backen
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="벤치마크 프롬프트 생성 (vLLM/transformers)")
     ap.add_argument("--mode", default=os.environ.get("MODE", "smoke"), choices=["smoke", "full"])
-    ap.add_argument("--target", default="nvfp4-gptq", choices=["all"] + ALL_TARGETS)
+    ap.add_argument("--target", default="nvfp4-gptq-transformers", choices=["all"] + ALL_TARGETS)
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument("--tp", type=int, default=None)
     ap.add_argument("--calib-file", default=None)

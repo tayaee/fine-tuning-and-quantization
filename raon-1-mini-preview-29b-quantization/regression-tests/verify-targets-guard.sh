@@ -28,13 +28,13 @@ done
 # 2. helper 단위 동작 (가벼움 — common.env만 source)
 rc=0
 ( source "$ROOT/config/common.env" smoke >/dev/null 2>&1
-  rq_require_targets "./x smoke" "" awq-w3 nvfp4-awq >/dev/null 2>&1 ) || rc=$?
+  rq_require_targets "./x smoke" "" awq-w3-transformers nvfp4-awq-transformers >/dev/null 2>&1 ) || rc=$?
 [ "$rc" = 2 ] || { echo "FAIL: helper 미지정 status=$rc (expected 2)"; fail=1; }
 echo "OK: helper 미지정 → 2"
 
-v="$(source "$ROOT/config/common.env" smoke >/dev/null 2>&1; rq_require_targets "./x smoke" "nvfp4-awq" awq-w3 nvfp4-awq)"
-[ "$v" = "nvfp4-awq" ] || { echo "FAIL: helper 명시값 반환='$v'"; fail=1; }
-v="$(cd "$ROOT" && TARGETS=all bash -c 'source config/common.env smoke >/dev/null 2>&1; rq_require_targets "./x smoke" "" awq-w3 nvfp4-awq')"
+v="$(source "$ROOT/config/common.env" smoke >/dev/null 2>&1; rq_require_targets "./x smoke" "nvfp4-awq-transformers" awq-w3-transformers nvfp4-awq-transformers)"
+[ "$v" = "nvfp4-awq-transformers" ] || { echo "FAIL: helper 명시값 반환='$v'"; fail=1; }
+v="$(cd "$ROOT" && TARGETS=all bash -c 'source config/common.env smoke >/dev/null 2>&1; rq_require_targets "./x smoke" "" awq-w3-transformers nvfp4-awq-transformers')"
 [ "$v" = "all" ] || { echo "FAIL: helper TARGETS=all 반환='$v'"; fail=1; }
 echo "OK: helper 명시값/all 통과"
 

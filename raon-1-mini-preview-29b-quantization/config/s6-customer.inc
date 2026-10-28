@@ -4,11 +4,7 @@
 s6_repo() {
   local target="$1" mode="${2:-$MODE}"
   local repo
-  if [ "$target" = nvfp4-awq-modelopt ]; then
-    repo="tayaee/Raon-1-mini-preview-NVFP4-AWQ"  # 시장 관례 대문자 (s3-06 ModelOpt판)
-  else
-    repo="tayaee/${BASE_MODEL##*/}-$target"
-  fi
+  repo="tayaee/${BASE_MODEL##*/}-$target"
   [ "$mode" = smoke ] && repo="$repo-smoke"
   printf '%s' "$repo"
 }

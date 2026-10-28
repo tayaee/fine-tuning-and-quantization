@@ -16,7 +16,7 @@ import os
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
-ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+ALL_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 
 
 def MODELS_DIR(mode: str) -> str:
@@ -51,8 +51,8 @@ def check_ready(target: str, mode: str) -> str | None:
 
 
 def main(mode: str, targets: str | None = None, dry_run: bool = False):
-    if mode != "full":
-        raise SystemExit("REFUSE: smoke는 절대 업로드하지 않는다")
+    # smoke 업로드 허용 (2026-10-28): smoke 서빙 검증을 빼먹어 1주일 재작업 발생.
+    # smoke는 -smoke repo로만 올라가 정식 repo를 덮지 않는다 (repo_name 참조).
     spec = (targets if targets is not None else os.environ.get("TARGETS") or "all").strip()
     tokens = spec.replace(",", " ").split()
     ts = ALL_TARGETS if (not tokens or "all" in tokens) else tokens

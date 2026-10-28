@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s6-13-chat.sh [mode] [model] — 고객 transformers 로딩본으로 chat 검증 (Stage 6).
-# model: HF repo id ("tayaee/...-nvfp4-awq") | short target | all (기본 nvfp4-awq).
+# model: HF repo id ("tayaee/...-nvfp4-awq-transformers") | short target | all (기본 nvfp4-awq-transformers).
 # 각 모델을 Hub→다운로드→transformers 로드→chat template greedy 생성→응답 존재 판정.
 # logs/s6-13-<tag>.log + outputs/s6-<mode>/chat-<tag>.json. 산출물 변경 없음.
 set -euo pipefail
@@ -9,7 +9,7 @@ source "$RQ_ROOT/config/s6-customer.inc"
 rq_repro_echo
 rq_banner "s6-13-chat" "Stage 6 - verify chat on customer-loaded models (transformers)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
-rq_hf_parse "${2:-nvfp4-awq}" "$MODE"
+rq_hf_parse "${2:-nvfp4-awq-transformers}" "$MODE"
 FAIL=0
 for _e in $RQ_HF_TARGETS_RUN; do
   case "$_e" in

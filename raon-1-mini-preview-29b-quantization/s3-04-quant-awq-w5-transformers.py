@@ -1,10 +1,9 @@
-"""s3-01-quant-awq-w3.py — 원본 → (AWQ smoothing) + GPTQ W3A16-g64 (llmcompressor oneshot).
-3bit는 품질 붕괴 위험이 가장 크므로 smoke에서 PPL 게이트(34) 확인 후 full 진행.
+"""s3-04-quant-awq-w5-transformers.py — 원본 → (AWQ smoothing) + GPTQ W5A16-g128 (llmcompressor oneshot).
+비표준 5bit: AWQ smoothing 후 GPTQ W5로 양자화.
 custom arch에서 AWQ replay가 RoutedLinear와 호환되지 않아 기본 OFF
 (RQ_AWQ_FIRST=1로 명시해야 시도, 실패 시 pure-GPTQ 폴백).
-down_proj columns=1088은 g128 불가 → 전 expert g64.
 
-  uv run s3-01-quant-awq-w3.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-04-quant-awq-w5-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse
@@ -26,26 +25,26 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "main"
 SRC = os.environ.get("RQ_SRC", f"{SHARED}/models/raon-bf16")
-TARGET = "awq-w3"
+TARGET = "awq-w5-transformers"
 
 
 def build_recipes():
     from llmcompressor.modifiers.gptq import GPTQModifier
 
-    def build_gptq3():
+    def build_gptq5():
         # 매 시도 fresh 인스턴스 (실패한 modifier 재사용 시 init 오류)
         return GPTQModifier(
             targets=resolve_targets(),
             ignore=DEFAULT_IGNORE,
-            config_groups={"group_0": {"targets": resolve_targets(), "weights": {"num_bits": 3, "type": "int", "symmetric": False, "strategy": "group", "group_size": 64}}},
+            config_groups={"group_0": {"targets": resolve_targets(), "weights": {"num_bits": 5, "type": "int", "symmetric": False, "strategy": "group", "group_size": 64}}},
         )
 
     # custom arch: AWQ replay가 RoutedLinear와 호환되지 않아 결정적 실패하므로
     # 기본 OFF (RQ_AWQ_FIRST=1로 명시해야 시도, 실패 시 pure 폴백).
     # OFF = 폴백 결과와 동일, doomed 시도 시간(~7분/모델) + 2중 모델 메모리 방지.
     if os.environ.get("RQ_AWQ_FIRST", "0") == "1":
-        return [lambda: [build_awq_smoothing(), build_gptq3()], build_gptq3]
-    return [build_gptq3]
+        return [lambda: [build_awq_smoothing(), build_gptq5()], build_gptq5]
+    return [build_gptq5]
 
 
 def main(mode: str, calib: int, calib_file: str | None, seq_len: int):

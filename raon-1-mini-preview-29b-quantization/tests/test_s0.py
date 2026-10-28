@@ -85,11 +85,13 @@ def test_group_numbering_starts_at_01_step_3():
 
 def test_s6_s7_customer_sets_are_parallel():
     """s6 test-*-with-transformers 5종과 s7 test-*-with-vllm-fork 5종은 같은 스텝·타깃으로 일치한다."""
-    targets = ["awq-w3", "awq-w5", "nvfp4-awq-modelopt", "nvfp4-awq", "nvfp4-gptq"]
+    targets = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
     steps = ["01", "04", "06", "07", "10"]
+    slugs = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
+             "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
     for step, target in zip(steps, targets):
-        a = ROOT / f"s6-{step}-test-{target}-with-transformers.sh"
-        b = ROOT / f"s7-{step}-test-{target}-with-vllm-fork.sh"
+        a = ROOT / f"s6-{step}-test-{slugs[target]}.sh"
+        b = ROOT / f"s7-{step}-test-{slugs[target]}.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
 

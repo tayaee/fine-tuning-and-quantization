@@ -1,10 +1,10 @@
-"""s3-06-quant-nvfp4-awq-modelopt.py — BF16 원본 → AWQ Lite + NVFP4 (ModelOpt).
+"""s3-06-quant-nvfp4-awq-vllm.py — BF16 원본 → AWQ Lite + NVFP4 (ModelOpt).
 
-llmcompressor판(s3-07)과 같은 NVFP4-AWQ지만 표지가 modelopt_fp4라 vLLM 포크
+transformers판(s3-07)과 같은 NVFP4-AWQ지만 표지가 modelopt_fp4라 vLLM 포크
 nvfp4칸으로 적재된다. 레시피 뼈대 = NVFP4_EXPERTS_ONLY (KRAFTON NVFP4와 동일
 범위: MoE expert만, router/conv/lm_head 제외, KV 무양자화) + awq_lite 탐색.
 
-  uv run s3-06-quant-nvfp4-awq-modelopt.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-06-quant-nvfp4-awq-vllm.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse
@@ -24,7 +24,7 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "main"
 SRC = os.environ.get("RQ_SRC", f"{SHARED}/models/raon-bf16")
-TARGET = "nvfp4-awq-modelopt"
+TARGET = "nvfp4-awq-vllm"
 
 
 def build_config(with_awq: bool = True) -> dict:
@@ -95,7 +95,7 @@ def _stamp_modelopt_fp4(out_dir: str) -> None:
         changed.append("quant_algo=NVFP4")
     if changed:
         # AWQ 판별 정보는 별도 필드에 보존 (포크 게이트 무관, 카드·감사 근거용)
-        qc["producer"] = {"recipe": "nvfp4-awq-modelopt", "calibration": "NVFP4_AWQ"}
+        qc["producer"] = {"recipe": "nvfp4-awq-vllm", "calibration": "NVFP4_AWQ"}
         cfg["quantization_config"] = qc
         with open(fp, "w", encoding="utf-8") as f:
             json.dump(cfg, f, ensure_ascii=False, indent=2)

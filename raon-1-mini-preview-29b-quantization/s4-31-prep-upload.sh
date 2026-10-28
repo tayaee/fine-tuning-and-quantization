@@ -4,7 +4,7 @@
 # s8-01-upload-hf.py(업로드 전담)가 요구하는 전제 조건을 여기서 만든다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="$(rq_require_targets "./s4-31-prep-upload.sh $MODE" "${2:-}" awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq)" || exit 2
+TARGETS="$(rq_require_targets "./s4-31-prep-upload.sh $MODE" "${2:-}" awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers)" || exit 2
 : "${ALLOW_MISSING_METRICS:=0}"
 ALLOW_MISSING=""
 [ "$ALLOW_MISSING_METRICS" = 1 ] && ALLOW_MISSING="--allow-missing-metrics"

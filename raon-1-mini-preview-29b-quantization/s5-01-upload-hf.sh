@@ -14,7 +14,7 @@ else
   [ "${3:-}" = "--dry-run" ] && DRY="--dry-run"
 fi
 [ "${DRY_RUN:-0}" = 1 ] && DRY="--dry-run"
-TARGETS="$(rq_require_targets "./s5-01-upload-hf.sh $MODE" "$_pos" awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq)" || exit 2
+TARGETS="$(rq_require_targets "./s5-01-upload-hf.sh $MODE" "$_pos" awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers)" || exit 2
 rq_repro_echo
 rq_banner "s5-01-upload-hf" "Stage 8 - upload the prepared model folder to the HuggingFace Hub"
 if [ "${SKIP_VERIFY:-0}" != 1 ]; then

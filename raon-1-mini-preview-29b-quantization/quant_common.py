@@ -59,7 +59,7 @@ def resolve_targets() -> list[str]:
         return EXPERT_TARGETS
     return [which]  # custom 패턴 직접 지정
 
-TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq", "nvfp4-awq-modelopt"]
+TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers", "nvfp4-awq-vllm"]
 
 
 class _PackedContract(NamedTuple):

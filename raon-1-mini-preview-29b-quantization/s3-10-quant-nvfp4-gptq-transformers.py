@@ -1,8 +1,8 @@
-"""s3-10-quant-nvfp4-gptq.py — 원본 → GPTQ NVFP4 (llmcompressor GPTQModifier).
+"""s3-10-quant-nvfp4-gptq-transformers.py — 원본 → GPTQ NVFP4 (llmcompressor GPTQModifier).
 NVFP4 스킬 정석: actorder=static, dampening 0.01, block 128, MoE는 calib 확보가 중요.
 full 권장 calib>=256 (기본값 따름). smoke는 정확도보다 파이프 검증 목적.
 
-  uv run s3-10-quant-nvfp4-gptq.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-10-quant-nvfp4-gptq-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse
@@ -23,7 +23,7 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "main"
 SRC = os.environ.get("RQ_SRC", f"{SHARED}/models/raon-bf16")
-TARGET = "nvfp4-gptq"
+TARGET = "nvfp4-gptq-transformers"
 
 
 def main(mode: str, calib: int, calib_file: str | None, seq_len: int):

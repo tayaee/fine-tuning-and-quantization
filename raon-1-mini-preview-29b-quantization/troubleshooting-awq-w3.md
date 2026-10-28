@@ -1,8 +1,8 @@
-# troubleshooting-awq-w3.md — 22-awq-w3 smoke 8연패 → 성공 기록
+# troubleshooting-awq-w3-transformers.md — 22-awq-w3-transformers smoke 8연패 → 성공 기록
 
-> 대상: `s3-01-quant-awq-w3.sh smoke` (pure-GPTQ W3A16-g64, experts-only, calib 8·seq 512)
+> 대상: `s3-01-quant-awq-w3-transformers.sh smoke` (pure-GPTQ W3A16-g64, experts-only, calib 8·seq 512)
 > 기간: 2026-10-22 08:41Z~16:08Z (timing: `logs/timing-smoke.log`)
-> 결과: 8회 실패 후 9번째 시도에서 성공 (`22-awq-w3 7248s rc=0`)
+> 결과: 8회 실패 후 9번째 시도에서 성공 (`22-awq-w3-transformers 7248s rc=0`)
 > 콘솔 로그: `logs/run-smoke-console*.log` (prev = 시도별 보관분)
 
 ## 시도 일람
@@ -19,7 +19,7 @@
 | F8 | 14:03 | 1314s | 137 | 사망 시점 RSS 67GB + buff/cache 0.8GB + used 124GB → 56GB 행방불명 | unified 메모리: GPU 측에 2GB/layer씩 누적 (RSS에 안 잡힘, nvidia-smi는 N/A로 은폐) | `CUDA_VISIBLE_DEVICES=""` 진단 → CPU-only로 bounding 확인 |
 | OK | 16:08 | 7248s | 0 | — (pure-GPTQ W3-g64 완주, 9216 experts I8 packed 확인) | — | — |
 
-참고: 서버 재시작으로 강제 종료된 1회(로그 미기록)는 번호에서 제외. `raon-awq-w3-full/` 잔해, `raon-awq-w3-smoke/` 빈 껍데기는 이후 성공분이 덮어씀.
+참고: 서버 재시작으로 강제 종료된 1회(로그 미기록)는 번호에서 제외. `raon-awq-w3-transformers-full/` 잔해, `raon-awq-w3-transformers-smoke/` 빈 껍데기는 이후 성공분이 덮어씀.
 
 ## 결정적 디버깅 포인트 3개
 

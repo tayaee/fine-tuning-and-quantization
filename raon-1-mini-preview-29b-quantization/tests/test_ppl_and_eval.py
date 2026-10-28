@@ -61,15 +61,15 @@ def tmp_out(monkeypatch):
 
 def test_parse_targets_accepts_comma_and_space(tmp_out, monkeypatch):
     monkeypatch.delenv("TARGETS", raising=False)
-    assert ppl.parse_targets("nvfp4-awq") == ["nvfp4-awq"]
-    assert ppl.parse_targets("awq-w5,nvfp4-gptq") == ["awq-w5", "nvfp4-gptq"]
-    assert ppl.parse_targets("awq-w5 nvfp4-gptq") == ["awq-w5", "nvfp4-gptq"]
+    assert ppl.parse_targets("nvfp4-awq-transformers") == ["nvfp4-awq-transformers"]
+    assert ppl.parse_targets("awq-w5-transformers,nvfp4-gptq-transformers") == ["awq-w5-transformers", "nvfp4-gptq-transformers"]
+    assert ppl.parse_targets("awq-w5-transformers nvfp4-gptq-transformers") == ["awq-w5-transformers", "nvfp4-gptq-transformers"]
     assert ppl.parse_targets("all") == ppl.ALL_TARGETS
 
 
 def test_parse_targets_defaults_from_env(tmp_out, monkeypatch):
-    monkeypatch.setenv("TARGETS", "awq-w3,nvfp4-awq")
-    assert ppl.parse_targets(None) == ["awq-w3", "nvfp4-awq"]
+    monkeypatch.setenv("TARGETS", "awq-w3-transformers,nvfp4-awq-transformers")
+    assert ppl.parse_targets(None) == ["awq-w3-transformers", "nvfp4-awq-transformers"]
     monkeypatch.delenv("TARGETS")
     assert ppl.parse_targets(None) == ppl.ALL_TARGETS
 
@@ -79,13 +79,13 @@ def test_parse_targets_normalizes_bf16_alias(tmp_out, monkeypatch):
     monkeypatch.delenv("TARGETS", raising=False)
     assert ppl.parse_targets("bf16") == ["base"]
     assert ppl.parse_targets("base,bf16") == ["base"]
-    assert "base" in ppl.parse_targets("bf16,awq-w5")
+    assert "base" in ppl.parse_targets("bf16,awq-w5-transformers")
 
 
 def test_resolve_paths(tmp_out, monkeypatch):
     monkeypatch.setattr(ppl, "MODELS_DIR", lambda mode: str(tmp_out / "models"))
     assert ppl.resolve("base", "smoke").endswith("models/raon-bf16")
-    assert ppl.resolve("nvfp4-awq", "full").endswith("models/raon-nvfp4-awq-full")
+    assert ppl.resolve("nvfp4-awq-transformers", "full").endswith("models/raon-nvfp4-awq-transformers-full")
 
 
 def test_measure_writes_per_target_json_and_summary(tmp_out, monkeypatch):
@@ -100,16 +100,16 @@ def test_measure_writes_per_target_json_and_summary(tmp_out, monkeypatch):
     monkeypatch.setattr(ppl, "model_exists", lambda name: True)
 
     outdir = tmp_out / "ppl-smoke"
-    ppl.measure_targets("smoke", 2, "base,awq-w5", seq=512, outdir=outdir)
+    ppl.measure_targets("smoke", 2, "base,awq-w5-transformers", seq=512, outdir=outdir)
 
     assert (outdir / "base.json").is_file()
-    assert (outdir / "awq-w5.json").is_file()
+    assert (outdir / "awq-w5-transformers.json").is_file()
     summary = json.loads((outdir / "summary.json").read_text(encoding="utf-8"))
     assert summary["base"]["ppl"] == 10.0
     assert summary["base"]["verdict"] == "ref"
-    assert summary["awq-w5"]["ppl"] == 10.5
-    assert summary["awq-w5"]["delta"] == pytest.approx(0.5)
-    assert summary["awq-w5"]["verdict"] == "Conditional"
+    assert summary["awq-w5-transformers"]["ppl"] == 10.5
+    assert summary["awq-w5-transformers"]["delta"] == pytest.approx(0.5)
+    assert summary["awq-w5-transformers"]["verdict"] == "Conditional"
 
 
 def test_summarize_uses_cached_base_when_not_measured(tmp_out, monkeypatch):
@@ -122,13 +122,13 @@ def test_summarize_uses_cached_base_when_not_measured(tmp_out, monkeypatch):
     monkeypatch.setattr(ppl, "load_calib_texts", lambda n, *a, **k: ["t"] * n)
     monkeypatch.setattr(ppl, "model_exists", lambda name: True)
 
-    ppl.measure_targets("smoke", 2, "awq-w5", seq=512, outdir=outdir)
+    ppl.measure_targets("smoke", 2, "awq-w5-transformers", seq=512, outdir=outdir)
 
     assert not (outdir / "base.json").exists() or json.loads((outdir / "base.json").read_text())["ppl"] == 12.0
     summary = json.loads((outdir / "summary.json").read_text(encoding="utf-8"))
-    assert summary["awq-w5"]["delta"] == pytest.approx(0.5)
-    assert summary["awq-w5"]["verdict"] == "Conditional"
-    assert summary["awq-w5"]["ref_source"] == "cached"
+    assert summary["awq-w5-transformers"]["delta"] == pytest.approx(0.5)
+    assert summary["awq-w5-transformers"]["verdict"] == "Conditional"
+    assert summary["awq-w5-transformers"]["ref_source"] == "cached"
 
 
 def test_measure_releases_memory_between_targets(tmp_out, monkeypatch):
@@ -137,7 +137,7 @@ def test_measure_releases_memory_between_targets(tmp_out, monkeypatch):
     monkeypatch.setattr(ppl, "ppl_of", lambda *a, **k: 12.0)
     released = []
     monkeypatch.setattr(ppl, "release_memory", lambda: released.append(1))
-    ppl.measure_targets("smoke", 1, "awq-w5,awq-w3", seq=8, outdir=tmp_out / "ppl-smoke")
+    ppl.measure_targets("smoke", 1, "awq-w5-transformers,awq-w3-transformers", seq=8, outdir=tmp_out / "ppl-smoke")
     assert len(released) == 2
 
 
@@ -145,7 +145,7 @@ def test_summarize_only_does_not_load_models(tmp_out, monkeypatch):
     outdir = tmp_out / "ppl-full"
     outdir.mkdir(parents=True)
     (outdir / "base.json").write_text(json.dumps({"target": "base", "ppl": 9.0}), encoding="utf-8")
-    (outdir / "awq-w5.json").write_text(json.dumps({"target": "awq-w5", "ppl": 9.1}), encoding="utf-8")
+    (outdir / "awq-w5-transformers.json").write_text(json.dumps({"target": "awq-w5-transformers", "ppl": 9.1}), encoding="utf-8")
 
     def boom(*a, **k):
         raise AssertionError("summarize_only가 모델을 로드했다")
@@ -153,8 +153,8 @@ def test_summarize_only_does_not_load_models(tmp_out, monkeypatch):
     monkeypatch.setattr(ppl, "ppl_of", boom)
     ppl.summarize(outdir)
     summary = json.loads((outdir / "summary.json").read_text(encoding="utf-8"))
-    assert set(summary) == {"base", "awq-w5"}
-    assert summary["awq-w5"]["verdict"] == "Accept"
+    assert set(summary) == {"base", "awq-w5-transformers"}
+    assert summary["awq-w5-transformers"]["verdict"] == "Accept"
 
 
 # ================================================================ s4-07-eval

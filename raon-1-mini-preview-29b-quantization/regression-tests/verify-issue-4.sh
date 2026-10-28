@@ -14,7 +14,7 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 # 1. s4-01-measure-ppl.py 계약
 for tok in 'def parse_targets(' 'TARGET_ALIASES = {"bf16": "base"' \
            'def summarize(' 'def measure_targets(' 'def release_memory(' \
-           'os.environ.get("TARGETS")' 'TARGETS = ["base", "awq-w5", "awq-w3", "nvfp4-awq", "nvfp4-gptq"]'; do
+           'os.environ.get("TARGETS")' 'TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]'; do
   grep -qF "$tok" "$ROOT/s4-01-measure-ppl.py" || { echo "FAIL: s4-01-measure-ppl.py에 '$tok' 없음"; fail=1; }
 done
 grep -q '"--summarize-only"' "$ROOT/s4-01-measure-ppl.py" || { echo "FAIL: --summarize-only 없음"; fail=1; }
@@ -27,19 +27,19 @@ n_sub=$(grep -c 's4-01-measure-ppl.py" --mode "\$MODE" --n "\$N" --targets "\$t"
 [ "$n_sub" = 1 ] || { echo "FAIL: s4-01-measure-ppl.sh 타겟별 서브프로세스 호출 수=$n_sub (expected 1, 루프 안)"; fail=1; }
 grep -q -- '--summarize-only' "$ROOT/s4-01-measure-ppl.sh" || { echo "FAIL: s4-01-measure-ppl.sh에 --summarize-only 없음"; fail=1; }
 # `all`을 명시 목록으로 펴야 5개 모델이 한 프로세스에 몰리지 않는다 (OOM 회피의 핵심)
-grep -q 'PPL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq"' "$ROOT/s4-01-measure-ppl.sh" \
+grep -q 'PPL_ALL_TARGETS="base awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-01-measure-ppl.sh" \
   || { echo "FAIL: s4-01-measure-ppl.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 5개 로드 → OOM)"; fail=1; }
 if grep -qE '_t=all(\s|$)' "$ROOT/s4-01-measure-ppl.sh"; then
   echo "FAIL: s4-01-measure-ppl.sh가 'all'을 단일 타겟으로 통과시킴 (프로세스 격리 무효화)"; fail=1
 fi
-grep -q 'EVAL_ALL_TARGETS="awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq"' "$ROOT/s4-10-eval-quantized.sh" \
+grep -q 'EVAL_ALL_TARGETS="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-10-eval-quantized.sh" \
   || { echo "FAIL: s4-10-eval-quantized.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 4개 로드)"; fail=1; }
 if grep -v '^\s*#' "$ROOT/s4-10-eval-quantized.sh" | grep -q -- '--target all'; then
   echo "FAIL: s4-10-eval-quantized.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
 fi
 # 실제 루프가 몇 개 프로세스를 띄우는지 검증 (모델 로드 없이)
-for _case in all "" nvfp4-awq nvfp4-gptq,nvfp4-awq; do
-  _n=$(TARGETS="$_case" PPL_ALL_TARGETS="base awq-w3 awq-w5 nvfp4-awq-modelopt nvfp4-awq nvfp4-gptq" bash -c '
+for _case in all "" nvfp4-awq-transformers nvfp4-gptq-transformers,nvfp4-awq-transformers; do
+  _n=$(TARGETS="$_case" PPL_ALL_TARGETS="base awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers" bash -c '
     _t=""
     for t in $(echo "$TARGETS" | tr "," " "); do
       if [ "$t" = all ]; then _t="$PPL_ALL_TARGETS"; break; fi
@@ -48,9 +48,9 @@ for _case in all "" nvfp4-awq nvfp4-gptq,nvfp4-awq; do
     [ -n "${_t:-}" ] || _t="$PPL_ALL_TARGETS"
     echo "$_t"')
   case "$_case" in
-    all|"")           _want=5 ;;
-    nvfp4-awq)         _want=1 ;;
-    nvfp4-gptq,nvfp4-awq) _want=2 ;;
+    all|"")           _want=6 ;;
+    nvfp4-awq-transformers)         _want=1 ;;
+    nvfp4-gptq-transformers,nvfp4-awq-transformers) _want=2 ;;
   esac
   _got=$(echo "$_n" | wc -w)
   [ "$_got" = "$_want" ] || { echo "FAIL: s4-01-measure-ppl.sh targets='$_case' → $_got procs (expected $_want)"; fail=1; }

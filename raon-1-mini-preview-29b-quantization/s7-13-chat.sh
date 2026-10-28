@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s7-13-chat.sh [smoke|full] [model] — vLLM 서빙 + chat 검증 (Stage 7 CAT).
-# model: HF repo id ("tayaee/...-nvfp4-awq") | short target (기본 nvfp4-awq).
+# model: HF repo id ("tayaee/...-nvfp4-awq-transformers") | short target (기본 nvfp4-awq-transformers).
 # SOURCE=local|hf (기본 local; hf면 Hub repo로 서빙). PORT(기본 8000).
 # frozen 래퍼(s7-<num>-test-<target>-with-vllm-fork.sh)를 백그라운드로 띄워 chat 고정 질문을 검증하고
 # 서버는 남긴다 (s7-16-pi-tool-call-test.sh가 재사용, 마지막에 내림).
@@ -10,7 +10,7 @@ source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s7-13-chat" "Stage 7 - serve with vLLM and verify chat (customer acceptance)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
-rq_hf_parse "${2:-nvfp4-awq}" "$MODE"
+rq_hf_parse "${2:-nvfp4-awq-transformers}" "$MODE"
 REPO="$RQ_HF_REPO"
 TARGET="$RQ_HF_TARGET"
 SOURCE="${SOURCE:-local}"
@@ -24,12 +24,12 @@ if [ -z "$TARGET" ]; then
   SUF=""; NUM=""; QUANT="compressed-tensors"; VTP_DEF=1
 else
   case "$TARGET" in
-    awq-w3)      SUF="raon-awq-w3-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    awq-w5)      SUF="raon-awq-w5-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=04 ;;
-    nvfp4-awq)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=07 ;;
-    nvfp4-gptq)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=10 ;;
-    nvfp4-awq-modelopt) SUF="raon-nvfp4-awq-modelopt-$MODE"; QUANT=""; VTP_DEF=1; NUM=06 ;;
-    *) echo "target: awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq" >&2; exit 2 ;;
+    awq-w3-transformers)      SUF="raon-awq-w3-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
+    awq-w5-transformers)      SUF="raon-awq-w5-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=04 ;;
+    nvfp4-awq-transformers)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=07 ;;
+    nvfp4-gptq-transformers)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=10 ;;
+    nvfp4-awq-vllm) SUF="raon-nvfp4-awq-vllm-$MODE"; QUANT=""; VTP_DEF=1; NUM=06 ;;
+    *) echo "target: awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers" >&2; exit 2 ;;
   esac
 fi
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$RQ_MODELS/$SUF"; fi
@@ -51,7 +51,7 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   rq_log "port $PORT 사용 중 — 기존 서버를 재사용 (pidfile=$PIDF)"
 else
   rm -f "$SERVLOG"
-  WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}-with-vllm-fork.sh"
+  WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}.sh"
   if [ "$SOURCE" = "hf" ] && [ -f "$WRAPPER" ] \
     && [ "${PORT:-8000}" = 8000 ]; then
     rq_log "frozen card command (background): $WRAPPER"

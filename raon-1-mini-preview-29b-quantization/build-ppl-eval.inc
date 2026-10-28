@@ -1,7 +1,7 @@
 # build-ppl-eval.inc — 단일 (mode × target) "빌드 → PPL → eval" 공유 엔진.
 #
 # wrapper 8종이 이 파일을 source하고 rq_bpe_main을 호출한다:
-#   run-s1-to-s4-{smoke,full}-{awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq}.sh
+#   run-s1-to-s4-{smoke,full}-{awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers}.sh
 # 단일 (mode × target) 빌드 진입점이다 (구 run-{smoke,full}.sh 다종 실행은 archive/).
 #
 # 스텝(기본 STEPS):
@@ -26,11 +26,11 @@ BPE_TIMING=""
 # 타깃 → "<양자화 스크립트> <기대 압축 포맷>"
 rq_bpe_spec() {
   case "$1" in
-    awq-w3) echo "s3-01-quant-awq-w3.sh pack-quantized" ;;
-    awq-w5) echo "s3-04-quant-awq-w5.sh pack-quantized" ;;
-    nvfp4-awq) echo "s3-07-quant-nvfp4-awq.sh nvfp4-pack-quantized" ;;
-    nvfp4-gptq) echo "s3-10-quant-nvfp4-gptq.sh nvfp4-pack-quantized" ;;
-    nvfp4-awq-modelopt) echo "s3-06-quant-nvfp4-awq-modelopt.sh mopt-nvfp4" ;;
+    awq-w3-transformers) echo "s3-01-quant-awq-w3-transformers.sh pack-quantized" ;;
+    awq-w5-transformers) echo "s3-04-quant-awq-w5-transformers.sh pack-quantized" ;;
+    nvfp4-awq-transformers) echo "s3-07-quant-nvfp4-awq-transformers.sh nvfp4-pack-quantized" ;;
+    nvfp4-gptq-transformers) echo "s3-10-quant-nvfp4-gptq-transformers.sh nvfp4-pack-quantized" ;;
+    nvfp4-awq-vllm) echo "s3-06-quant-nvfp4-awq-vllm.sh mopt-nvfp4" ;;
     *) echo "" ;;
   esac
 }
@@ -94,7 +94,7 @@ rq_bpe_main() {
   local spec qscript qformat
   spec="$(rq_bpe_spec "$target")"
   if [ -z "$spec" ]; then
-    echo "알 수 없는 타깃: $target (awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq)" >&2
+    echo "알 수 없는 타깃: $target (awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers)" >&2
     return 1
   fi
   qscript="${spec%% *}"

@@ -59,10 +59,10 @@ def test_gsm8k_stats_answer_and_truncation_rate():
             {"bench": "gsm8k", "output": "no marker here", "gold": "5"},
             {"bench": "gsm8k", "output": "", "gold": "7"},
         ]
-        (outdir / "nvfp4-awq.jsonl").write_text(
+        (outdir / "nvfp4-awq-transformers.jsonl").write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8"
         )
-        st = g80.gsm8k_stats("smoke", "nvfp4-awq")
+        st = g80.gsm8k_stats("smoke", "nvfp4-awq-transformers")
         assert st["n"] == 3
         assert st["answer_rate"] == 0.333
         assert st["truncation_rate"] == 0.667
@@ -71,12 +71,12 @@ def test_gsm8k_stats_answer_and_truncation_rate():
 def test_gsm8k_check_verdict_against_contract():
     rows = {
         "base": {"benchmarks": {"gsm8k": {"n": 200, "acc": 0.945}}},
-        "nvfp4-awq": {"benchmarks": {"gsm8k": {"n": 200, "acc": 0.935}}},
+        "nvfp4-awq-transformers": {"benchmarks": {"gsm8k": {"n": 200, "acc": 0.935}}},
     }
     payload = g80.gsm8k_check("smoke", rows)
     assert payload["verdict"]["base"] == "ref"
-    assert payload["verdict"]["nvfp4-awq"] == "PASS"
-    assert payload["delta_vs_base"]["nvfp4-awq"] == 0.01
+    assert payload["verdict"]["nvfp4-awq-transformers"] == "PASS"
+    assert payload["delta_vs_base"]["nvfp4-awq-transformers"] == 0.01
 
 
 # ---------------------------------------------------------------- 한국어 KMMLU
@@ -107,18 +107,18 @@ def test_kmmluko_main_writes_checks_section():
         _isolate(ko, d)
         outdir = Path(d) / "outputs" / "eval-smoke"
         outdir.mkdir(parents=True)
-        for t, acc in (("base", "A"), ("nvfp4-awq", "B")):
+        for t, acc in (("base", "A"), ("nvfp4-awq-transformers", "B")):
             (outdir / f"{t}.jsonl").write_text(
                 json.dumps({"bench": "kmmluko", "output": f"정답은 {acc}", "gold": acc}, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
         (outdir / "score.json").write_text(json.dumps({
             "base": {"benchmarks": {"gsm8k": {"n": 10, "acc": 0.9}}},
-            "nvfp4-awq": {"benchmarks": {"gsm8k": {"n": 10, "acc": 0.9}}},
+            "nvfp4-awq-transformers": {"benchmarks": {"gsm8k": {"n": 10, "acc": 0.9}}},
         }), encoding="utf-8")
         payload = ko.main("smoke")
         assert payload["verdict"]["base"] == "ref"
-        assert payload["verdict"]["nvfp4-awq"] in ("PASS", "FAIL")
+        assert payload["verdict"]["nvfp4-awq-transformers"] in ("PASS", "FAIL")
         checks = json.loads((outdir / "checks.json").read_text(encoding="utf-8"))
         assert "kmmluko" in checks
 
@@ -147,11 +147,11 @@ def test_format_score_joins_prompt_metadata():
         outdir = Path(d) / "outputs" / "eval-smoke"
         # 응답 행에 case/check가 없다(구 산출물 형태) — 조인 없이는 전부 통과가 된다.
         stripped = [{"bench": "format", "prompt": r["prompt"], "output": "x"} for r in rows]
-        (outdir / "nvfp4-awq.jsonl").write_text(
+        (outdir / "nvfp4-awq-transformers.jsonl").write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in stripped) + "\n", encoding="utf-8"
         )
         payload = fmt.score("smoke")
-        t = payload["targets"]["nvfp4-awq"]
+        t = payload["targets"]["nvfp4-awq-transformers"]
         # 조인이 됐어야 검사 키가 채워진다(모두 "no check" 통과가 아니다)
         assert all(c["check"] for c in t["cases"]), "검사 키가 회수되지 않음"
         assert t["cases"][0]["reason"] != "no check"
@@ -163,13 +163,13 @@ def test_format_score_fails_when_check_unknown():
         _isolate(fmt, d)
         outdir = Path(d) / "outputs" / "eval-smoke"
         outdir.mkdir(parents=True)
-        (outdir / "nvfp4-awq.jsonl").write_text(
+        (outdir / "nvfp4-awq-transformers.jsonl").write_text(
             json.dumps({"bench": "format", "prompt": "없는 프롬프트", "output": "hello"},
                        ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         payload = fmt.score("smoke")
-        t = payload["targets"]["nvfp4-awq"]
+        t = payload["targets"]["nvfp4-awq-transformers"]
         assert t["pass_rate"] == 0.0
         assert "검사 키 없음" in t["cases"][0]["reason"]
 
@@ -225,12 +225,12 @@ def test_format_prepare_and_score():
             ok, _ = fmt.check_output(r["check"], "정답은 A" if i % 2 == 0 else "")
             scored.append({"bench": "format", "case": r["case"], "check": r["check"],
                            "output": "정답은 A" if ok else "", "ok": ok})
-        (outdir / "nvfp4-awq.jsonl").write_text(
+        (outdir / "nvfp4-awq-transformers.jsonl").write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in scored) + "\n", encoding="utf-8"
         )
         payload = fmt.score("smoke")
-        assert payload["targets"]["nvfp4-awq"]["n"] == len(fmt.CASES)
-        assert 0.0 <= payload["targets"]["nvfp4-awq"]["pass_rate"] <= 1.0
+        assert payload["targets"]["nvfp4-awq-transformers"]["n"] == len(fmt.CASES)
+        assert 0.0 <= payload["targets"]["nvfp4-awq-transformers"]["pass_rate"] <= 1.0
 
 
 def test_format_verdict_against_contract():
@@ -264,28 +264,28 @@ def test_format_verdict_against_contract():
             text = good[str(r["check"])] if i < 8 else bad[str(r["check"])]
             assert fmt.check_output(str(r["check"]), text)[0] is (i < 8)
             scored.append({"bench": "format", "case": r["case"], "check": r["check"], "output": text})
-        (outdir / "nvfp4-awq.jsonl").write_text(
+        (outdir / "nvfp4-awq-transformers.jsonl").write_text(
             "\n".join(json.dumps(r, ensure_ascii=False) for r in scored) + "\n", encoding="utf-8"
         )
         payload = fmt.score("smoke")
-        t = payload["targets"]["nvfp4-awq"]
+        t = payload["targets"]["nvfp4-awq-transformers"]
         assert t["pass_rate"] == 0.8
         assert t["verdict"] == "FAIL", "계약 하한 미달인데 PASS로 판정됨(가짜 통과)"
-        assert payload["verdict"]["nvfp4-awq"] == "FAIL"
+        assert payload["verdict"]["nvfp4-awq-transformers"] == "FAIL"
 
 
 def test_card_format_verdict_is_not_false_pass():
     """모델 카드의 형식 판정은 채점 verdict를 따른다(통과율만 보고 PASS로 만들지 않는다)."""
-    failing = {"format": {"targets": {"nvfp4-awq": {"n": 10, "pass_rate": 0.8, "pass_rate_min": 0.9}},
-                          "verdict": {"nvfp4-awq": "FAIL"}}}
-    assert prep._format_contract_verdict(failing, "nvfp4-awq") == "FAIL"
+    failing = {"format": {"targets": {"nvfp4-awq-transformers": {"n": 10, "pass_rate": 0.8, "pass_rate_min": 0.9}},
+                          "verdict": {"nvfp4-awq-transformers": "FAIL"}}}
+    assert prep._format_contract_verdict(failing, "nvfp4-awq-transformers") == "FAIL"
     # verdict가 없는 구 산출물에서도 계약 하한으로 계산한다(가짜 통과 방지)
-    legacy = {"format": {"targets": {"nvfp4-awq": {"n": 10, "pass_rate": 0.8}}}}
-    assert prep._format_contract_verdict(legacy, "nvfp4-awq") == "FAIL"
-    passing = {"format": {"targets": {"nvfp4-awq": {"n": 10, "pass_rate": 1.0}},
-                          "verdict": {"nvfp4-awq": "PASS"}}}
-    assert prep._format_contract_verdict(passing, "nvfp4-awq") == "PASS"
-    assert prep._format_contract_verdict({}, "nvfp4-awq") == "-"
+    legacy = {"format": {"targets": {"nvfp4-awq-transformers": {"n": 10, "pass_rate": 0.8}}}}
+    assert prep._format_contract_verdict(legacy, "nvfp4-awq-transformers") == "FAIL"
+    passing = {"format": {"targets": {"nvfp4-awq-transformers": {"n": 10, "pass_rate": 1.0}},
+                          "verdict": {"nvfp4-awq-transformers": "PASS"}}}
+    assert prep._format_contract_verdict(passing, "nvfp4-awq-transformers") == "PASS"
+    assert prep._format_contract_verdict({}, "nvfp4-awq-transformers") == "-"
 
 
 # ---------------------------------------------------------------- 서빙 벤치
@@ -301,10 +301,10 @@ def test_servebench_skips_without_server():
 
 
 def test_servebench_infer_target():
-    assert sb.infer_target("tayaee/Raon-1-mini-preview-nvfp4-awq") == "nvfp4-awq"
+    assert sb.infer_target("tayaee/Raon-1-mini-preview-nvfp4-awq-transformers") == "nvfp4-awq-transformers"
     assert sb.infer_target("tayaee/Raon-1-mini-preview-smoke") == "base"
     assert sb.infer_target("tayaee/Raon-1-mini-preview") == "base"
-    assert sb.infer_target("tayaee/Raon-1-mini-preview-awq-w3") == "awq-w3"
+    assert sb.infer_target("tayaee/Raon-1-mini-preview-awq-w3-transformers") == "awq-w3-transformers"
 
 
 def test_servebench_skip_preserves_history():
@@ -339,8 +339,8 @@ def test_serve_section_comparison_table():
                                               "after_warmup": {"mem_avail_gb": 52.0, "server_rss_gb": 60.1},
                                               "before_teardown": {"mem_avail_gb": 51.0, "server_rss_gb": 61.2},
                                               "after_teardown": {"mem_avail_gb": 113.0, "server_rss_gb": 0.0}}},
-                          "nvfp4-awq": {"1": {"tok_per_s_p50": 90.0, "req_latency_s_p50": 2.8}}}}
-    out = prep._serve_section(sb_doc, ["base", "nvfp4-awq"], "full")
+                          "nvfp4-awq-transformers": {"1": {"tok_per_s_p50": 90.0, "req_latency_s_p50": 2.8}}}}
+    out = prep._serve_section(sb_doc, ["base", "nvfp4-awq-transformers"], "full")
     assert "Hardware: G" in out and "TP=1" in out
     assert "50.0" in out and "90.0" in out and "C=32 tok/s" in out
     assert "before_load 114.0" in out and "RSS peak 61.2 GB" in out

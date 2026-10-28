@@ -47,7 +47,7 @@ acc = _load_script("s1-04-acceptance.py")
 def test_acceptance_toml_is_valid():
     data = sdlc.load_acceptance()
     assert sdlc.acceptance_errors(data) == [], sdlc.acceptance_errors(data)
-    for t in ("awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"):
+    for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"):
         spec = data["targets"][t]
         assert spec["quant_format"]
         assert len(spec["size_gb"]) == 2
@@ -58,14 +58,14 @@ def test_acceptance_defaults_when_file_missing():
     data = sdlc.load_acceptance("/nonexistent/acceptance.toml")
     assert data["source"] == "default"
     assert sdlc.acceptance_errors(data) == []
-    assert data["targets"]["nvfp4-awq"]["size_gb"] == [15.0, 28.0]
+    assert data["targets"]["nvfp4-awq-transformers"]["size_gb"] == [15.0, 28.0]
 
 
 def test_acceptance_errors_detect_bad_schema():
     bad = {
         "version": "x",
         "targets": {
-            "awq-w3": {"quant_format": 1, "size_gb": [30.0, 10.0], "ppl_delta_warn": 1.0, "ppl_delta_max": 0.3},
+            "awq-w3-transformers": {"quant_format": 1, "size_gb": [30.0, 10.0], "ppl_delta_warn": 1.0, "ppl_delta_max": 0.3},
         },
         "gates": {},
     }
@@ -100,12 +100,12 @@ def test_ledger_roundtrip():
 
 def test_ledger_target_aggregate_marks_failure():
     with tempfile.TemporaryDirectory() as d:
-        sdlc.update_ledger("smoke", 5, "quant", "pass", target="awq-w3", shared=d)
-        sdlc.update_ledger("smoke", 5, "quant", "pass", target="nvfp4-awq", shared=d)
+        sdlc.update_ledger("smoke", 5, "quant", "pass", target="awq-w3-transformers", shared=d)
+        sdlc.update_ledger("smoke", 5, "quant", "pass", target="nvfp4-awq-transformers", shared=d)
         data = sdlc.read_ledger("smoke", shared=d)
         assert data["stages"]["5"]["status"] == "pass"
-        assert set(data["stages"]["5"]["targets"]) == {"awq-w3", "nvfp4-awq"}
-        sdlc.update_ledger("smoke", 5, "quant", "fail", target="nvfp4-gptq", shared=d)
+        assert set(data["stages"]["5"]["targets"]) == {"awq-w3-transformers", "nvfp4-awq-transformers"}
+        sdlc.update_ledger("smoke", 5, "quant", "fail", target="nvfp4-gptq-transformers", shared=d)
         data = sdlc.read_ledger("smoke", shared=d)
         assert data["stages"]["5"]["status"] == "fail"
 
@@ -132,13 +132,13 @@ def test_07_acceptance_writes_snapshot():
         payload = json.loads(p.read_text(encoding="utf-8"))
         assert payload["mode"] == "smoke"
         assert len(payload["stages"]) == 8
-        assert "nvfp4-awq" in payload["targets"]
+        assert "nvfp4-awq-transformers" in payload["targets"]
 
 
 def test_07_acceptance_rejects_bad_file():
     with tempfile.TemporaryDirectory() as d:
         bad = Path(d) / "bad.toml"
-        bad.write_text("[targets.awq-w3]\nquant_format = 1\n", encoding="utf-8")
+        bad.write_text("[targets.awq-w3-transformers]\nquant_format = 1\n", encoding="utf-8")
         out = subprocess.run(
             [sys.executable, str(ROOT / "s1-04-acceptance.py"), "--mode", "smoke", "--path", str(bad)],
             capture_output=True, text=True, cwd=str(ROOT), check=False,
@@ -164,31 +164,31 @@ def test_gate_ppl_blocks_nan_and_missing():
     with tempfile.TemporaryDirectory() as d:
         bad = Path(d) / "ppl.json"
         bad.write_text(json.dumps({"ppl": float("nan")}), encoding="utf-8")
-        out = _bash(f'source gates.inc; rq_gate_ppl "{bad}" nvfp4-awq')
+        out = _bash(f'source gates.inc; rq_gate_ppl "{bad}" nvfp4-awq-transformers')
         assert out.returncode == 1, out.stdout
-        out = _bash(f'source gates.inc; rq_gate_ppl "{Path(d) / "none.json"}" nvfp4-awq')
+        out = _bash(f'source gates.inc; rq_gate_ppl "{Path(d) / "none.json"}" nvfp4-awq-transformers')
         assert out.returncode == 1
 
 
 def test_gate_ppl_accepts_finite_with_matching_verdict():
     with tempfile.TemporaryDirectory() as d:
-        good = Path(d) / "nvfp4-awq.json"
-        good.write_text(json.dumps({"target": "nvfp4-awq", "ppl": 7.7, "n": 8}), encoding="utf-8")
+        good = Path(d) / "nvfp4-awq-transformers.json"
+        good.write_text(json.dumps({"target": "nvfp4-awq-transformers", "ppl": 7.7, "n": 8}), encoding="utf-8")
         (Path(d) / "summary.json").write_text(
-            json.dumps({"nvfp4-awq": {"delta": 0.05, "verdict": "Accept"}}), encoding="utf-8"
+            json.dumps({"nvfp4-awq-transformers": {"delta": 0.05, "verdict": "Accept"}}), encoding="utf-8"
         )
-        out = _bash(f'source gates.inc; rq_gate_ppl "{good}" nvfp4-awq')
+        out = _bash(f'source gates.inc; rq_gate_ppl "{good}" nvfp4-awq-transformers')
         assert out.returncode == 0, out.stdout + out.stderr
 
 
 def test_gate_ppl_rejects_verdict_mismatch():
     with tempfile.TemporaryDirectory() as d:
-        bad = Path(d) / "nvfp4-awq.json"
-        bad.write_text(json.dumps({"target": "nvfp4-awq", "ppl": 9.9, "n": 8}), encoding="utf-8")
+        bad = Path(d) / "nvfp4-awq-transformers.json"
+        bad.write_text(json.dumps({"target": "nvfp4-awq-transformers", "ppl": 9.9, "n": 8}), encoding="utf-8")
         (Path(d) / "summary.json").write_text(
-            json.dumps({"nvfp4-awq": {"delta": 2.0, "verdict": "Accept"}}), encoding="utf-8"
+            json.dumps({"nvfp4-awq-transformers": {"delta": 2.0, "verdict": "Accept"}}), encoding="utf-8"
         )
-        out = _bash(f'source gates.inc; rq_gate_ppl "{bad}" nvfp4-awq')
+        out = _bash(f'source gates.inc; rq_gate_ppl "{bad}" nvfp4-awq-transformers')
         assert out.returncode == 1
 
 
@@ -210,7 +210,7 @@ def test_gate_acceptance_requires_snapshot():
         assert out.returncode == 1
         (Path(d) / "acceptance-smoke.json").write_text(
             json.dumps({"version": 1, "targets": {t: {"quant_format": "x", "ppl_delta_max": 1.0}
-                                                 for t in ("awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq")}}),
+                                                 for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")}}),
             encoding="utf-8",
         )
         out = _bash(f'source gates.inc; RQ_OUTPUTS="{d}"; rq_gate_acceptance smoke')
@@ -221,7 +221,7 @@ def test_rq_stage_of_mapping_covers_all_groups():
     out = _bash(
         "source config/common.env smoke; "
         "for s in s1-01-setup s1-04-acceptance s1-07-calib s1-10-compat s2-01-dequant "
-        "s3-07-quant-nvfp4-awq s4-01-ppl s4-07-eval-base s4-10-eval-quantized s5-01-upload "
+        "s3-07-quant-nvfp4-awq-transformers s4-01-ppl s4-07-eval-base s4-10-eval-quantized s5-01-upload "
         "s4-31-prep s4-34-verify s6-13-chat s6-16-pi-tool-call-test s7-13-chat s7-16-pi; do rq_stage_of $s; done"
     )
     assert out.returncode == 0, out.stderr

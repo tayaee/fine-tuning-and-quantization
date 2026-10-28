@@ -35,7 +35,7 @@ s<group>-##-<slug>.{sh,py}
 | 0 | 베이스검증 | `s0-01-load-transformers.sh` … `s0-22-bench-vllm.sh` |
 | 1 | 환경 체인 | `s1-01-setup.sh`, `s1-04-acceptance.{sh,py}`, `s1-07-prep-calibration.{sh,py}`, `s1-10-compat-check.{sh,py}` |
 | 2 | 베이스 복원 | `s2-01-dequant-mxfp8.{sh,py}` |
-| 3 | 양자화 | `s3-01-quant-awq-w3.{sh,py}` … `s3-10-quant-nvfp4-gptq.{sh,py}` |
+| 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-10-quant-nvfp4-gptq-transformers.{sh,py}` |
 | 4 | 측정·평가 | `s4-01-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-13-gsm8k.{sh,py}`, `s4-16-prep-kmmluko.{sh,py}`, `s4-19-kmmluko.{sh,py}`, `s4-22-format.{sh,py}`, `s4-25-servebench.{sh,py}`, `s4-28-bench-transformers.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-34-verify-upload.{sh,py}`, `s4-37-release-notes.{sh,py}` |
 | 5 | 업로드 | `s5-01-upload-hf.{sh,py}` |
 | 6 | 고객-transformers | `s6-*-test-*-with-transformers.sh`, `s6-13-chat.sh`, `s6-16-pi-tool-call-test.sh` |
@@ -61,7 +61,7 @@ pi 검증은 고정 질문(`현재 디렉토리 파일이 몇 개니? 숫자 하
 다음 사람이 읽을 수 없다.
 
 ```toml
-[targets.nvfp4-awq]
+[targets.nvfp4-awq-transformers]
 quant_format   = "nvfp4-pack-quantized"
 size_gb        = [15.0, 28.0]
 ppl_delta_warn = 0.3    # Δ < 0.3 → Accept
@@ -142,7 +142,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 
 ```json
 { "mode": "smoke", "stages": { "3": { "id": 3, "name": "quant", "status": "pass",
-  "targets": { "nvfp4-awq": { "status": "pass" } } } } }
+  "targets": { "nvfp4-awq-transformers": { "status": "pass" } } } } }
 ```
 
 `s4-37-release-notes.py`가 원장 + 수용 기준 + 실측 지표를 합쳐

@@ -21,7 +21,7 @@
 > (0=베이스검증, 1=환경체인, 2=복원, 3=양자화, 4=측정·평가, 5=업로드, 6=고객-transformers, 7=고객-vLLM),
 > `##`은 그룹 안 순서(**01부터 3단위**, 각 그룹의 첫 스크립트는 항상 `s#-01-`),
 > `<slug>`은 작업 이름이다.
-> 예) `s3-07-quant-nvfp4-awq.sh` = 3그룹(양자화)의 07번 스텝.
+> 예) `s3-07-quant-nvfp4-awq-transformers.sh` = 3그룹(양자화)의 07번 스텝.
 > 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는
 > 진입점이므로 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·s5 업로드·s6/s7 CAT는 별도 실행).
 
@@ -94,7 +94,7 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 ## TARGETS는 필수
 
 타깃을 받는 개별 스크립트는 **양자화 대상을 명시해야** 실행한다. 미지정 시 가능한 값
-(`awq-w3`/`awq-w5`/`nvfp4-awq`/`nvfp4-gptq`/`all`)을 찍고 exit 2 한다 —
+(`awq-w3-transformers`/`awq-w5-transformers`/`nvfp4-awq-transformers`/`nvfp4-gptq-transformers`/`all`)을 찍고 exit 2 한다 —
 "인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
 대상 스크립트
@@ -104,7 +104,7 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 (s6/s7 검증 스크립트는 `[mode] [HF repo id|short target|all]` 형태다.)
 
 ```bash
-./s4-01-measure-ppl.sh smoke base,nvfp4-awq   # 개별 스크립트 ($2 또는 TARGETS)
+./s4-01-measure-ppl.sh smoke base,nvfp4-awq-transformers   # 개별 스크립트 ($2 또는 TARGETS)
 TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로만
 ```
 
@@ -118,7 +118,7 @@ TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로�
 | CALIB_N | 8 | 256 |
 | SEQ_LEN | 512 | 2048 |
 | EVAL_N / PPL_N | 8 / 8 | 200 / 32 |
-| 실행순 | awq-w3 → awq-w5 → nvfp4-awq → nvfp4-gptq (알파벳순) | 동일 (밤샘 권장) |
+| 실행순 | awq-w3-transformers → awq-w5-transformers → nvfp4-awq-transformers → nvfp4-gptq-transformers (알파벳순) | 동일 (밤샘 권장) |
 | 2노드 분할 | 타깃별 원샷을 노드에 나눔: `run-s1-to-s4-smoke-awq-{w3,w5}.sh` (spark1) + `run-s1-to-s4-smoke-nvfp4-{awq,gptq}.sh` (spark2). dequant는 lock+freshness로 1회만 실행된다 | 동일 분할 (`run-s1-to-s4-full-*.sh`) |
 
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)
@@ -128,10 +128,10 @@ TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로�
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |
 |---|---|---|
-| `run-s1-to-s4-{smoke,full}-awq-w5.sh` | s1~s4 (env체인~측정평가) | s3-04-quant-awq-w5 |
-| `run-s1-to-s4-{smoke,full}-awq-w3.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w3 |
-| `run-s1-to-s4-{smoke,full}-nvfp4-awq.sh` | s1~s4 (env체인~측정평가) | s3-07-quant-nvfp4-awq |
-| `run-s1-to-s4-{smoke,full}-nvfp4-gptq.sh` | s1~s4 (env체인~측정평가) | s3-10-quant-nvfp4-gptq |
+| `run-s1-to-s4-{smoke,full}-awq-w5-transformers.sh` | s1~s4 (env체인~측정평가) | s3-04-quant-awq-w5-transformers |
+| `run-s1-to-s4-{smoke,full}-awq-w3-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w3-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-awq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-07-quant-nvfp4-awq-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-gptq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-10-quant-nvfp4-gptq-transformers |
 
 (engine: `build-ppl-eval.inc`)
 

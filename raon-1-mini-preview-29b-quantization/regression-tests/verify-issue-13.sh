@@ -8,9 +8,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
 # 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외).
-# frozen 카드 래퍼(s9-01/04/07/10-*)는 README 명령 as-is 실행이 설계라 배너 면제
-# (배너는 s7-13-chat이 찍는다).
-mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s1-to-s4-*.sh | grep -v 'vllm-fork-test' | sort)
+# frozen 카드 래퍼(s7-<num>-test-<target>.sh, 번호 01/04/06/07/10)는 README 명령
+# as-is 실행이 설계라 배너 면제 (배너는 s7-13-chat이 찍는다).
+mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s1-to-s4-*.sh | grep -vE 's7-(01|04|06|07|10)-test-' | sort)
 [ "${#SCRIPTS[@]}" -ge 25 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (25개 이상 기대)"; fail=1; }
 
 for f in "${SCRIPTS[@]}"; do
@@ -37,7 +37,7 @@ for f in "$ROOT"/run-s1-to-s4-*.sh; do
   grep -q 'rq_banner "' "$f" || { echo "FAIL: $(basename "$f") 에 배너 없음"; fail=1; }
   n_build=$((n_build + 1))
 done
-[ "$n_build" = 8 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (8 기대)"; fail=1; }
+[ "$n_build" = 10 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (10 기대)"; fail=1; }
 for f in s4-37-release-notes.py s7-19-verify-serving-log.py; do
   grep -qE 'print\("\[s[0-9]-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done

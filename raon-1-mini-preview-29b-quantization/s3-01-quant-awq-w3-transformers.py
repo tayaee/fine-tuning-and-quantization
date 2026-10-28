@@ -1,8 +1,10 @@
-"""s3-07-quant-nvfp4-awq.py — 원본 → AWQ smoothing + NVFP4 (llmcompressor oneshot).
-NVFP4는 W4A4 + calib 필수 + Blackwell(SM>=10) 전용. MoE expert calib는
-Calibration shim이 자동 처리한다.
+"""s3-01-quant-awq-w3-transformers.py — 원본 → (AWQ smoothing) + GPTQ W3A16-g64 (llmcompressor oneshot).
+3bit는 품질 붕괴 위험이 가장 크므로 smoke에서 PPL 게이트(34) 확인 후 full 진행.
+custom arch에서 AWQ replay가 RoutedLinear와 호환되지 않아 기본 OFF
+(RQ_AWQ_FIRST=1로 명시해야 시도, 실패 시 pure-GPTQ 폴백).
+down_proj columns=1088은 g128 불가 → 전 expert g64.
 
-  uv run s3-07-quant-nvfp4-awq.py --mode smoke|full [--calib N] [--calib-file PATH]
+  uv run s3-01-quant-awq-w3-transformers.py --mode smoke|full [--calib N] [--calib-file PATH]
 """
 
 import argparse
@@ -11,7 +13,7 @@ import os
 from io_common import clean_tmp, commit_dir, tmp_path
 from quant_common import (
     DEFAULT_IGNORE,
-    NVFP4_PACK_QUANTIZED,
+    PACK_QUANTIZED,
     allow_trusted_remote_code,
     build_awq_smoothing,
     load_calib_texts,
@@ -24,21 +26,26 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "main"
 SRC = os.environ.get("RQ_SRC", f"{SHARED}/models/raon-bf16")
-TARGET = "nvfp4-awq"
+TARGET = "awq-w3-transformers"
 
 
 def build_recipes():
-    from llmcompressor.modifiers.quantization import QuantizationModifier
+    from llmcompressor.modifiers.gptq import GPTQModifier
 
-    def build_quant():
+    def build_gptq3():
         # 매 시도 fresh 인스턴스 (실패한 modifier 재사용 시 init 오류)
-        return QuantizationModifier(ignore=DEFAULT_IGNORE, scheme="NVFP4", targets=resolve_targets())
+        return GPTQModifier(
+            targets=resolve_targets(),
+            ignore=DEFAULT_IGNORE,
+            config_groups={"group_0": {"targets": resolve_targets(), "weights": {"num_bits": 3, "type": "int", "symmetric": False, "strategy": "group", "group_size": 64}}},
+        )
 
     # custom arch: AWQ replay가 RoutedLinear와 호환되지 않아 결정적 실패하므로
     # 기본 OFF (RQ_AWQ_FIRST=1로 명시해야 시도, 실패 시 pure 폴백).
+    # OFF = 폴백 결과와 동일, doomed 시도 시간(~7분/모델) + 2중 모델 메모리 방지.
     if os.environ.get("RQ_AWQ_FIRST", "0") == "1":
-        return [lambda: [build_awq_smoothing(), build_quant()], build_quant]
-    return [build_quant]
+        return [lambda: [build_awq_smoothing(), build_gptq3()], build_gptq3]
+    return [build_gptq3]
 
 
 def main(mode: str, calib: int, calib_file: str | None, seq_len: int):
@@ -70,7 +77,7 @@ def main(mode: str, calib: int, calib_file: str | None, seq_len: int):
             save_custom_code(tmp, SRC)
             # compressor가 can_compress=False로 dense 폴백하면 미패킹 BF16가 그대로
             # 커밋된다 → commit_dir 전에 포맷 계약 검증으로 조기 실패시킨다.
-            verify_compressed_output(tmp, NVFP4_PACK_QUANTIZED)
+            verify_compressed_output(tmp, PACK_QUANTIZED)
             commit_dir(tmp, out)
             print(f"[{mode}] {TARGET} calib={calib} seq={seq_len} -> {out}")
             return

@@ -9,13 +9,13 @@ s4-31-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친
      - modeling_raon1_mini.py 내 _routed_projection -> nn.Linear 트레이싱 심 확인
   2) 양자화 포맷 및 safetensors 헤더/인덱스 계약 (issue-3):
      - quantization_config.quant_method == "compressed-tensors"
-     - format == pack-quantized(awq-w3/w5) 또는 nvfp4-pack-quantized(nvfp4-*) ("dense" 폴백 차단)
+     - format == pack-quantized(awq-w3-transformers/w5) 또는 nvfp4-pack-quantized(nvfp4-*) ("dense" 폴백 차단)
      - weight_packed / weight_scale / weight_global_scale / input_global_scale 개수·dtype 일치
      - 29B 본 모델(num_hidden_layers>=25)에서 양자화된 expert 프로젝션 수(9,216개) 확인
      - 비양자화 보호 레이어(lm_head, embed_tokens 등)가 BF16/F32 .weight로 유지되는지 확인
      - model.safetensors.index.json의 weight_map <-> 실제 샤드 파일·텐서 키 1:1 일치 확인
   3) 체크포인트 용량(모델 사이즈) 정상 범위 검증:
-     - 29B 본 모델 기준 타겟별 예상 압축 용량 범위(nvfp4: 15~28GB, awq-w3: 14~26GB, awq-w5: 20~35GB)
+     - 29B 본 모델 기준 타겟별 예상 압축 용량 범위(nvfp4: 15~28GB, awq-w3-transformers: 14~26GB, awq-w5-transformers: 20~35GB)
      - 미압축 dense 폴백(~55GB)이나 샤드 누락(<10GB) 즉시 검출
   4) vLLM 및 transformers 실행 준비 상태 (issue-1, issue-4):
      - 필수 파일(config.json, tokenizer.json, tokenizer_config.json, chat_template.jinja,
@@ -30,7 +30,7 @@ s4-31-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친
      - README.md YAML frontmatter 필수 키, extra_gated_* 금지, 실제 체크포인트 용량(GB) 및
        검사 표(PPL/GSM8K) 내 타것 행의 실제 수치 기입 여부 확인
 
-  uv run s4-34-verify-upload.py --mode full --targets nvfp4-awq
+  uv run s4-34-verify-upload.py --mode full --targets nvfp4-awq-transformers
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ from quant_common import (
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
-ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq", "nvfp4-awq-modelopt"]
+ALL_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers", "nvfp4-awq-vllm"]
 # 평가 벤치 = 표준 GSM8K 단일 (s4-07-eval이 표준 GSM8K만 평가한다)
 BENCH_ORDER = ("gsm8k",)
 ROUTED_LINEAR_MARKER = "return nn.Linear(in_features, out_features, bias=False)"
@@ -71,35 +71,35 @@ REQUIRED_MODEL_FILES = (
 
 # 29B 본 모델(24개 MoE 레이어 × 128 experts × 3개 프로젝션 = 9,216개) 기준 타겟 사양
 TARGET_RULES: dict[str, dict] = {
-    "awq-w3": {
+    "awq-w3-transformers": {
         "format": PACK_QUANTIZED,
         "num_bits": 3,
         "w_type": "int",
         "size_gb_range": (14.0, 26.0),
         "needs_input_global_scale": False,
     },
-    "awq-w5": {
+    "awq-w5-transformers": {
         "format": PACK_QUANTIZED,
         "num_bits": 5,
         "w_type": "int",
         "size_gb_range": (20.0, 35.0),
         "needs_input_global_scale": False,
     },
-    "nvfp4-awq": {
+    "nvfp4-awq-transformers": {
         "format": NVFP4_PACK_QUANTIZED,
         "num_bits": 4,
         "w_type": "float",
         "size_gb_range": (15.0, 28.0),
         "needs_input_global_scale": True,
     },
-    "nvfp4-gptq": {
+    "nvfp4-gptq-transformers": {
         "format": NVFP4_PACK_QUANTIZED,
         "num_bits": 4,
         "w_type": "float",
         "size_gb_range": (15.0, 28.0),
         "needs_input_global_scale": True,
     },
-    "nvfp4-awq-modelopt": {
+    "nvfp4-awq-vllm": {
         "format": MOPT_NVFP4,
         "num_bits": 4,
         "w_type": "float",
@@ -297,7 +297,7 @@ def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
             errors.append(f"{d}/config.json: vLLM/생성 필수 필드 '{key}' 누락")
 
     qc = cfg.get("quantization_config") or {}
-    if target == "nvfp4-awq-modelopt":
+    if target == "nvfp4-awq-vllm":
         if qc.get("quant_method") != "modelopt_fp4":
             errors.append(
                 f"{d}/config.json: quantization_config.quant_method={qc.get('quant_method')!r} "
@@ -309,7 +309,7 @@ def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
                 f"{d}/config.json: quantization_config.quant_method={qc.get('quant_method')!r} "
                 "('compressed-tensors' 필요)"
             )
-    if target == "nvfp4-awq-modelopt":
+    if target == "nvfp4-awq-vllm":
         pass  # ModelOpt 표지에는 format/config_groups 필드가 없다 (verify_mopt_output가 계약 담당)
     else:
         if qc.get("format") != rule["format"]:
@@ -323,7 +323,7 @@ def _check_vllm_and_config(d: Path, cfg: dict, target: str) -> list[str]:
         errors.append(f"{d}/config.json: quantization_config.ignore에 'lm_head' 보호 규칙 없음")
 
     groups = qc.get("config_groups") or {}
-    if target == "nvfp4-awq-modelopt":
+    if target == "nvfp4-awq-vllm":
         pass  # ModelOpt는 config_groups 대신 quant_cfg/quantized_layers 구조
     elif not groups:
         errors.append(f"{d}/config.json: quantization_config.config_groups 비어 있음")
@@ -357,13 +357,26 @@ def _check_safetensors_and_index(
     rule = TARGET_RULES[target]
     shard_keys, tensor_dtypes, suffix_counts = _scan_safetensors_headers(d)
     num_shards = len(shard_keys)
-    packed_count = suffix_counts.get("weight_packed", 0)
-    scale_count = suffix_counts.get("weight_scale", 0)
+    is_mopt = target == "nvfp4-awq-vllm"
+    if is_mopt:
+        # ModelOpt NVFP4: expert .weight=U8 니블패킹 + .weight_scale=F8_E4M3 (KRAFTON 표 동일)
+        exp_w = sum(1 for k, dt in tensor_dtypes.items()
+                    if ".moe.experts." in k and k.endswith(".weight") and dt in ("U8", "torch.uint8"))
+        exp_s = sum(1 for k, dt in tensor_dtypes.items()
+                    if ".moe.experts." in k and k.endswith(".weight_scale"))
+        if exp_w == 0:
+            errors.append(f"{d}: expert U8 .weight 텐서 0개 (미압축 체크포인트)")
+        if exp_s != exp_w:
+            errors.append(f"{d}: expert weight_scale({exp_s}) != expert U8 weight({exp_w}) 개수 불일치")
+        packed_count, scale_count = exp_w, exp_s
+    else:
+        packed_count = suffix_counts.get("weight_packed", 0)
+        scale_count = suffix_counts.get("weight_scale", 0)
 
-    if packed_count == 0:
-        errors.append(f"{d}: weight_packed 텐서 0개 (미압축 체크포인트)")
-    if scale_count != packed_count:
-        errors.append(f"{d}: weight_scale({scale_count}) != weight_packed({packed_count}) 개수 불일치")
+        if packed_count == 0:
+            errors.append(f"{d}: weight_packed 텐서 0개 (미압축 체크포인트)")
+        if scale_count != packed_count:
+            errors.append(f"{d}: weight_scale({scale_count}) != weight_packed({packed_count}) 개수 불일치")
 
     if rule["needs_input_global_scale"]:
         wgs = suffix_counts.get("weight_global_scale", 0)
@@ -390,7 +403,11 @@ def _check_safetensors_and_index(
 
     # 보호 레이어가 실수로 패킹되지 않았는지 점검
     for protected_prefix in ("lm_head.", "model.embed_tokens."):
-        bad_packed = [k for k in tensor_dtypes if k.startswith(protected_prefix) and k.endswith(".weight_packed")]
+        if is_mopt:
+            bad_packed = [k for k, dt in tensor_dtypes.items()
+                          if k.startswith(protected_prefix) and k.endswith(".weight") and dt == "torch.uint8"]
+        else:
+            bad_packed = [k for k in tensor_dtypes if k.startswith(protected_prefix) and k.endswith(".weight_packed")]
         if bad_packed:
             errors.append(f"{d}: 보호 레이어가 양자화됨 ({bad_packed[:3]})")
 
@@ -574,7 +591,7 @@ def _check_readme(
         errors.append(f"{readme_fp}: frontmatter에 금지 필드 'extra_gated_*' 포함")
 
     rule = TARGET_RULES[target]
-    for req_body in (
+    req_bodies = [
         BASE_REVISION,
         rule["format"],
         f"{size_gb} GB",
@@ -585,9 +602,12 @@ def _check_readme(
         "## Usage - vLLM",
         "## License and source",
         "--trust-remote-code",
-        "--quantization compressed-tensors",
         "--max-model-len 262144",
-    ):
+    ]
+    if target != "nvfp4-awq-vllm":
+        # ModelOpt판 카드는 --quantization 없이 자동 감지
+        req_bodies.append("--quantization compressed-tensors")
+    for req_body in req_bodies:
         if req_body not in text:
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
 

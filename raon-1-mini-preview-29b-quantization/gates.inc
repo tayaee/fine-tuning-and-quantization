@@ -30,7 +30,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 assert d.get("version"), "version 누락"
 assert d.get("targets"), "targets 누락"
-for t in ("awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"):
+for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"):
     spec = d["targets"].get(t)
     assert spec, f"targets.{t} 누락"
     assert spec.get("quant_format"), f"targets.{t}.quant_format 누락"

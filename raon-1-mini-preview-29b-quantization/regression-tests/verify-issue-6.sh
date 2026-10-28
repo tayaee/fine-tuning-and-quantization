@@ -12,8 +12,8 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 
 # 1. 계약 파일
 [ -f "$ROOT/config/acceptance.toml" ] || { echo "FAIL: config/acceptance.toml 없음"; fail=1; }
-for tok in 'version = 1' '[targets.awq-w3]' '[targets.awq-w5]' '[targets.nvfp4-awq]' \
-           '[targets.nvfp4-gptq]' 'quant_format' 'size_gb' 'ppl_delta_warn' 'ppl_delta_max' \
+for tok in 'version = 1' '[targets.awq-w3-transformers]' '[targets.awq-w5-transformers]' '[targets.nvfp4-awq-transformers]' \
+           '[targets.nvfp4-gptq-transformers]' 'quant_format' 'size_gb' 'ppl_delta_warn' 'ppl_delta_max' \
            '[gates.release]'; do
   grep -qF -- "$tok" "$ROOT/config/acceptance.toml" || { echo "FAIL: acceptance.toml에 '$tok' 없음"; fail=1; }
 done

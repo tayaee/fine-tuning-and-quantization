@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-# 1. s7-13-chat.sh: awq-w5/awq-w3/nvfp4-* 모두 QUANT="compressed-tensors"
-for t in awq-w5 awq-w3 nvfp4-awq nvfp4-gptq; do
+# 1. s7-13-chat.sh: awq-w5-transformers/awq-w3-transformers/nvfp4-* 모두 QUANT="compressed-tensors"
+for t in awq-w5-transformers awq-w3-transformers nvfp4-awq-transformers nvfp4-gptq-transformers; do
   line=$(grep -E "^[[:space:]]*${t}\)" "$ROOT/s7-13-chat.sh" || true)
   if ! echo "$line" | grep -q 'QUANT="compressed-tensors"'; then
     echo "FAIL: s7-13-chat.sh $t not compressed-tensors: $line"; fail=1
@@ -22,7 +22,7 @@ else
 fi
 
 # 3. smoke → -smoke repo 규칙 (rq_hf_parse 공용 헬퍼, s7-13이 사용)
-grep -q 'rq_hf_parse "${2:-nvfp4-awq}"' "$ROOT/s7-13-chat.sh" \
+grep -q 'rq_hf_parse "${2:-nvfp4-awq-transformers}"' "$ROOT/s7-13-chat.sh" \
   || { echo "FAIL: s7-13-chat.sh가 rq_hf_parse를 쓰지 않음"; fail=1; }
 cnt=$(grep -c 'RQ_HF_REPO="$RQ_HF_REPO-smoke"' "$ROOT/config/common.env" || true)
 if [ "$cnt" != 1 ]; then
@@ -40,8 +40,8 @@ found = {}
 for node in ast.walk(tree):
     if isinstance(node, ast.Assign) and any(getattr(t, "id", "") == "QUANT_OF" for t in node.targets):
         found = ast.literal_eval(node.value)
-exp = {"nvfp4-awq": "compressed-tensors", "nvfp4-gptq": "compressed-tensors",
-       "awq-w5": "compressed-tensors", "awq-w3": "compressed-tensors"}
+exp = {"nvfp4-awq-transformers": "compressed-tensors", "nvfp4-gptq-transformers": "compressed-tensors",
+       "awq-w5-transformers": "compressed-tensors", "awq-w3-transformers": "compressed-tensors"}
 assert found == exp, f"QUANT_OF mismatch: {found}"
 print(f"OK: s4-07-eval.py QUANT_OF={found}")
 EOF

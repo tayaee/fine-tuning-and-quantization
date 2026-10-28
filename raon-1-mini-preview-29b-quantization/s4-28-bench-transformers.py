@@ -8,7 +8,7 @@ HF 카드의 정석 로딩은 transformers + trust_remote_code이므로,
 워크로드는 s4-25-servebench.py와 같은 고정 8프롬프트(타깃 간 비교 공정용).
 C=1 순차 greedy 생성만 측정한다 (동시성은 vLLM 서버 전제라 해당 없음).
 
-  uv run s4-28-bench-transformers.py --mode full --targets base,nvfp4-awq --n 8
+  uv run s4-28-bench-transformers.py --mode full --targets base,nvfp4-awq-transformers --n 8
 
 산출물:
   outputs/eval-<mode>/bench-transformers-<mode>.json  (전체 기록)
@@ -34,7 +34,7 @@ from sdlc import checks_path, merge_check
 
 SHARED = Path(os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared"))
 
-ALL_TARGETS = ("base", "awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq")
+ALL_TARGETS = ("base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
 
 #: s4-25-servebench.py와 동일한 고정 워크로드 (수치 비교 공정용).
 PROMPTS = [
@@ -311,8 +311,8 @@ def main(mode: str, targets: list[str], n: int, max_tokens: int) -> dict:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="transformers 인프로세스 처리량 측정 (서버 불필요)")
     ap.add_argument("--mode", default=os.environ.get("MODE", "smoke"), choices=["smoke", "full"])
-    ap.add_argument("--targets", default=os.environ.get("TARGETS", "base,nvfp4-awq"),
-                    help="콤마/공백 구분 (base|awq-w3|awq-w5|nvfp4-awq-modelopt|nvfp4-awq|nvfp4-gptq|all)")
+    ap.add_argument("--targets", default=os.environ.get("TARGETS", "base,nvfp4-awq-transformers"),
+                    help="콤마/공백 구분 (base|awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers|all)")
     ap.add_argument("--n", type=int, default=int(os.environ.get("TRANSFORMERS_BENCH_N", "8")))
     ap.add_argument("--max-tokens", type=int,
                     default=int(os.environ.get("TRANSFORMERS_BENCH_MAXTOK", "256")))

@@ -9,12 +9,12 @@
 
 | # | 스크립트 | 타깃 | 레시피 (llm-compressor) | 서빙 `--quantization` | 비고 |
 |---|---|---|---|---|---|
-| s3-01 | `s3-01-quant-awq-w3` | `awq-w3` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
-| s3-04 | `s3-04-quant-awq-w5` | `awq-w5` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
-| s3-07 | `s3-07-quant-nvfp4-awq` | `nvfp4-awq` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
-| s3-10 | `s3-10-quant-nvfp4-gptq` | `nvfp4-gptq` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
+| s3-01 | `s3-01-quant-awq-w3-transformers` | `awq-w3-transformers` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
+| s3-04 | `s3-04-quant-awq-w5-transformers` | `awq-w5-transformers` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
+| s3-07 | `s3-07-quant-nvfp4-awq-transformers` | `nvfp4-awq-transformers` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
+| s3-10 | `s3-10-quant-nvfp4-gptq-transformers` | `nvfp4-gptq-transformers` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
 
-출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-full`).
+출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-transformers-full`).
 업로드명: `tayaee/Raon-1-mini-preview-<target>[-smoke]` (상세 `output-models-tree.txt`).
 타깃 기본값 experts-only (벤더 MXFP4 recipe와 동일 범위, `RQ_TARGETS=all`로 전 Linear).
 
@@ -39,7 +39,7 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 모든 stage 스크립트는 모드(smoke/full)를 인자로 받는다. **인자를 생략하면 환경변수 `MODE`를 보고**,
 그것도 없으면 smoke다. 타깃을 받는 스크립트는 타깃도 필수다 (미지정 시 사용법 출력 후 종료,
-`TARGETS=all`로 전체) — 예: `MODE=full ./s4-31-prep-upload.sh full nvfp4-awq`.
+`TARGETS=all`로 전체) — 예: `MODE=full ./s4-31-prep-upload.sh full nvfp4-awq-transformers`.
 
 ```bash
 ./s0-01-load-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
@@ -55,8 +55,8 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 ./s2-01-dequant-mxfp8.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
 
 # 단일 타깃 빌드 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
-./run-s1-to-s4-smoke-nvfp4-awq.sh  # smoke × nvfp4-awq (TARGETS 불필요, 1종 고정)
-./run-s1-to-s4-full-nvfp4-awq.sh   # full  × nvfp4-awq
+./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh  # smoke × nvfp4-awq-transformers (TARGETS 불필요, 1종 고정)
+./run-s1-to-s4-full-nvfp4-awq-transformers.sh   # full  × nvfp4-awq-transformers
 # 게이트: quant 직후 패킹 계약·global_scale, PPL 직후 유한값 검증 → 실패 시 즉시 중단
 # 구 모놀리식 러너(run-{smoke,full}.sh, TARGETS/STEPS 다종 실행)는 archive/로 은퇴.
 # 다종 실행은 타깃별 개별 스크립트에 TARGETS로 지정한다 (예: 아래 s4-01).
@@ -104,6 +104,6 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 2. **공식 양자화 존재**: KRAFTON이 MXFP8·NVFP4를 이미 공개함. full 후 PPL 게이트에서 공식 NVFP4와 비교 권장.
 3. **W5/W3 서빙**: vLLM GPTQ 백엔드의 3/5bit 지원 여부를 smoke에서 확인. 안 되면 HF 직접 배포용으로만 사용.
 4. **10분은 smoke 목표**: 28.8B MoE 로드+양자화 4종을 10분에 끝내는 것은 calib 8·seq 512 전제.
-   느린 순서: nvfp4-gptq < nvfp4-awq < awq-w5 < awq-w3.
+   느린 순서: nvfp4-gptq-transformers < nvfp4-awq-transformers < awq-w5-transformers < awq-w3-transformers.
    expert 9216 모듈 대상이라 AWQ smoothing은 수 시간 가능.
 5. **NVFP4 하드웨어**: Blackwell (SM100+, DGX Spark GB10 해당)에서만 가속. 서빙은 TP=2 (2x 기준).

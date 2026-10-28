@@ -124,7 +124,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "summary.json").write_text(
         json.dumps({"base": {"target": "base", "ppl": 8.11, "verdict": "ref"},
-                    "nvfp4-awq": {"target": "nvfp4-awq", "ppl": 8.42, "delta": 0.31,
+                    "nvfp4-awq-transformers": {"target": "nvfp4-awq-transformers", "ppl": 8.42, "delta": 0.31,
                                   "verdict": "Conditional"}}),
         encoding="utf-8",
     )
@@ -133,7 +133,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     (edir / "score.json").write_text(
         json.dumps({
             "base": {"n": 30, "done_rate": 1.0, "benchmarks": {b: {"n": 10, "acc": 0.9} for b in BENCHES}},
-            "nvfp4-awq": {"n": 30, "done_rate": 1.0,
+            "nvfp4-awq-transformers": {"n": 30, "done_rate": 1.0,
                           "benchmarks": {b: {"n": 10, "acc": 0.8} for b in BENCHES}},
         }),
         encoding="utf-8",
@@ -145,18 +145,18 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
 
 def test_prep_rejects_dense_fallback(workspace):
     """issue-3 계약과 동일하게 format:"dense" 폴백은 준비 단계에서 막는다."""
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     cfg = json.loads((d / "config.json").read_text(encoding="utf-8"))
     cfg["quantization_config"]["format"] = "dense"
     (d / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     assert report["ok"] is False
     assert "dense" in " ".join(report["errors"])
 
 
 def test_prep_copies_missing_custom_code_from_bf16(workspace):
-    d = _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK, custom_code=False)
-    report = prep.prepare_target("smoke", "awq-w5", allow_missing_metrics=True)
+    d = _make_model_dir(workspace / "models", "raon-awq-w5-transformers-smoke", fmt=PACK, custom_code=False)
+    report = prep.prepare_target("smoke", "awq-w5-transformers", allow_missing_metrics=True)
     assert report["ok"] is True, report["errors"]
     for f in ("chat_template.jinja", "configuration_raon1_mini.py", "modeling_raon1_mini.py"):
         assert (d / f).is_file(), f"{f} 미보충"
@@ -164,17 +164,17 @@ def test_prep_copies_missing_custom_code_from_bf16(workspace):
 
 
 def test_prep_requires_tokenizer_files(workspace):
-    d = _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK)
+    d = _make_model_dir(workspace / "models", "raon-awq-w5-transformers-smoke", fmt=PACK)
     (d / "tokenizer.json").unlink()
-    report = prep.prepare_target("smoke", "awq-w5", allow_missing_metrics=True)
+    report = prep.prepare_target("smoke", "awq-w5-transformers", allow_missing_metrics=True)
     assert report["ok"] is False
     assert any("tokenizer.json" in e for e in report["errors"])
 
 
 def test_prep_generates_readme_with_required_sections(workspace):
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     _write_metrics(workspace, "smoke")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     assert report["ok"] is True, report["errors"]
     readme = (d / "README.md").read_text(encoding="utf-8")
     for tok in ("license: apache-2.0",
@@ -207,99 +207,99 @@ def test_prep_generates_readme_with_required_sections(workspace):
 
 
 def test_prep_requires_metrics_unless_allowed(workspace):
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=False)
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=False)
     assert report["ok"] is False
     assert any("ppl" in e or "score" in e for e in report["errors"])
 
     _write_metrics(workspace, "smoke")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=False)
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=False)
     assert report["ok"] is True, report["errors"]
     assert (d / "README.md").is_file()
 
 
 def test_prep_requires_gsm8k_accuracy_unless_allowed(workspace):
     """issue-21: score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 거부한다(Check 2가 빈다)."""
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     _write_metrics(workspace, "smoke")
     fp = workspace / "outputs" / "eval-smoke" / "score.json"
     data = json.loads(fp.read_text(encoding="utf-8"))
-    for t in ("base", "nvfp4-awq"):
+    for t in ("base", "nvfp4-awq-transformers"):
         data[t]["benchmarks"] = {"kmmluko": {"n": 10, "acc": 0.5}}
     fp.write_text(json.dumps(data), encoding="utf-8")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=False)
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=False)
     assert report["ok"] is False
     errs = " ".join(report["errors"])
-    assert "no GSM8K accuracy for 'base'" in errs and "no GSM8K accuracy for 'nvfp4-awq'" in errs
+    assert "no GSM8K accuracy for 'base'" in errs and "no GSM8K accuracy for 'nvfp4-awq-transformers'" in errs
     assert not (d / "README.md").is_file()
-    assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
+    assert prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)["ok"] is True
 
 
 def test_prep_readme_ppl_delta_has_three_decimals(workspace):
     """issue-21: PPL delta는 소수 셋째 자리까지 (-0.001이 -0.00으로 뭉개지지 않게)."""
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     _write_metrics(workspace, "smoke")
     fp = workspace / "outputs" / "ppl-smoke" / "summary.json"
     data = json.loads(fp.read_text(encoding="utf-8"))
-    data["nvfp4-awq"].update({"ppl": 8.1090, "delta": -0.0010078, "verdict": "Accept"})
+    data["nvfp4-awq-transformers"].update({"ppl": 8.1090, "delta": -0.0010078, "verdict": "Accept"})
     fp.write_text(json.dumps(data), encoding="utf-8")
-    assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
+    assert prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)["ok"] is True
     readme = (d / "README.md").read_text(encoding="utf-8")
     assert "| 1 | PPL (in-domain) | 8.110 | 8.109 |" in readme
     assert "Δ -0.001" in readme and "Accept" in readme
     assert "-0.00 |" not in readme
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     _write_metrics(workspace, "smoke")
-    manifest = prep.run("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    manifest = prep.run("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     path = workspace / "outputs" / "prep-upload-smoke.json"
     assert path.is_file()
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["mode"] == "smoke"
-    assert saved["targets"]["nvfp4-awq"]["ok"] is True
+    assert saved["targets"]["nvfp4-awq-transformers"]["ok"] is True
     assert manifest["ok"] is True
 
 
 def test_prep_manifest_fails_when_target_failed(workspace):
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     cfg = json.loads((d / "config.json").read_text(encoding="utf-8"))
     cfg["quantization_config"]["format"] = "dense"
     (d / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
-    manifest = prep.run("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    manifest = prep.run("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     assert manifest["ok"] is False
-    assert manifest["targets"]["nvfp4-awq"]["errors"]
+    assert manifest["targets"]["nvfp4-awq-transformers"]["errors"]
 
 
 # ---------------------------------------------------------------- s5-01-upload-hf
 
 
 def test_repo_name_keeps_smoke_suffix():
-    assert up.repo_name("nvfp4-awq", "full") == "tayaee/Raon-1-mini-preview-nvfp4-awq"
-    assert up.repo_name("nvfp4-awq", "smoke") == "tayaee/Raon-1-mini-preview-nvfp4-awq-smoke"
+    assert up.repo_name("nvfp4-awq-transformers", "full") == "tayaee/Raon-1-mini-preview-nvfp4-awq-transformers"
+    assert up.repo_name("nvfp4-awq-transformers", "smoke") == "tayaee/Raon-1-mini-preview-nvfp4-awq-transformers-smoke"
 
 
 def test_upload_refuses_without_readme(workspace):
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-full")
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full")
     with pytest.raises(SystemExit, match="README.md"):
-        up.check_ready("nvfp4-awq", "full")
+        up.check_ready("nvfp4-awq-transformers", "full")
 
 
 def test_upload_skips_missing_config(workspace, capsys):
     """config.json이 없으면 (기존 관례대로) 조용히 SKIP — 다른 타겟을 계속 올린다."""
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-full")
-    (workspace / "models" / "raon-nvfp4-awq-full" / "config.json").unlink()
-    assert up.check_ready("nvfp4-awq", "full") is None
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full")
+    (workspace / "models" / "raon-nvfp4-awq-transformers-full" / "config.json").unlink()
+    assert up.check_ready("nvfp4-awq-transformers", "full") is None
     assert "SKIP" in capsys.readouterr().out
 
 
 def test_upload_refuses_empty_readme(workspace):
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-full")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full")
     (d / "README.md").write_text("   \n", encoding="utf-8")
     with pytest.raises(SystemExit, match="README.md"):
-        up.check_ready("nvfp4-awq", "full")
+        up.check_ready("nvfp4-awq-transformers", "full")
 
 
 def test_upload_dry_run_does_no_network(workspace, capsys):
-    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-full")
+    d = _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full")
     (d / "README.md").write_text("# 카드\n", encoding="utf-8")
 
     def boom(*a, **k):
@@ -312,21 +312,21 @@ def test_upload_dry_run_does_no_network(workspace, capsys):
     try:
         for k, v in monkey.items():
             setattr(huggingface_hub, k, v)
-        up.main("full", "nvfp4-awq", dry_run=True)
+        up.main("full", "nvfp4-awq-transformers", dry_run=True)
     finally:
         for k, v in old.items():
             setattr(huggingface_hub, k, v)
     out = capsys.readouterr().out
-    assert "tayaee/Raon-1-mini-preview-nvfp4-awq" in out
+    assert "tayaee/Raon-1-mini-preview-nvfp4-awq-transformers" in out
 
 
-def test_upload_refuses_smoke_mode(workspace):
-    with pytest.raises(SystemExit, match="smoke"):
-        up.main("smoke", "nvfp4-awq", dry_run=True)
+def test_upload_allows_smoke_mode(workspace):
+    """smoke 업로드 허용 (2026-10-28 정책 변경): -smoke repo로만 올라간다."""
+    up.main("smoke", "nvfp4-awq-transformers", dry_run=True)
 
 
 def test_upload_skips_missing_model(workspace, capsys):
-    up.main("full", "nvfp4-awq", dry_run=True)
+    up.main("full", "nvfp4-awq-transformers", dry_run=True)
     assert "SKIP" in capsys.readouterr().out
 
 
@@ -336,7 +336,7 @@ def test_prep_then_dry_run_succeeds(workspace, capsys):
     READY가 안 나오는 경우가 많아야 하는 흔한 실수는 (a) dry-run이 네트워크를 건드림,
     (b) repo_id 규칙이 깨짐, (c) prep이 README를 다른 경로에 씀 — 셋 다 여기서 잡힌다.
     """
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-full")
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full")
     _write_metrics(workspace, "full")
 
     # dry-run이 네트워크를 건드리면 즉시 실패시킨다
@@ -351,47 +351,47 @@ def test_prep_then_dry_run_succeeds(workspace, capsys):
             setattr(huggingface_hub, k, boom)
 
         with pytest.raises(SystemExit, match="README.md"):
-            up.main("full", "nvfp4-awq", dry_run=True)  # prep 전: README 없음
-        assert prep.run("full", "nvfp4-awq", allow_missing_metrics=False)["ok"] is True
+            up.main("full", "nvfp4-awq-transformers", dry_run=True)  # prep 전: README 없음
+        assert prep.run("full", "nvfp4-awq-transformers", allow_missing_metrics=False)["ok"] is True
 
-        readme = workspace / "models" / "raon-nvfp4-awq-full" / "README.md"
+        readme = workspace / "models" / "raon-nvfp4-awq-transformers-full" / "README.md"
         assert readme.is_file(), "prep이 모델 디렉터리에 README를 쓰지 않음"
 
-        up.main("full", "nvfp4-awq", dry_run=True)
+        up.main("full", "nvfp4-awq-transformers", dry_run=True)
     finally:
         for k, v in old.items():
             setattr(huggingface_hub, k, v)
 
     out = capsys.readouterr().out
     assert "READY" in out
-    assert up.repo_name("nvfp4-awq", "full") in out
+    assert up.repo_name("nvfp4-awq-transformers", "full") in out
     assert "uploaded" not in out, "dry-run이 실제 업로드 했다"
 
 
 def test_dry_run_covers_every_target(workspace, capsys):
     """READY 타겟은 보고하되, 디렉터리가 없는 타겟은 SKIP로 넘기고 rc를 유지한다."""
-    _make_model_dir(workspace / "models", "raon-awq-w5-full", fmt=PACK)
+    _make_model_dir(workspace / "models", "raon-awq-w5-transformers-full", fmt=PACK)
     _write_metrics(workspace, "full")
-    assert prep.run("full", "awq-w5", allow_missing_metrics=True)["ok"] is True
-    up.main("full", "awq-w5,nvfp4-awq", dry_run=True)
+    assert prep.run("full", "awq-w5-transformers", allow_missing_metrics=True)["ok"] is True
+    up.main("full", "awq-w5-transformers,nvfp4-awq-transformers", dry_run=True)
     out = capsys.readouterr().out
     assert "READY" in out
-    assert "SKIP nvfp4-awq" in out
+    assert "SKIP nvfp4-awq-transformers" in out
     assert "uploaded" not in out
 
 
 def test_prep_and_upload_accept_space_and_env_targets(workspace, monkeypatch, capsys):
-    _make_model_dir(workspace / "models", "raon-awq-w5-full", fmt=PACK)
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-full", fmt=NVFP4)
+    _make_model_dir(workspace / "models", "raon-awq-w5-transformers-full", fmt=PACK)
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-full", fmt=NVFP4)
     _write_metrics(workspace, "full")
-    monkeypatch.setenv("TARGETS", "awq-w5 nvfp4-awq")
+    monkeypatch.setenv("TARGETS", "awq-w5-transformers nvfp4-awq-transformers")
     m = prep.run("full", None, allow_missing_metrics=True)
     assert m["ok"] is True
-    assert set(m["targets"]) == {"awq-w5", "nvfp4-awq"}
+    assert set(m["targets"]) == {"awq-w5-transformers", "nvfp4-awq-transformers"}
     up.main("full", None, dry_run=True)
     out = capsys.readouterr().out
-    assert "Raon-1-mini-preview-awq-w5" in out
-    assert "Raon-1-mini-preview-nvfp4-awq" in out
+    assert "Raon-1-mini-preview-awq-w5-transformers" in out
+    assert "Raon-1-mini-preview-nvfp4-awq-transformers" in out
 
 
 # ---------------------------------------------------------------- 카드 분리 (issue-19)
@@ -399,49 +399,49 @@ def test_prep_and_upload_accept_space_and_env_targets(workspace, monkeypatch, ca
 
 def test_prep_readme_compares_base_and_target_only(workspace):
     """모델 카드(업로드 산출물)는 base + 그 타겟 1개만 비교한다."""
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
-    _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK)
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
+    _make_model_dir(workspace / "models", "raon-awq-w5-transformers-smoke", fmt=PACK)
     _write_metrics(workspace, "smoke")
-    report = prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    report = prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     assert report["ok"] is True, report["errors"]
-    readme = (workspace / "models" / "raon-nvfp4-awq-smoke" / "README.md").read_text(encoding="utf-8")
+    readme = (workspace / "models" / "raon-nvfp4-awq-transformers-smoke" / "README.md").read_text(encoding="utf-8")
     # 모델 카드 비교표에는 base와 이 타겟만 언급된다 (정식 HF 모델명)
     assert "KRAFTON/Raon-1-mini-preview" in readme
-    assert "tayaee/Raon-1-mini-preview-nvfp4-awq-smoke" in readme
+    assert "tayaee/Raon-1-mini-preview-nvfp4-awq-transformers-smoke" in readme
     # 다른 양자화 버전 repo는 언급되지 않아야 한다(업로드용 카드는 이 모델 1개만)
-    assert "Raon-1-mini-preview-awq-w5-smoke" not in readme
-    assert "Raon-1-mini-preview-awq-w3-smoke" not in readme
-    assert "Raon-1-mini-preview-nvfp4-gptq-smoke" not in readme
+    assert "Raon-1-mini-preview-awq-w5-transformers-smoke" not in readme
+    assert "Raon-1-mini-preview-awq-w3-transformers-smoke" not in readme
+    assert "Raon-1-mini-preview-nvfp4-gptq-transformers-smoke" not in readme
 
 
 def test_prep_writes_mode_summary_comparison(workspace):
     """전체 양자화 버전 비교는 models/README-<mode>.md 로 빠진다."""
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
-    _make_model_dir(workspace / "models", "raon-awq-w5-smoke", fmt=PACK)
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
+    _make_model_dir(workspace / "models", "raon-awq-w5-transformers-smoke", fmt=PACK)
     _write_metrics(workspace, "smoke")
-    prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     summary = workspace / "models" / "README-smoke.md"
     assert summary.is_file(), "모드 요약 리포트가 안 생김"
     text = summary.read_text(encoding="utf-8")
     # 존재하는 양자화 버전이 모두 표에 있다 (정식 HF 모델명)
-    assert "| **tayaee/Raon-1-mini-preview-nvfp4-awq-smoke** |" in text
-    assert "| **tayaee/Raon-1-mini-preview-awq-w5-smoke** |" in text
+    assert "| **tayaee/Raon-1-mini-preview-nvfp4-awq-transformers-smoke** |" in text
+    assert "| **tayaee/Raon-1-mini-preview-awq-w5-transformers-smoke** |" in text
     assert "| **KRAFTON/Raon-1-mini-preview** (base) |" in text
     # 모델 카드로 가는 링크
-    assert "raon-nvfp4-awq-smoke/README.md" in text
+    assert "raon-nvfp4-awq-transformers-smoke/README.md" in text
     # 요약은 모델 카드가 아니다(HF frontmatter 없음)
     assert not text.startswith("---")
 
 
 def test_summary_lists_only_existing_targets(workspace):
     """존재하지 않는 타깃은 요약 표에 올라가지 않는다."""
-    _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
+    _make_model_dir(workspace / "models", "raon-nvfp4-awq-transformers-smoke")
     _write_metrics(workspace, "smoke")
-    prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)
+    prep.prepare_target("smoke", "nvfp4-awq-transformers", allow_missing_metrics=True)
     text = (workspace / "models" / "README-smoke.md").read_text(encoding="utf-8")
-    assert "**tayaee/Raon-1-mini-preview-nvfp4-awq-smoke**" in text
-    assert "**tayaee/Raon-1-mini-preview-awq-w5-smoke**" not in text
-    assert "**tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke**" not in text
+    assert "**tayaee/Raon-1-mini-preview-nvfp4-awq-transformers-smoke**" in text
+    assert "**tayaee/Raon-1-mini-preview-awq-w5-transformers-smoke**" not in text
+    assert "**tayaee/Raon-1-mini-preview-nvfp4-gptq-transformers-smoke**" not in text
 
 
 # ---------------------------------------------------------------- 단독 실행

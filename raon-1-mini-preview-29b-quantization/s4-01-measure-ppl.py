@@ -9,7 +9,7 @@
 torch.cuda.empty_cache()로 cuda 캐시를 비우고, s4-01-measure-ppl.sh는 타겟마다
 별도 프로세스로 띄워 OS 메모리까지 100% 회수한다.
 
-  uv run s4-01-measure-ppl.py --mode smoke|full [--n N] [--targets all|base,nvfp4-gptq,...]
+  uv run s4-01-measure-ppl.py --mode smoke|full [--n N] [--targets all|base,nvfp4-gptq-transformers,...]
   uv run s4-01-measure-ppl.py --mode smoke --summarize-only
 """
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 # base = 19-dequant 복원본(공정 기준). 이슈는 bf16으로 부르지만 기존 산출물
 # 파일명(base.json)과 s4-07-eval/s4-13-gsm8k 관례가 base라 별칭으로만 받는다.
-ALL_TARGETS = ["base", "awq-w5", "awq-w3", "nvfp4-awq", "nvfp4-gptq"]
+ALL_TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 TARGET_ALIASES = {"bf16": "base", "raon-bf16": "base"}
 
 

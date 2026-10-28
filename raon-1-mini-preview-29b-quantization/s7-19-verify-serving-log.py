@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT))
 
 SHARED = Path(os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared"))
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
-TARGETS = ("awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq")
+TARGETS = ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
 FAIL_MARKERS = ("SERVE-FAIL", "CHAT-FAIL", "PI-FAIL", "INFER-FAIL")
 
 

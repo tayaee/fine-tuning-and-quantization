@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s7-16-pi-tool-call-test.sh [smoke|full] [model] — 서빙 모델로 pi 툴콜 검증 + 서버 정리 (Stage 7 CAT).
-# model: HF repo id | short target (기본 nvfp4-awq). slug는 repo에서 유도한다.
+# model: HF repo id | short target (기본 nvfp4-awq-transformers). slug는 repo에서 유도한다.
 # 전제: s7-13-chat.sh가 서버를 띄운 상태 (PORT, 기본 8000).
 # pi 고정 질문 왕복을 검증하고 logs/s7-16-<slug>.log에 기록한 뒤 서버를 내린다.
 set -euo pipefail
@@ -9,7 +9,7 @@ source "$RQ_ROOT/config/s0-pi.inc"
 rq_repro_echo
 rq_banner "s7-16-pi-tool-call-test" "Stage 7 - pi tool-call check against the served model, then stop the server"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
-rq_hf_parse "${2:-nvfp4-awq}" "$MODE"
+rq_hf_parse "${2:-nvfp4-awq-transformers}" "$MODE"
 REPO="$RQ_HF_REPO"
 TARGET="${RQ_HF_TARGET:-$RQ_HF_REPO}"
 PORT="${PORT:-8000}"

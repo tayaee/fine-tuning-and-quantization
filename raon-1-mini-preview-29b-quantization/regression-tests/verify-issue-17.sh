@@ -24,7 +24,7 @@ if ls "$ROOT"/s8-*.sh "$ROOT"/s9-*.sh >/dev/null 2>&1; then
 fi
 for f in s0-10-setup.sh s1-07-acceptance.sh s2-13-prep-calibration.sh s3-16-compat-check.sh \
          s4-19-dequant-mxfp8.sh s7-36-prep-evalset.sh s7-40-score.sh \
-         s8-01-upload-hf.sh s9-01-vllm-serve-Raon-1-mini-preview-awq-w3.sh \
+         s8-01-upload-hf.sh s9-01-vllm-serve-Raon-1-mini-preview-awq-w3-transformers.sh \
          s9-13-vllm-serve-one.sh s9-16-inference-test.sh s9-19-vllm-serve-all-models.sh \
          s9-25-verify-serving-log.sh; do
   [ ! -e "$ROOT/$f" ] || { echo "FAIL: 옛 이름 $f 가 남아 있음"; fail=1; }

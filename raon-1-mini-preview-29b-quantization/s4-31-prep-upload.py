@@ -12,7 +12,7 @@ s8-01-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올�
      + transformers/vLLM 실행 예제 + 라이선스)
   5) 요약 매니페스트를 outputs/prep-upload-<mode>.json에 기록
 
-  uv run s4-31-prep-upload.py --mode smoke --targets nvfp4-awq --allow-missing-metrics
+  uv run s4-31-prep-upload.py --mode smoke --targets nvfp4-awq-transformers --allow-missing-metrics
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 # 실측 캐시 스냅샷 (config/common.env BASE_REVISION과 같은 값 — 카드에 기록한다)
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
-ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
+ALL_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modeling_raon1_mini.py")
 REQUIRED_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json")
 # 원본 KRAFTON 레포에는 gated 동의 필드가 있다. 라이선스 요청이 아니므로 절대 복사하지 않는다.
@@ -45,31 +45,31 @@ BENCH_ORDER = ("gsm8k",)
 
 # 타겟별 on-disk 포맷과 README에 기재할 양자화 사양
 SPECS: dict[str, dict] = {
-    "awq-w5": {
+    "awq-w5-transformers": {
         "format": PACK_QUANTIZED, "tags": ["w5a16", "gptq"],
         "algorithm": "GPTQ (after AWQ smoothing)", "precision": "W5A16",
         "bits": "5-bit int", "group_size": "group_size=64, symmetric=False",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
-    "awq-w3": {
+    "awq-w3-transformers": {
         "format": PACK_QUANTIZED, "tags": ["w3a16", "gptq"],
         "algorithm": "GPTQ (after AWQ smoothing)", "precision": "W3A16",
         "bits": "3-bit int", "group_size": "group_size=64, symmetric=False",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
-    "nvfp4-awq": {
+    "nvfp4-awq-transformers": {
         "format": NVFP4_PACK_QUANTIZED, "tags": ["nvfp4", "w4a4", "awq"],
         "algorithm": "NVFP4 (after AWQ smoothing)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
-    "nvfp4-gptq": {
+    "nvfp4-gptq-transformers": {
         "format": NVFP4_PACK_QUANTIZED, "tags": ["nvfp4", "w4a4", "gptq"],
         "algorithm": "NVFP4 (GPTQ)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
-    "nvfp4-awq-modelopt": {
+    "nvfp4-awq-vllm": {
         "format": MOPT_NVFP4, "tags": ["nvfp4", "w4a4", "awq", "modelopt"],
         "algorithm": "NVFP4 (AWQ Lite, ModelOpt)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
@@ -113,11 +113,11 @@ BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/
 #: 프로파일; 20GB급 체크포인트는 단일 GPU에 올라간다). base는 Hub 카드가 없어
 #: 여기서 다루지 않는다 (s9-13에서만 로컬 서빙, TP는 infra 기본값).
 VLLM_SERVE = {
-    "awq-w3": {"tp": 1, "quant": "compressed-tensors"},
-    "awq-w5": {"tp": 1, "quant": "compressed-tensors"},
-    "nvfp4-awq": {"tp": 1, "quant": "compressed-tensors"},
-    "nvfp4-gptq": {"tp": 1, "quant": "compressed-tensors"},
-    "nvfp4-awq-modelopt": {"tp": 1, "quant": ""},  # ModelOpt NVFP4: 자동 감지, --quantization 지정 금지
+    "awq-w3-transformers": {"tp": 1, "quant": "compressed-tensors"},
+    "awq-w5-transformers": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-awq-transformers": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-gptq-transformers": {"tp": 1, "quant": "compressed-tensors"},
+    "nvfp4-awq-vllm": {"tp": 1, "quant": ""},  # ModelOpt NVFP4: 자동 감지, --quantization 지정 금지
 }
 VLLM_REF = "raon-1-mini-preview"
 VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
@@ -125,10 +125,7 @@ VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
-    if target == "nvfp4-awq-modelopt":
-        name = f"{HF_ID}/Raon-1-mini-preview-NVFP4-AWQ"  # 시장 관례 대문자
-    else:
-        name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    name = f"{HF_ID}/{BASE_SLUG}-{target}"
     if mode == "smoke":
         name += "-smoke"
     return name
@@ -555,7 +552,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     gsm8k_meta = _evalset_meta(mode)
     repo_id = hf_repo_id(target, mode)
     comparison = _comparison_table(target, mode, ppl, scores, size_gb, checks)
-    is_mopt = target == "nvfp4-awq-modelopt"
+    is_mopt = target == "nvfp4-awq-vllm"
     quant_flag = VLLM_SERVE[target]["quant"]
     vllm_quant_line = f"  --quantization {quant_flag} \\\n" if quant_flag else ""
     storage_format = "modelopt_fp4" if is_mopt else "compressed-tensors"

@@ -50,13 +50,13 @@ check_call() {  # <script> <expected constant>
   fi
   echo "OK: $f verify(line ${vline%%:*}) < commit_dir(line ${cline%%:*}) [$const]"
 }
-check_call s3-04-quant-awq-w5.py PACK_QUANTIZED || fail=1
-check_call s3-01-quant-awq-w3.py PACK_QUANTIZED || fail=1
-check_call s3-07-quant-nvfp4-awq.py NVFP4_PACK_QUANTIZED || fail=1
-check_call s3-10-quant-nvfp4-gptq.py NVFP4_PACK_QUANTIZED || fail=1
+check_call s3-04-quant-awq-w5-transformers.py PACK_QUANTIZED || fail=1
+check_call s3-01-quant-awq-w3-transformers.py PACK_QUANTIZED || fail=1
+check_call s3-07-quant-nvfp4-awq-transformers.py NVFP4_PACK_QUANTIZED || fail=1
+check_call s3-10-quant-nvfp4-gptq-transformers.py NVFP4_PACK_QUANTIZED || fail=1
 
 # 4. PTQ 쉘 래퍼 4종: dense 폴백 디렉터리나 재생성된 raon-bf16을 fresh로 건너뛰지 않음
-for sh in s3-04-quant-awq-w5.sh s3-01-quant-awq-w3.sh s3-07-quant-nvfp4-awq.sh s3-10-quant-nvfp4-gptq.sh; do
+for sh in s3-04-quant-awq-w5-transformers.sh s3-01-quant-awq-w3-transformers.sh s3-07-quant-nvfp4-awq-transformers.sh s3-10-quant-nvfp4-gptq-transformers.sh; do
   grep -q '"dense"' "$ROOT/$sh" || { echo "FAIL: $sh fresh-skip이 format:dense를 거부하지 않음"; fail=1; }
   grep -q 'rq_fresh "\$OUT/config.json" "\$CALIB_FILE" "\$RQ_SRC/config.json"' "$ROOT/$sh" \
     || { echo "FAIL: $sh rq_fresh가 \$RQ_SRC/config.json(raon-bf16)을 확인하지 않음"; fail=1; }

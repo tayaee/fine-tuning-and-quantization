@@ -20,7 +20,7 @@
 
 ## 모델별 결과
 
-- 해당 없음 (양자화 미실행). 4종(`awq-w3`, `awq-w5`, `nvfp4-awq`, `nvfp4-gptq`)은 full에서 생성.
+- 해당 없음 (양자화 미실행). 4종(`awq-w3-transformers`, `awq-w5-transformers`, `nvfp4-awq-transformers`, `nvfp4-gptq-transformers`)은 full에서 생성.
 
 ## 중간 수정분 (본 실행 중)
 

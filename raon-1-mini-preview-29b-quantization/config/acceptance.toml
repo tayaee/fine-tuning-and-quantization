@@ -25,7 +25,7 @@
 version = 1
 
 # 타깃별 수용 기준 --------------------------------------------------
-[targets.awq-w3]
+[targets.awq-w3-transformers]
 quant_format = "pack-quantized"
 size_gb = [14.0, 26.0]
 ppl_delta_warn = 0.3
@@ -34,7 +34,7 @@ gsm8k_acc_drop_max = 0.02
 kmmluko_acc_drop_max = 0.03   # 표준 한국어 KMMLU: base 대비 하락 허용폭
 format_pass_rate_min = 0.9    # 지시/형식 준수 스위트 통과율 하한
 
-[targets.awq-w5]
+[targets.awq-w5-transformers]
 quant_format = "pack-quantized"
 size_gb = [20.0, 35.0]
 ppl_delta_warn = 0.3
@@ -43,7 +43,7 @@ gsm8k_acc_drop_max = 0.02
 kmmluko_acc_drop_max = 0.03   # 표준 한국어 KMMLU: base 대비 하락 허용폭
 format_pass_rate_min = 0.9    # 지시/형식 준수 스위트 통과율 하한
 
-[targets.nvfp4-awq]
+[targets.nvfp4-awq-transformers]
 quant_format = "nvfp4-pack-quantized"
 size_gb = [15.0, 28.0]
 ppl_delta_warn = 0.3
@@ -52,7 +52,7 @@ gsm8k_acc_drop_max = 0.02
 kmmluko_acc_drop_max = 0.03   # 표준 한국어 KMMLU: base 대비 하락 허용폭
 format_pass_rate_min = 0.9    # 지시/형식 준수 스위트 통과율 하한
 
-[targets.nvfp4-gptq]
+[targets.nvfp4-gptq-transformers]
 quant_format = "nvfp4-pack-quantized"
 size_gb = [15.0, 28.0]
 ppl_delta_warn = 0.3

@@ -37,9 +37,9 @@ def _isolate(d: str) -> None:
 
 
 def test_parse_targets():
-    assert bt.parse_targets("all") == ["base", "awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
-    assert bt.parse_targets("base,nvfp4-awq") == ["base", "nvfp4-awq"]
-    assert bt.parse_targets("nvfp4-awq") == ["nvfp4-awq"]
+    assert bt.parse_targets("all") == ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
+    assert bt.parse_targets("base,nvfp4-awq-transformers") == ["base", "nvfp4-awq-transformers"]
+    assert bt.parse_targets("nvfp4-awq-transformers") == ["nvfp4-awq-transformers"]
     try:
         bt.parse_targets("nope")
     except SystemExit:
@@ -52,7 +52,7 @@ def test_resolve_target():
     with tempfile.TemporaryDirectory() as d:
         _isolate(d)
         assert bt.resolve_target("base", "full") == Path(d) / "models" / "raon-bf16"
-        assert bt.resolve_target("nvfp4-awq", "full") == Path(d) / "models" / "raon-nvfp4-awq-full"
+        assert bt.resolve_target("nvfp4-awq-transformers", "full") == Path(d) / "models" / "raon-nvfp4-awq-transformers-full"
 
 
 def test_summarize_stats():
@@ -83,20 +83,20 @@ def test_merge_preserves_history():
                             "output_tokens_total": 200, "backend": "transformers",
                             "model": "x", "measured_at": "t"},
                     "memory": {"before_load": {"mem_avail_gb": 1.0, "server_rss_gb": 0.0}}}
-        payload = bt.merge_target("smoke", "nvfp4-awq", measured, {"backend": "transformers"})
+        payload = bt.merge_target("smoke", "nvfp4-awq-transformers", measured, {"backend": "transformers"})
         assert payload["targets"]["base"] == {"1": {"tok_per_s_p50": 42.0}}
-        assert payload["targets"]["nvfp4-awq"]["1"]["tok_per_s_p50"] == 90.0
-        assert payload["targets"]["nvfp4-awq"]["backend"] == "transformers"
+        assert payload["targets"]["nvfp4-awq-transformers"]["1"]["tok_per_s_p50"] == 90.0
+        assert payload["targets"]["nvfp4-awq-transformers"]["backend"] == "transformers"
         bench = json.loads((outdir / "bench-transformers-smoke.json").read_text(encoding="utf-8"))
-        assert bench["targets"]["nvfp4-awq"]["1"]["tok_per_s_p50"] == 90.0
+        assert bench["targets"]["nvfp4-awq-transformers"]["1"]["tok_per_s_p50"] == 90.0
 
 
 def test_main_skips_missing_models_without_gpu():
     """모델 디렉터리가 없으면 GPU 없이 skipped로 기록하고 종료한다."""
     with tempfile.TemporaryDirectory() as d:
         _isolate(d)
-        out = bt.main("smoke", ["base", "nvfp4-awq"], 2, 16)
-        assert sorted(out["skipped"]) == ["base", "nvfp4-awq"]
+        out = bt.main("smoke", ["base", "nvfp4-awq-transformers"], 2, 16)
+        assert sorted(out["skipped"]) == ["base", "nvfp4-awq-transformers"]
         assert out["targets"] == {} and out["errors"] == {}
         assert "backend" in out["hardware"]
 
@@ -105,13 +105,13 @@ def test_ensure_base_first_auto_adds_base():
     """양자화만 요청 + base 기록 없음 → base 선행."""
     with tempfile.TemporaryDirectory() as d:
         _isolate(d)
-        assert bt.ensure_base_first("smoke", ["nvfp4-awq"]) == ["base", "nvfp4-awq"]
+        assert bt.ensure_base_first("smoke", ["nvfp4-awq-transformers"]) == ["base", "nvfp4-awq-transformers"]
 
 
 def test_ensure_base_first_keeps_explicit_base():
     with tempfile.TemporaryDirectory() as d:
         _isolate(d)
-        assert bt.ensure_base_first("smoke", ["base", "nvfp4-awq"]) == ["base", "nvfp4-awq"]
+        assert bt.ensure_base_first("smoke", ["base", "nvfp4-awq-transformers"]) == ["base", "nvfp4-awq-transformers"]
 
 
 def test_ensure_base_first_skips_when_recorded():
@@ -122,7 +122,7 @@ def test_ensure_base_first_skips_when_recorded():
         outdir.mkdir(parents=True)
         prior = {"servebench": {"targets": {"base": {"1": {"tok_per_s_p50": 42.0}}}}}
         (outdir / "checks.json").write_text(json.dumps(prior), encoding="utf-8")
-        assert bt.ensure_base_first("smoke", ["nvfp4-awq"]) == ["nvfp4-awq"]
+        assert bt.ensure_base_first("smoke", ["nvfp4-awq-transformers"]) == ["nvfp4-awq-transformers"]
 
 
 def test_ensure_base_first_base_only_untouched():
