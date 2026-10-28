@@ -560,7 +560,7 @@ def _check_readme(
         f"{size_gb} GB",
         "## Quantization spec",
         "## Base vs this model",
-        "| Item | This Model | Base | Verdict or Notes |",
+        "| # | Configuration | Base Model | This Model | Change | Notes |",
         "## Usage - transformers",
         "## Usage - vLLM",
         "## License and source",
@@ -575,15 +575,18 @@ def _check_readme(
     repo_id = hf_repo_id(target, mode)
     if repo_id not in text:
         errors.append(f"{readme_fp}: 카드에 현재 타겟 repo id('{repo_id}') 없음")
-    if "| Item | This Model | Base | Verdict or Notes |" in text:
-        body_rows = [ln for ln in text.splitlines() if ln.startswith("| ") and " | " in ln[2:]]
-        metric_rows = [r for r in body_rows if not r.startswith("| Item") and not r.startswith("| ---")]
+    if "| # | Configuration | Base Model | This Model | Change | Notes |" in text:
+        # 비교표 섹션만 본다 (같은 카드의 다른 표가 있어도 여기서만 판정한다).
+        section = text.split("## Base vs this model", 1)[1]
+        section = section.split("\n## ", 1)[0]
+        body_rows = [ln for ln in section.splitlines() if ln.startswith("| ") and " | " in ln[2:]]
+        metric_rows = [r for r in body_rows if not r.startswith("| #") and not r.startswith("| ---")]
         if not metric_rows:
             errors.append(f"{readme_fp}: 비교표에 측정 행 없음")
         elif not allow_missing_metrics:
             for r in metric_rows:
                 cells = [c.strip() for c in r.strip().strip("|").split("|")]
-                if len(cells) >= 2 and cells[1] in ("—", "", "None", "nan"):
+                if len(cells) >= 4 and cells[3] in ("—", "", "None", "nan"):
                     errors.append(f"{readme_fp}: 비교표 This Model 컬럼에 미기입 결측치: {r}")
                     break
 

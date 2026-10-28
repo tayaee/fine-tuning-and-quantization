@@ -31,7 +31,7 @@ from quant_common import (
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
-# 실측 캐시 스냅샷 (config/common.env BASE_REVISION과 같은 값 — 카드에 박아 둔다)
+# 실측 캐시 스냅샷 (config/common.env BASE_REVISION과 같은 값 — 카드에 기록한다)
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
 ALL_TARGETS = ["awq-w3", "awq-w5", "nvfp4-awq", "nvfp4-gptq"]
 COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modeling_raon1_mini.py")
@@ -42,7 +42,7 @@ FORBIDDEN_FRONTMATTER = ("extra_gated_",)
 BENCH_LABELS = {"gsm8k": "GSM8K"}
 BENCH_ORDER = ("gsm8k",)
 
-# 타겟별 on-disk 포맷과 README에 박을 양자화 사양
+# 타겟별 on-disk 포맷과 README에 기재할 양자화 사양
 SPECS: dict[str, dict] = {
     "awq-w5": {
         "format": PACK_QUANTIZED, "tags": ["w5a16", "gptq"],
@@ -199,6 +199,18 @@ def _evalset_meta(mode: str) -> str:
     return f"{m.get('dataset')}@{rev}, seed={m.get('seed')}, n={m.get('written_n')}"
 
 
+def _vllm_base_bench():
+    """s0-13 컨테이너 경로로 잰 vLLM 베이스(NVFP4 릴리스) 고정-8문항 결과. 없으면 {}."""
+    try:
+        with open(os.path.join(SHARED, "outputs", "s0-bench-vllm-s4",
+                               "results.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+
+
 def _checks(mode: str) -> dict:
     """s7 검사 결과(checks.json): gsm8k 통계 · kmmluko · format · servebench."""
     path = Path(SHARED) / "outputs" / f"eval-{mode}" / "checks.json"
@@ -327,17 +339,47 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     blat = f"{brun.get('req_latency_s_p50', '—')} s"
     serve_note = f"in-process {bkend} (no fused kernels; not a serving claim)"
 
+    vb = _vllm_base_bench()
+    v_rows = vb.get("rows") or []
+    v_ok = sum(1 for r in v_rows if r.get("ok"))
+    v_lat = (round(sum(r.get("latency_s", 0) for r in v_rows) / len(v_rows), 3)
+             if v_rows else None)
+
+    def _pct(new, old):
+        try:
+            return f"{(float(new) / float(old) - 1) * 100:+.0f}%"
+        except (TypeError, ValueError, ZeroDivisionError):
+            return "—"
+
+    b_tps = brun.get('tok_per_s_p50')
+    c_tps = run.get('tok_per_s_p50')
+    tf_change = ("—" if b_tps is None or c_tps is None
+                 else f"{b_tps} → {c_tps} ({_pct(c_tps, b_tps)})")
+    b_lat = brun.get('req_latency_s_p50')
+    c_lat = run.get('req_latency_s_p50')
+    lat_change = ("—" if b_lat is None or c_lat is None
+                  else f"{b_lat} → {c_lat} ({_pct(c_lat, b_lat)})")
+    size_change = ("—" if base_size is None else f"{base_size} → {size_gb} ({_pct(size_gb, base_size)})")
     rows = [
-        "| Item | This Model | Base | Verdict or Notes |",
-        "| --- | ---: | ---: | --- |",
-        f"| PPL (in-domain) | {_fmt(cur_p.get('ppl'), 3)} | {_fmt(base_p.get('ppl'), 3)} | {ppl_note} |",
-        f"| Checkpoint size | {size_gb} GB | {base_size} GB | {size_note} |",
-        f"| Storage format | `{SPECS[target]['format']}` | BF16 (dequantized) | {fmt_note} |",
-        f"| GSM8K accuracy | {_fmt(c_acc, 3)} ({c_cnt}) | {_fmt(b_acc, 3)} ({b_cnt}) | {gsm_note} |",
-        f"| KMMLU accuracy | {_fmt(k_acc, 3)} ({k_cnt}) | {_fmt(kb_acc, 3)} ({kb_cnt}) | {k_note} |",
-        f"| Format compliance | {_fmt(f_rate, 3)} ({f_cnt}) | {_fmt(fb_rate, 3)} ({fb_cnt}) | {f_note} |",
-        f"| Throughput C=1 | {tps} | {btps} | {serve_note} |",
-        f"| Latency p50 | {lat} | {blat} | same fixed workload |",
+        "| # | Configuration | Base Model | This Model | Change | Notes |",
+        "| --- | --- | ---: | ---: | --- | --- |",
+        f"| 1 | PPL (in-domain) | {_fmt(base_p.get('ppl'), 3)} | {_fmt(cur_p.get('ppl'), 3)} | Δ {_fmt(delta, 3)} | {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd}) |",
+        f"| 2 | Checkpoint size | {base_size} GB | {size_gb} GB | {size_change} | {size_note} |",
+        f"| 3 | Storage format | BF16 (dequantized) | `{SPECS[target]['format']}` | — | {fmt_note} |",
+        f"| 4 | GSM8K accuracy | {_fmt(b_acc, 3)} ({b_cnt}) | {_fmt(c_acc, 3)} ({c_cnt}) | drop {gsm_drop} | {gsm_note} |",
+        f"| 5 | KMMLU accuracy | {_fmt(kb_acc, 3)} ({kb_cnt}) | {_fmt(k_acc, 3)} ({k_cnt}) | drop {_fmt(_kmmluko_drop(checks, target), 3)} | {k_note} |",
+        f"| 6 | Format compliance | {_fmt(fb_rate, 3)} ({fb_cnt}) | {_fmt(f_rate, 3)} ({f_cnt}) | — | {f_note} |",
+        f"| 7 | Throughput C=1, transformers | {btps} | {tps} | {tf_change} | reference only[^2] — both slow eager (stack, not a quantization regression) |",
+        f"| 8 | Latency p50, transformers | {blat} | {lat} | {lat_change} | same fixed workload[^2] |",
+        f"| 9 | vLLM fork latency, s (C=1; n={len(v_rows)}, ok={v_ok}) | {v_lat if v_lat is not None else '—'} | n/a[^1] | unmeasurable — see note |",
+        "",
+        "[^2]: Rows 7–8 measured on a single NVIDIA GB10 (DGX Spark), in-process "
+        "transformers, same fixed 8 prompts. Numbers move with hardware — compare "
+        "Base vs This Model relatively, not absolutely.",
+        "[^1]: Quant·vLLM unmeasurable: the pinned fork deletes llmcompressor "
+        "`quantization_config` at engine init (serves only MXFP8-release/ModelOpt "
+        "profiles → `TypeError`), and upstream vLLM lacks RDA `linear_attention`. "
+        "Serving these PTQ checkpoints needs a ModelOpt-NVFP4 recipe.",
     ]
     return "\n".join(rows) + "\n"
 
@@ -552,23 +594,65 @@ What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
 ## Usage - transformers
 
 ```bash
+uv venv --python 3.12 .venv && source .venv/bin/activate  # ignore any active venv
 uv pip install "torch" --index-url https://download.pytorch.org/whl/cu130  # GB10/Blackwell; CPU-only hosts can skip the index-url
 uv pip install "transformers==5.14.1" "compressed-tensors" accelerate huggingface_hub
 uvx --from huggingface_hub hf auth login  # the base repo is gated (approval is automatic)
 ```
 
 ```python
-import torch
+# app.py - copied from the base model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_id = "{repo_id}"  # or the published repo id below
-tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id, dtype=torch.bfloat16, device_map="auto", trust_remote_code=True
+model_id = "{repo_id}"
+
+tokenizer = AutoTokenizer.from_pretrained(
+    model_id,
+    trust_remote_code=True,
 )
-messages = [{{"role": "user", "content": "What is 2+2?"}}]
-inputs = tok.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(model.device)
-print(tok.decode(model.generate(inputs, max_new_tokens=256)[0], skip_special_tokens=True))
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    dtype="auto",
+    device_map="auto",
+    trust_remote_code=True,
+)
+
+messages = [
+    {{"role": "user", "content": "Tell me about KRAFTON AI."}}
+]
+inputs = tokenizer.apply_chat_template(
+    messages,
+    add_generation_prompt=True,
+    tokenize=True,
+    return_dict=True,
+    return_tensors="pt",
+    enable_thinking=True,
+    truncate_history_thinking=False,
+).to(model.device)
+
+outputs = model.generate(
+    **inputs,
+    max_new_tokens=32768,
+    do_sample=True,
+    temperature=1.0,
+    top_p=0.95,
+    top_k=20,
+    min_p=0.0,
+    repetition_penalty=1.0,
+    presence_penalty=1.5,
+)
+
+# The reasoning ends at </think>; the answer follows it.
+response = outputs[0][inputs["input_ids"].shape[-1]:].tolist()
+think_end = tokenizer.convert_tokens_to_ids("</think>")
+split = response.index(think_end) + 1 if think_end in response else 0
+reasoning = tokenizer.decode(response[:split], skip_special_tokens=True).strip()
+answer = tokenizer.decode(response[split:], skip_special_tokens=True).strip()
+print("Reasoning:\\n" + reasoning)
+print("\\nAnswer:\\n" + answer)
+```
+```bash
+python app.py  # runs in .venv above
 ```
 
 ## Usage - vLLM

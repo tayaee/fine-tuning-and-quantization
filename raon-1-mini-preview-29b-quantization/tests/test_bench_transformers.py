@@ -139,5 +139,12 @@ def test_hardware_keys():
     assert hw["backend"] == "transformers"
 
 
+def test_prompts_match_servebench():
+    """s4-28과 s4-25는 같은 고정 8프롬프트를 쓴다 (복사본 드리프트 방지)."""
+    sb = _load_script("s4-25-servebench.py")
+    assert list(bt.PROMPTS) == list(sb.PROMPTS), "벤치 프롬프트 불일치 (입력 데이터 통일 깨짐)"
+    assert len(bt.PROMPTS) == 8
+
+
 if __name__ == "__main__":
     raise SystemExit(run_standalone(dict(globals())))

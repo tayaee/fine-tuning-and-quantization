@@ -191,7 +191,7 @@ def test_prep_generates_readme_with_required_sections(workspace):
     assert "extra_gated" not in readme, "원본 KRAFTON gated 필드를 복사하면 안 된다"
     # 단일 비교표(베이스 대비 바뀐 점)가 있어야 한다 (영문 카드)
     assert "## Base vs this model" in readme, "comparison section missing"
-    assert "| Item | This Model | Base | Verdict or Notes |" in readme
+    assert "| # | Configuration | Base Model | This Model | Change | Notes |" in readme
     assert "## Acceptance criteria" not in readme, "old criteria section remains"
     assert "## Check 1" not in readme, "old check sections remain"
     assert "## Serving performance" not in readme, "old serving section remains"
@@ -245,7 +245,7 @@ def test_prep_readme_ppl_delta_has_three_decimals(workspace):
     fp.write_text(json.dumps(data), encoding="utf-8")
     assert prep.prepare_target("smoke", "nvfp4-awq", allow_missing_metrics=True)["ok"] is True
     readme = (d / "README.md").read_text(encoding="utf-8")
-    assert "| PPL (in-domain) | 8.109 | 8.110 |" in readme
+    assert "| 1 | PPL (in-domain) | 8.110 | 8.109 |" in readme
     assert "Δ -0.001" in readme and "Accept" in readme
     assert "-0.00 |" not in readme
     _make_model_dir(workspace / "models", "raon-nvfp4-awq-smoke")
@@ -369,7 +369,7 @@ def test_prep_then_dry_run_succeeds(workspace, capsys):
 
 
 def test_dry_run_covers_every_target(workspace, capsys):
-    """READY 타겟은 보고하되, 디렉터리가 없는 타겟은 SKIP로 넘기고 rc가 깨지지 않는다."""
+    """READY 타겟은 보고하되, 디렉터리가 없는 타겟은 SKIP로 넘기고 rc를 유지한다."""
     _make_model_dir(workspace / "models", "raon-awq-w5-full", fmt=PACK)
     _write_metrics(workspace, "full")
     assert prep.run("full", "awq-w5", allow_missing_metrics=True)["ok"] is True

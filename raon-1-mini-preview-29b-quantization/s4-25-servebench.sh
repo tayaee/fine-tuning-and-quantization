@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s4-25-servebench.sh [smoke|full] — 서빙 처리량 측정 (Tier 3: 배포 성능 증거).
-# 이미 떠 있는 OpenAI-호환 서버(s9-13-vllm-serve-one.sh)에 요청을 보내 TTFT와 출력 tok/s를 잰다.
+# 이미 떠 있는 OpenAI-호환 서버(s7-13-chat.sh가 띄운 것)에 요청을 보내 TTFT와 출력 tok/s를 잰다.
 # 서버가 없으면 skip(사유 기록). 결과: outputs/eval-<mode>/servebench-<mode>.json
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
