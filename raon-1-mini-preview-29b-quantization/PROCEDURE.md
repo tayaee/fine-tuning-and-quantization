@@ -94,8 +94,8 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 ## TARGETS는 필수
 
 타깃을 받는 개별 스크립트는 **양자화 대상을 명시해야** 실행한다. 미지정 시 가능한 값
-(`awq-w3-transformers`/`awq-w5-transformers`/`nvfp4-awq-transformers`/`nvfp4-gptq-transformers`/`all`)을 찍고 exit 2 한다 —
-"인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
+(`awq-w3-transformers`/`awq-w5-transformers`/`nvfp4-awq-vllm`/`nvfp4-awq-transformers`/`nvfp4-gptq-transformers`/`all`)을 찍고 exit 2 한다 —
+"인수 깜빡하고 5종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
 대상 스크립트
 (`s4-00-measure-ppl` · `s4-15-answer-benchmarks-quantized` · `s4-60-measure-speed__transformers-only` ·
@@ -118,7 +118,7 @@ TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all�
 | CALIB_N | 8 | 256 |
 | SEQ_LEN | 512 | 2048 |
 | EVAL_N / PPL_N | 8 / 8 | 200 / 32 |
-| 실행순 | awq-w3-transformers → awq-w5-transformers → nvfp4-awq-transformers → nvfp4-gptq-transformers (알파벳순) | 동일 (밤샘 권장) |
+| 실행순 | awq-w3-transformers → awq-w5-transformers → nvfp4-awq-vllm → nvfp4-awq-transformers → nvfp4-gptq-transformers (알파벳순) | 동일 (밤샘 권장) |
 | 2노드 분할 | 타깃별 원샷을 노드에 나눔: `run-s1-to-s4-smoke-awq-{w3,w5}.sh` (spark1) + `run-s1-to-s4-smoke-nvfp4-{awq,gptq}.sh` (spark2). dequant는 lock+freshness로 1회만 실행된다 | 동일 분할 (`run-s1-to-s4-full-*.sh`) |
 
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)

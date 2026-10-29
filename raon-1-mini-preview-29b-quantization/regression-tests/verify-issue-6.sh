@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # verify-issue-6.sh — issue-6(Stage 1 수용 기준 계약화) 승인 기준 기계 검증
-#   1. config/acceptance.toml 존재 + 4타깃 기준 정의 + 스키마 정상
+#   1. config/acceptance.toml 존재 + 5타깃 기준 정의 + 스키마 정상
 #   2. s1-04-setup-acceptance-criteria.py/.sh 존재(+실행 권한), 스키마 오류 시 rc=1, 산출물 생성
 #   3. s4-00-measure-ppl__transformers-only.py / s4-70-verify-upload.py / s4-65-update-readme.py 가 기준을 참조
 #   4. 단위 테스트 (tests/test_sdlc.py)
@@ -13,11 +13,11 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 # 1. 계약 파일
 [ -f "$ROOT/config/acceptance.toml" ] || { echo "FAIL: config/acceptance.toml 없음"; fail=1; }
 for tok in 'version = 1' '[targets.awq-w3-transformers]' '[targets.awq-w5-transformers]' '[targets.nvfp4-awq-transformers]' \
-           '[targets.nvfp4-gptq-transformers]' 'quant_format' 'size_gb' 'ppl_delta_warn' 'ppl_delta_max' \
+           '[targets.nvfp4-awq-vllm]' '[targets.nvfp4-gptq-transformers]' 'quant_format' 'size_gb' 'ppl_delta_warn' 'ppl_delta_max' \
            '[gates.release]'; do
   grep -qF -- "$tok" "$ROOT/config/acceptance.toml" || { echo "FAIL: acceptance.toml에 '$tok' 없음"; fail=1; }
 done
-echo "OK: config/acceptance.toml 존재 + 4타깃 기준 + gates.release"
+echo "OK: config/acceptance.toml 존재 + 5타깃 기준 + gates.release"
 
 # 2. s1-04-acceptance
 for f in s1-04-setup-acceptance-criteria.py s1-04-setup-acceptance-criteria.sh sdlc.py; do

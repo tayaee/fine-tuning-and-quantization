@@ -47,7 +47,7 @@ acc = _load_script("s1-04-setup-acceptance-criteria.py")
 def test_acceptance_toml_is_valid():
     data = sdlc.load_acceptance()
     assert sdlc.acceptance_errors(data) == [], sdlc.acceptance_errors(data)
-    for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"):
+    for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"):
         spec = data["targets"][t]
         assert spec["quant_format"]
         assert len(spec["size_gb"]) == 2
@@ -210,7 +210,7 @@ def test_gate_acceptance_requires_snapshot():
         assert out.returncode == 1
         (Path(d) / "acceptance-smoke.json").write_text(
             json.dumps({"version": 1, "targets": {t: {"quant_format": "x", "ppl_delta_max": 1.0}
-                                                 for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")}}),
+                                                 for t in ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")}}),
             encoding="utf-8",
         )
         out = _bash(f'source gates.inc; RQ_OUTPUTS="{d}"; rq_gate_acceptance smoke')

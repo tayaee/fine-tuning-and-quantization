@@ -24,10 +24,16 @@ import os
 from typing import Any
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
-ALL_TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
+ALL_TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 # 평가 벤치마크 = 표준 GSM8K (openai/gsm8k main/test).
 # 프롬프트는 s4-05-prep-gsm8k.sh가 결정론적으로 만든다(수작업 표본 금지).
 BENCHMARKS = ["gsm8k"]
+
+#: transformers로 적재 불가한 타깃 (vLLM 전용 포맷). s4-15 .sh의 rq_skip_transformers와
+#: 같은 계약: 직접 호출(`--target all` 포함)해도 ModelOpt 가중치를 transformers로
+#: 읽으려다 죽지 않고 SKIP 기록을 남긴다. 품질 게이트는 s7 서빙이 맡는다.
+def _unloadable_targets() -> set[str]:
+    return set(os.environ.get("TRANSFORMERS_UNLOADABLE", "nvfp4-awq-vllm").split())
 QUANT_OF = {"nvfp4-awq-transformers": "compressed-tensors",
             "nvfp4-gptq-transformers": "compressed-tensors", "awq-w5-transformers": "compressed-tensors", "awq-w3-transformers": "compressed-tensors"}
 
@@ -364,6 +370,13 @@ def run_target(mode: str, target: str, backend: str | None, prompts: list[dict],
                max_tokens: int | None = None, tp: int | None = None,
                batch_size: int | None = None) -> int:
     """타겟 1개를 생성해 <target>.jsonl + bench/<bench>/<target>.jsonl 저장."""
+    if target in _unloadable_targets():
+        outdir = OUTDIR(mode)
+        os.makedirs(outdir, exist_ok=True)
+        with open(os.path.join(outdir, f"{target}.jsonl"), "w", encoding="utf-8") as f:
+            f.write(json.dumps({"skipped": "transformers-unloadable (vLLM-only format)"}) + "\n")
+        print(f"[{mode}/{target}] SKIP transformers-unloadable (vLLM-only format)")
+        return 0
     name = resolve(target, mode)
     if not os.path.exists(f"{name}/config.json"):
         hint = " (run s2-01-dequant-mxfp8-into-bf16.sh first)" if target == "base" else ""

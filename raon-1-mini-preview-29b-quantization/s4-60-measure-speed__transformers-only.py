@@ -34,7 +34,13 @@ from sdlc import checks_path, merge_check
 
 SHARED = Path(os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared"))
 
-ALL_TARGETS = ("base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
+ALL_TARGETS = ("base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
+
+#: transformers로 적재 불가한 타깃 (vLLM 전용 포맷). .sh의 rq_skip_transformers와
+#: 같은 계약: 직접 호출(`--targets all` 포함)해도 ModelOpt 가중치를 transformers로
+#: 읽으려다 죽지 않고 skipped으로 기록한다. 품질 게이트는 s7 서빙이 맡는다.
+def _unloadable_targets() -> set[str]:
+    return set(os.environ.get("TRANSFORMERS_UNLOADABLE", "nvfp4-awq-vllm").split())
 
 #: s4-50-servebench__vllm-only.py와 동일한 고정 워크로드 (수치 비교 공정용).
 PROMPTS = [
@@ -59,7 +65,7 @@ def resolve_target(target: str, mode: str) -> Path:
 
 
 def parse_targets(s: str) -> list[str]:
-    """콤마/공백 구분 타깃 목록. "all"이면 base + 4종."""
+    """콤마/공백 구분 타깃 목록. "all"이면 base + 5종."""
     tokens = [t.strip() for t in s.replace(",", " ").split() if t.strip()]
     if not tokens or "all" in tokens:
         return list(ALL_TARGETS)
@@ -288,6 +294,10 @@ def main(mode: str, targets: list[str], n: int, max_tokens: int) -> dict:
     results: dict = {"mode": mode, "backend": "transformers", "targets": {},
                      "skipped": {}, "errors": {}}
     for t in targets:
+        if t in _unloadable_targets():
+            results["skipped"][t] = "transformers-unloadable (vLLM-only format)"
+            print(f"[skip] {t}: {results['skipped'][t]}")
+            continue
         path = resolve_target(t, mode)
         if not (path / "config.json").is_file():
             results["skipped"][t] = f"missing model: {path} (양자화/dequant를 먼저 실행하라)"

@@ -37,7 +37,7 @@ def _isolate(d: str) -> None:
 
 
 def test_parse_targets():
-    assert bt.parse_targets("all") == ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
+    assert bt.parse_targets("all") == ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
     assert bt.parse_targets("base,nvfp4-awq-transformers") == ["base", "nvfp4-awq-transformers"]
     assert bt.parse_targets("nvfp4-awq-transformers") == ["nvfp4-awq-transformers"]
     try:

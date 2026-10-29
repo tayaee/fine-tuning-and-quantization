@@ -1,9 +1,9 @@
-"""s4-00-measure-ppl__transformers-only.py — base + 4종 in-domain PPL + Δ판정.
+"""s4-00-measure-ppl__transformers-only.py — base + 5종 in-domain PPL + Δ판정.
 텍스트: calib 파일에서 앞 N개 (학습-캘리브 동일 분포).
 판정 (base 대비 Δ): <0.3 Accept / 0.3~1.0 Conditional / >=1.0 Discard.
 출력: outputs/ppl-<mode>/<target>.json + 집계 outputs/ppl-<mode>/summary.json
 
-메모리 격리(요구사항 1): 29B 모델 5개를 한 프로세스에서 순차 로드하면 GB10
+메모리 격리(요구사항 1): 29B 모델 6개를 한 프로세스에서 순차 로드하면 GB10
 (128GB 통합 메모리)에서 이전 모델의 CUDA 캐시/파편화가 반환되지 않아 2번째
 로드부터 OOM이 난다. 그래서 타겟 1개를 측정하고 나서 gc.collect() +
 torch.cuda.empty_cache()로 cuda 캐시를 비우고, s4-00-measure-ppl__transformers-only.sh는 타겟마다
@@ -30,8 +30,14 @@ if TYPE_CHECKING:
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 # base = 19-dequant 복원본(공정 기준). 이슈는 bf16으로 부르지만 기존 산출물
 # 파일명(base.json)과 s4-07-eval/s4-20-aggregate-gsm8k 관례가 base라 별칭으로만 받는다.
-ALL_TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
+ALL_TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 TARGET_ALIASES = {"bf16": "base", "raon-bf16": "base"}
+
+#: transformers로 적재 불가한 타깃 (vLLM 전용 포맷). .sh의 rq_skip_transformers와
+#: 같은 계약: 직접 호출(`--targets all` 포함)해도 ModelOpt 가중치를 transformers로
+#: 읽으려다 죽지 않고 SKIP 기록을 남긴다. 품질 게이트는 s7 서빙이 맡는다.
+def _unloadable_targets() -> set[str]:
+    return set(os.environ.get("TRANSFORMERS_UNLOADABLE", "nvfp4-awq-vllm").split())
 
 
 def MODELS_DIR(mode: str) -> str:
@@ -72,7 +78,7 @@ def model_exists(model_name: str) -> bool:
 
 
 def release_memory() -> None:
-    """측정 직후 CUDA 캐시/파이썬 힙 반환 (5종 순차 로드 OOM 방지)."""
+    """측정 직후 CUDA 캐시/파이썬 힙 반환 (6종 순차 로드 OOM 방지)."""
     gc.collect()
     try:
         import torch
@@ -183,10 +189,20 @@ def measure_targets(mode: str, n: int, targets: str | None, seq: int, outdir: st
     targets에 base가 없더라도 디렉터리에 캐시된 base.json이 있으면 판정 기준으로 쓴다.
     """
     os.makedirs(outdir, exist_ok=True)
+    parsed = parse_targets(targets)
+    for t in parsed:
+        if t in _unloadable_targets():
+            with open(os.path.join(outdir, f"{t}.json"), "w", encoding="utf-8") as f:
+                json.dump({"target": t, "skipped": "transformers-unloadable (vLLM-only format)"}, f,
+                          ensure_ascii=False, indent=2)
+            print(f"SKIP {t}: transformers-unloadable (vLLM-only format)")
+    measurable = [t for t in parsed if t not in _unloadable_targets()]
+    if not measurable:
+        return summarize(outdir)
     calib_file = os.environ.get("CALIB_FILE") or f"{SHARED}/datasets/raon-calibration-{8 if mode == 'smoke' else 256}.jsonl"
     texts = load_calib_texts(n, calib_file)
     measured: set[str] = set()
-    for t in parse_targets(targets):
+    for t in measurable:
         name = resolve(t, mode)
         if not model_exists(name):
             hint = " (run s2-01-dequant-mxfp8-into-bf16.sh first)" if t == "base" else ""

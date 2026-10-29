@@ -14,7 +14,7 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 # 1. s4-00-measure-ppl__transformers-only.py 계약
 for tok in 'def parse_targets(' 'TARGET_ALIASES = {"bf16": "base"' \
            'def summarize(' 'def measure_targets(' 'def release_memory(' \
-           'os.environ.get("TARGETS")' 'TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]'; do
+           'os.environ.get("TARGETS")' 'TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]'; do
   grep -qF "$tok" "$ROOT/s4-00-measure-ppl__transformers-only.py" || { echo "FAIL: s4-00-measure-ppl__transformers-only.py에 '$tok' 없음"; fail=1; }
 done
 grep -q '"--summarize-only"' "$ROOT/s4-00-measure-ppl__transformers-only.py" || { echo "FAIL: --summarize-only 없음"; fail=1; }
@@ -26,14 +26,14 @@ echo "OK: s4-00-measure-ppl__transformers-only.py 타겟 분리/집계 계약"
 n_sub=$(grep -c 's4-00-measure-ppl__transformers-only.py" --mode "\$MODE" --n "\$N" --targets "\$t"' "$ROOT/s4-00-measure-ppl__transformers-only.sh" || true)
 [ "$n_sub" = 1 ] || { echo "FAIL: s4-00-measure-ppl__transformers-only.sh 타겟별 서브프로세스 호출 수=$n_sub (expected 1, 루프 안)"; fail=1; }
 grep -q -- '--summarize-only' "$ROOT/s4-00-measure-ppl__transformers-only.sh" || { echo "FAIL: s4-00-measure-ppl__transformers-only.sh에 --summarize-only 없음"; fail=1; }
-# `all`을 명시 목록으로 펴야 5개 모델이 한 프로세스에 몰리지 않는다 (OOM 회피의 핵심)
+# `all`을 명시 목록으로 펴야 6개 모델이 한 프로세스에 몰리지 않는다 (OOM 회피의 핵심)
 grep -q 'PPL_ALL_TARGETS="base awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-00-measure-ppl__transformers-only.sh" \
   || { echo "FAIL: s4-00-measure-ppl__transformers-only.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 5개 로드 → OOM)"; fail=1; }
 if grep -qE '_t=all(\s|$)' "$ROOT/s4-00-measure-ppl__transformers-only.sh"; then
   echo "FAIL: s4-00-measure-ppl__transformers-only.sh가 'all'을 단일 타겟으로 통과시킴 (프로세스 격리 무효화)"; fail=1
 fi
 grep -q 'EVAL_ALL_TARGETS="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-15-answer-benchmarks-quantized__transformers-only.sh" \
-  || { echo "FAIL: s4-15-answer-benchmarks-quantized__transformers-only.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 4개 로드)"; fail=1; }
+  || { echo "FAIL: s4-15-answer-benchmarks-quantized__transformers-only.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 5개 로드)"; fail=1; }
 if grep -v '^\s*#' "$ROOT/s4-15-answer-benchmarks-quantized__transformers-only.sh" | grep -q -- '--target all'; then
   echo "FAIL: s4-15-answer-benchmarks-quantized__transformers-only.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
 fi

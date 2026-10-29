@@ -33,8 +33,8 @@ ROOT = Path(__file__).resolve().parent
 SHARED = Path(os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared"))
 ACCEPTANCE_PATH = ROOT / "config" / "acceptance.toml"
 
-#: 양자화 타깃 4종 (base는 복원본이라 양자화 대상이 아님).
-QUANT_TARGETS: tuple[str, ...] = ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
+#: 양자화 타깃 5종 (base는 복원본이라 양자화 대상이 아님).
+QUANT_TARGETS: tuple[str, ...] = ("awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
 #: 평가/측정에 참여하는 전체 대상 (base가 기준선).
 ALL_TARGETS: tuple[str, ...] = ("base",) + QUANT_TARGETS
 
@@ -51,6 +51,12 @@ DEFAULT_ACCEPTANCE: dict[str, Any] = {
         "awq-w5-transformers": {
             "quant_format": "pack-quantized",
             "size_gb": [20.0, 35.0],
+            "ppl_delta_warn": 0.3,
+            "ppl_delta_max": 1.0,
+        },
+        "nvfp4-awq-vllm": {
+            "quant_format": "mopt-nvfp4",
+            "size_gb": [15.0, 28.0],
             "ppl_delta_warn": 0.3,
             "ppl_delta_max": 1.0,
         },
