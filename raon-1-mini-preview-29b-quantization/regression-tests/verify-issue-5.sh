@@ -37,14 +37,25 @@ grep -q 'ppl-' "$ROOT/s4-65-update-readme.py" || { echo "FAIL: summary.json(PPL)
 grep -q 'score.json' "$ROOT/s4-65-update-readme.py" || { echo "FAIL: score.json(eval) 미참조"; fail=1; }
 echo "OK: s4-65-update-readme.py 검증/보충/카드 계약"
 
-# 2. README 카드 필수 내용 + 금지 필드
+# 2. README 카드 필수 내용 + 금지 필드 (실행 예제는 snippets/ 단일 소스)
 for tok in 'license: apache-2.0' 'base_model: ' 'base_model_relation: quantized' \
            'library_name: transformers' 'pipeline_tag: text-generation' \
            'da4cf162c8613993f2189ebb438a5f9a23f3e5ca' 'Apache' \
-           'trust_remote_code=True' '--trust-remote-code' '--quantization {' 'compressed-tensors' \
            'FORBIDDEN_FRONTMATTER' 'extra_gated_'; do
   grep -qF -- "$tok" "$ROOT/s4-65-update-readme.py" || { echo "FAIL: 카드 템플릿에 '$tok' 없음"; fail=1; }
 done
+for tok in 'trust_remote_code=True'; do
+  grep -qF -- "$tok" "$ROOT/snippets/nvfp4-awq-transformers/app-transformers.py" \
+    || { echo "FAIL: 스니펫에 '$tok' 없음"; fail=1; }
+done
+for _t in awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers; do
+  grep -qF -- '--trust-remote-code' "$ROOT/snippets/$_t/serve-vllm.sh" \
+    || { echo "FAIL: snippets/$_t/serve-vllm.sh에 '--trust-remote-code' 없음"; fail=1; }
+done
+grep -qF -- '--quantization compressed-tensors' "$ROOT/snippets/nvfp4-awq-transformers/serve-vllm.sh" \
+  || { echo "FAIL: 스니펫에 '--quantization compressed-tensors' 없음"; fail=1; }
+grep -qF -- 'compressed-tensors' "$ROOT/snippets/nvfp4-awq-transformers/usage-transformers.sh" \
+  || { echo "FAIL: 스니펫에 'compressed-tensors' 없음"; fail=1; }
 grep -q 'FORBIDDEN_FRONTMATTER' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: frontmatter 금지 필드 검사 없음"; fail=1; }
 echo "OK: README 카드 섹션 + extra_gated_* 금지"

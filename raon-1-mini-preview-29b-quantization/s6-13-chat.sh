@@ -36,7 +36,41 @@ for _e in $RQ_HF_TARGETS_RUN; do
   fi
   {
     echo "[model] $REPO $(date --iso-8601=s) mode=$MODE target=$t"
-    uv run python - "$LOCAL" "$REPO" "$OUT" <<'PY'
+    # 카드의 app-transformers.py 스니펫과 동일 파일 실행 (s6 검증 = README instruction 검증).
+    # 스니펫이 없는 타깃(직접 repo 지정 등)은 기존 인라인 검사로 폴백한다.
+    _snip_tgt="$_tgt"
+    if [ -z "$_snip_tgt" ]; then
+      for _c in awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers; do
+        case "$t" in *"$_c"*) _snip_tgt="$_c" ;; esac
+      done
+    fi
+    _snip="$RQ_ROOT/snippets/$_snip_tgt/app-transformers.py"
+    if [ -n "$_snip_tgt" ] && [ -f "$_snip" ]; then
+      echo "[snippet] $_snip (repo=$REPO)"
+      sed "s|__REPO_ID__|$REPO|g" "$_snip" > "$OUTDIR/app-$t.py"
+      uv run python "$OUTDIR/app-$t.py" > "$OUTDIR/app-$t.out" 2>&1; rc=$?
+      cat "$OUTDIR/app-$t.out"
+      if [ "$rc" -eq 0 ] && awk '/^Answer:$/{f=1;next} f && NF{found=1} END{exit !found}' "$OUTDIR/app-$t.out"; then
+        _ans="$(awk '/^Answer:$/{f=1;next} f{print}' "$OUTDIR/app-$t.out" | head -c 500)"
+        "$RQ_PY" - "$REPO" "$OUT" "$_ans" <<'PY'
+import json, sys
+repo, out_path, ans = sys.argv[1], sys.argv[2], sys.argv[3]
+ok = bool(ans.strip())
+print("CHAT", "OK" if ok else "EMPTY", ":", ans[:200])
+with open(out_path, "w", encoding="utf-8") as f:
+    json.dump({"target": repo, "ok": ok, "response_head": ans[:500]},
+              f, ensure_ascii=False, indent=2)
+if not ok:
+    raise SystemExit("FAIL: 빈 응답")
+PY
+        rc=$?
+      else
+        echo "FAIL: 스니펫 실행 실패 또는 빈 Answer (rc=$rc)"
+        rc=1
+      fi
+    else
+      echo "[fallback] 인라인 chat 검사 (스니펫 없음: $_snip)"
+      uv run python - "$LOCAL" "$REPO" "$OUT" <<'PY'
 import json, sys, torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 local_dir, repo, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -57,6 +91,8 @@ with open(out_path, "w", encoding="utf-8") as f:
 if not ok:
     raise SystemExit("FAIL: 빈 응답")
 PY
+      rc=$?
+    fi
   } > "$LOGF" 2>&1 && rc=0 || rc=$?
   if [ "$rc" -eq 0 ]; then echo "[OK] $t" >> "$LOGF"; tail -n 2 "$LOGF"
   else echo "[CHAT-FAIL] rc=$rc $(date --iso-8601=s)" >> "$LOGF"; FAIL=1; fi

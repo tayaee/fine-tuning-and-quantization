@@ -28,8 +28,8 @@ GROUP_FIRST = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"}
 def _steps(group: str) -> list[int]:
     nums = []
     for p in ROOT.glob(f"{group}-*.sh"):
-        if "-stop-" in p.name:
-            continue  # 단독 정리 유틸리티(s0-11/s0-21)는 3단위 예외
+        if "-stop-" in p.name or "-clean-" in p.name:
+            continue  # 단독 정리 유틸리티(s0-11/s0-21, s6-00/s7-00)는 3단위 예외
         m = re.match(rf"{group}-(\d{{2}})-", p.name)
         assert m, f"naming rule 위반: {p.name}"
         nums.append(int(m.group(1)))

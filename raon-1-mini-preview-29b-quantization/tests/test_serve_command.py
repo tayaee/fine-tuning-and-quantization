@@ -1,10 +1,12 @@
-"""tests/test_serve_command.py — README vLLM 명령 ≡ s7 frozen 래퍼 동등성.
+"""tests/test_serve_command.py — README vLLM 명령 ≡ snippets ≡ s7 frozen 래퍼 동등성.
 
-s7 frozen 래퍼는 README 모델카드의 vLLM 명령을 as-is로 실행한다. 양쪽이
-어긋나면 "카드대로 했는데 안 돈다"가 된다. llmcompressor 4종 양자화 타깃은
+실행 예제의 단일 소스는 snippets/<target>/serve-vllm.sh 다:
+  - README 모델카드는 __REPO_ID__ 치환 후 verbatim 포함한다 (test_snippets.py).
+  - s7 frozen 래퍼는 그 스니펫을 repo id 고정으로 exec한다.
+양쪽이 어긋나면 "카드대로 했는데 안 돈다"가 된다. llmcompressor 4종 양자화 타깃은
 repo id를 제외하고 동일 명령이다. ModelOpt판(nvfp4-awq-vllm)은
 --quantization 없이 자동 감지된다. s7-13-chat.sh이 타깃→래퍼 테이블로 묶는다.
-개별 래퍼 번호: awq-w3-transformers=01, awq-w5-transformers=04, nvfp4-awq-vllm=06, nvfp4-awq-transformers=07, nvfp4-gptq-transformers=10.
+개별 래퍼 번호: awq-w3-transformers=01, awq-w5-transformers=01, nvfp4-awq-vllm=01, nvfp4-awq-transformers=01, nvfp4-gptq-transformers=01.
 """
 
 from __future__ import annotations
@@ -49,6 +51,27 @@ def _vllm_block(readme: str) -> str:
     return m.group(1)
 
 
+def _vllm_serve_block(readme: str) -> str:
+    """README Usage - vLLM 섹션의 serve 명령 블록 (`vllm serve` 포함).
+
+    ModelOpt 카드는 소스 빌드 블록이 먼저 나오므로, serve 명령을 포함한
+    블록을 골라야 한다 (첫 bash 블록이 빌드 블록이다).
+    """
+    sec = readme.split("## Usage - vLLM", 1)[1]
+    blocks = re.findall(r"```bash\n(.*?)```", sec, re.DOTALL)
+    assert blocks, "vLLM bash 블록 없음"
+    for b in blocks:
+        if "vllm serve" in b:
+            return b.removesuffix("\n")
+    raise AssertionError("vLLM serve 블록 없음")
+
+
+def _snippet_serve(target: str, repo: str) -> str:
+    """snippets/<target>/serve-vllm.sh 를 repo id 치환한 형태 (카드와 대조용)."""
+    text = (prep.SNIPPET_DIR / target / "serve-vllm.sh").read_text(encoding="utf-8")
+    return text.removesuffix("\n").replace("__REPO_ID__", repo)
+
+
 def _norm(block: str, model: str) -> str:
     """모델 ref를 플레이스홀더로 치환한 정규형 (README repo id vs s7 래퍼 경로 차이 흡수)."""
     return block.replace(model, "<MODEL>")
@@ -79,7 +102,7 @@ def test_readme_commands_share_one_template():
 def test_readme_modelopt_command_has_no_quantization_flag():
     """ModelOpt판 카드는 --quantization 없이 자동 감지 + 대문자 repo id다."""
     r = prep.render_readme("nvfp4-awq-vllm", "full", {}, {}, 20.0)
-    b = _vllm_block(r)
+    b = _vllm_serve_block(r)
     assert "--quantization" not in b, "ModelOpt 카드에 --quantization 잔존"
     assert "tayaee/Raon-1-mini-preview-nvfp4-awq-vllm" in b
     for f in ("--tensor-parallel-size 1", "--trust-remote-code",
@@ -114,13 +137,14 @@ def test_s713_table_matches_readme_spec():
 
 
 def test_wrapper_scripts_embed_readme_block():
-    """s7 frozen 래퍼 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
+    """s7 frozen 래퍼 = 스니펫 exec이며, 스니펫은 full 카드의 vLLM serve 블록과 바이트 동일하다."""
     for t in QUANT_TARGETS:
-        slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
+        repo = prep.hf_repo_id(t, "full")
         wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-serve-{WRAPPER_SLUG[t]}-from-hf-with-vllm-fork.sh").read_text(encoding="utf-8")
-        r = prep.render_readme(t, "full", {}, {}, 20.0)
-        assert _vllm_block(r) in wrapper, f"wrapper 본문 불일치: {t}"
         assert wrapper.startswith("#!/usr/bin/env bash"), t
+        assert f"snippets/{t}/serve-vllm.sh" in wrapper, f"wrapper가 스니펫을 실행하지 않음: {t}"
+        r = prep.render_readme(t, "full", {}, {}, 20.0)
+        assert _vllm_serve_block(r) == _snippet_serve(t, repo), f"스니펫≠카드 serve 블록: {t}"
 
 
 def test_s713_manages_wrapper_server():
@@ -133,13 +157,12 @@ def test_s713_manages_wrapper_server():
 
 
 def test_no_separate_production_script():
-    """production 별도 스크립트 없음 — 01/04/07/10 래퍼 자체가 production이다."""
+    """production 별도 스크립트 없음 — 스니펫 자체가 production 명령이다."""
     assert not list(ROOT.glob("*-serve-vllm-production.sh"))
     for t in QUANT_TARGETS:
-        slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-serve-{WRAPPER_SLUG[t]}-from-hf-with-vllm-fork.sh").read_text(encoding="utf-8")
-        assert "--max-model-len 262144" in wrapper, t
-        assert "--kv-cache-dtype fp8_e4m3" in wrapper, t
+        body = _snippet_serve(t, prep.hf_repo_id(t, "full"))
+        assert "--max-model-len 262144" in body, t
+        assert "--kv-cache-dtype fp8_e4m3" in body, t
 
 
 if __name__ == "__main__":

@@ -122,6 +122,18 @@ VLLM_SERVE = {
 VLLM_REF = "raon-1-mini-preview"
 VLLM_REPO = "https://github.com/krafton-ai/vllm.git"
 
+#: 코드 샘플 단일 소스 — 모델 카드에 박히는 실행 예제와 s6/s7 검증이 같은 파일에서 나온다.
+#: 카드 렌더·검증 스크립트가 이 파일들을 직접 읽어 쓰므로, 온라인 README를 긁어
+#: 다시 테스트할 필요가 없다 (s6/s7 검증 = README instruction 검증).
+#: __REPO_ID__ 자리는 렌더/실행 시점에 full/smoke repo id(또는 로컬 모델 경로)로 바뀐다.
+SNIPPET_DIR = Path(__file__).resolve().parent / "snippets"
+
+
+def load_snippet(target: str, name: str, repo_id: str) -> str:
+    """snippets/<target>/<name> 내용을 repo id 치환 후 돌려준다 (fence 제외 본문)."""
+    text = (SNIPPET_DIR / target / name).read_text(encoding="utf-8")
+    return text.removesuffix("\n").replace("__REPO_ID__", repo_id)
+
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
@@ -571,30 +583,19 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     repo_id = hf_repo_id(target, mode)
     comparison = _comparison_table(target, mode, ppl, scores, size_gb, checks)
     is_mopt = target == "nvfp4-awq-vllm"
-    quant_flag = VLLM_SERVE[target]["quant"]
-    vllm_quant_line = f"  --quantization {quant_flag} \\\n" if quant_flag else ""
     storage_format = "modelopt_fp4" if is_mopt else "compressed-tensors"
-    install_line = '"nvidia-modelopt" ' if is_mopt else '"compressed-tensors" '
-    gb10_build_block = """```bash
-mkdir -p /tmp/raon-1-mini-preview-nvfp4-awq-vllm && cd /tmp/raon-1-mini-preview-nvfp4-awq-vllm
-VENV=/tmp/raon-1-mini-preview-nvfp4-awq-vllm/.venv
-uv venv --python 3.12 "$VENV"
-uv pip install --python "$VENV/bin/python" "torch==2.13.0" --index-url https://download.pytorch.org/whl/cu130
-uv pip install --python "$VENV/bin/python" setuptools wheel packaging ninja cmake setuptools_rust setuptools_scm
-MAX_JOBS=8 TORCH_CUDA_ARCH_LIST="12.0a+PTX" uv pip install --python "$VENV/bin/python" --no-build-isolation "vllm @ git+https://github.com/tayaee/raon-vllm-spark.git@gb10-support"
-"$VENV/bin/python" -c "import vllm; print('vllm', vllm.__version__)"
-```"""
+    # 실행 예제는 snippets/<target>/ 단일 소스에서 읽는다 (s6/s7 검증과 동일 파일).
+    gb10_build_block = ("```bash\n" + load_snippet(target, "build-vllm-gb10.sh", repo_id) + "\n```"
+                        if is_mopt else "")
+    serve_body = load_snippet(target, "serve-vllm.sh", repo_id)
+    usage_body = load_snippet(target, "usage-transformers.sh", repo_id)
+    app_body = load_snippet(target, "app-transformers.py", repo_id)
     if is_mopt:
-        vllm_serve_launcher = ("VENV=/tmp/raon-1-mini-preview-nvfp4-awq-vllm/.venv  # same venv as the build step\n"
-                               "$VENV/bin/vllm serve")
         vllm_step1 = ("Step 1 — build vLLM from source (GB10). Prerequisites: `nvcc`\n"
                       "from CUDA 13.0 on `PATH`, ~50 GB free disk. Run verbatim in order;\n"
                       "the last line verifies the install.\n\n" + gb10_build_block + "\n\n"
                       "Step 2 — serve with the built binary.")
     else:
-        vllm_serve_launcher = (f"VLLM_REF=\"{VLLM_REF}\"\n"
-                               f"VLLM_USE_PRECOMPILED=1 uvx --from \"vllm @ git+{VLLM_REPO}@${{VLLM_REF}}\" \\\n"
-                               "  vllm serve")
         vllm_step1 = ""
     prebuilt_note_lines = [
         "> On B300 / RTX 5090 — the GPUs KRAFTON tested — the precompiled fork works",
@@ -662,63 +663,11 @@ What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
 ## Usage - transformers
 
 ```bash
-mkdir -p /tmp/raon-1-mini-preview-nvfp4-awq-transformers && cd /tmp/raon-1-mini-preview-nvfp4-awq-transformers
-uv venv --python 3.12 .venv && source .venv/bin/activate  # ignore any active venv
-uv pip install "torch" --index-url https://download.pytorch.org/whl/cu130  # GB10/Blackwell; CPU-only hosts can skip the index-url
-uv pip install "transformers==5.14.1" {install_line}accelerate huggingface_hub
-uvx --from huggingface_hub hf auth login  # the base repo is gated (approval is automatic)
+{usage_body}
 ```
 
 ```python
-# app.py - copied from the base model
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-model_id = "{repo_id}"
-
-tokenizer = AutoTokenizer.from_pretrained(
-    model_id,
-    trust_remote_code=True,
-)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    dtype="auto",
-    device_map="auto",
-    trust_remote_code=True,
-)
-
-messages = [
-    {{"role": "user", "content": "Tell me about KRAFTON AI."}}
-]
-inputs = tokenizer.apply_chat_template(
-    messages,
-    add_generation_prompt=True,
-    tokenize=True,
-    return_dict=True,
-    return_tensors="pt",
-    enable_thinking=True,
-    truncate_history_thinking=False,
-).to(model.device)
-
-outputs = model.generate(
-    **inputs,
-    max_new_tokens=32768,
-    do_sample=True,
-    temperature=1.0,
-    top_p=0.95,
-    top_k=20,
-    min_p=0.0,
-    repetition_penalty=1.0,
-    presence_penalty=1.5,
-)
-
-# The reasoning ends at </think>; the answer follows it.
-response = outputs[0][inputs["input_ids"].shape[-1]:].tolist()
-think_end = tokenizer.convert_tokens_to_ids("</think>")
-split = response.index(think_end) + 1 if think_end in response else 0
-reasoning = tokenizer.decode(response[:split], skip_special_tokens=True).strip()
-answer = tokenizer.decode(response[split:], skip_special_tokens=True).strip()
-print("Reasoning:\\n" + reasoning)
-print("\\nAnswer:\\n" + answer)
+{app_body}
 ```
 ```bash
 python app.py  # runs in .venv above
@@ -735,21 +684,7 @@ scaled to 128 GB. The 18 RDA layers hold fixed-size state and only the 7 MLA
 layers keep KV cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
 
 ```bash
-{vllm_serve_launcher} {repo_id} \\
-  --host 127.0.0.1 --port 8000 \\
-  --served-model-name {repo_id} \\
-  --tensor-parallel-size {VLLM_SERVE[target]['tp']} \\
-{vllm_quant_line}  --max-model-len 262144 \\
-  --max-num-batched-tokens 16384 \\
-  --max-num-seqs 128 \\
-  --gpu-memory-utilization 0.85 \\
-  --kv-cache-dtype fp8_e4m3 \\
-  --enable-prefix-caching \\
-  --reasoning-parser raon_1 \\
-  --tool-call-parser raon_1 \\
-  --enable-auto-tool-choice \\
-  --trust-remote-code \\
-  --default-chat-template-kwargs '{{"enable_thinking": true, "truncate_history_thinking": false}}'
+{serve_body}
 ```
 
 > `--kv-cache-dtype fp8_e4m3` and the `raon_1` parsers are fork features —

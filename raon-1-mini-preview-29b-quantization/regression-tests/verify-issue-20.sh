@@ -21,17 +21,23 @@ grep -q 'name += "-smoke"' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: smoke 접미사 규칙 없음"; fail=1; }
 echo "OK: repo id 규칙(43/46/49 동일)"
 
-# 2. 카드가 repo id를 쓴다
+# 2. 카드가 repo id를 쓴다 (실행 예제는 snippets/ 단일 소스, __REPO_ID__ 자리)
 grep -q 'def render_readme(target: str' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: 카드 렌더가 대상 1개가 아님"; fail=1; }
 grep -q 'def model_label(target: str, mode: str) -> str:' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: model_label() 없음"; fail=1; }
 grep -q '# {repo_id}' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: 카드 제목이 repo id가 아님"; fail=1; }
-grep -q 'model_id = "{repo_id}"' "$ROOT/s4-65-update-readme.py" \
-  || { echo "FAIL: transformers 예제가 repo id를 안 씀"; fail=1; }
-grep -q '{vllm_serve_launcher} {repo_id}' "$ROOT/s4-65-update-readme.py" \
-  || { echo "FAIL: vLLM 예제가 repo id를 안 씀"; fail=1; }
+grep -q 'def load_snippet(' "$ROOT/s4-65-update-readme.py" \
+  || { echo "FAIL: 스니펫 로더 없음"; fail=1; }
+grep -q '__REPO_ID__", repo_id)' "$ROOT/s4-65-update-readme.py" \
+  || { echo "FAIL: 스니펫 repo id 치환 없음"; fail=1; }
+for _t in awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers; do
+  grep -q 'model_id = "__REPO_ID__"' "$ROOT/snippets/$_t/app-transformers.py" \
+    || { echo "FAIL: snippets/$_t/app-transformers.py에 repo id 자리 없음"; fail=1; }
+  grep -q '__REPO_ID__' "$ROOT/snippets/$_t/serve-vllm.sh" \
+    || { echo "FAIL: snippets/$_t/serve-vllm.sh에 repo id 자리 없음"; fail=1; }
+done
 echo "OK: 카드 표·제목·사용 예제 = repo id"
 
 # 3. 업로드 전 감사가 repo id 기준
