@@ -2,10 +2,10 @@
 # s3-01-quant-nvfp4-gptq-transformers.sh [smoke|full] [calib] — 원본→NVFP4 (GPTQ).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-rq_banner "s3-01-quant-nvfp4-gptq-transformers" "Stage 3 - GPTQ + NVFP4 quantization (models/raon-nvfp4-gptq-<mode>)"
+rq_banner "s3-01-quant-nvfp4-gptq-transformers" "Stage 3 - GPTQ + NVFP4 quantization (models/raon-nvfp4-gptq-transformers-<mode>)"
 CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$RQ_DATASETS/raon-calibration-$CALIB.jsonl}"
-OUT="$RQ_MODELS/raon-nvfp4-gptq-$MODE"
+OUT="$RQ_MODELS/raon-nvfp4-gptq-transformers-$MODE"
 rq_lock "$OUT"
 : "${RQ_SRC:=$RQ_MODELS/raon-bf16}"
 rq_require "$CALIB_FILE" "$RQ_SRC/config.json"

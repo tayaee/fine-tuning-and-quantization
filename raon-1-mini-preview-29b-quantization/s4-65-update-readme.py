@@ -34,7 +34,7 @@ SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b
 BASE_MODEL = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview")
 # 실측 캐시 스냅샷 (config/common.env BASE_REVISION과 같은 값 — 카드에 기록한다)
 BASE_REVISION = os.environ.get("BASE_REVISION") or "da4cf162c8613993f2189ebb438a5f9a23f3e5ca"
-ALL_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
+ALL_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers", "nvfp4-awq-vllm"]
 COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modeling_raon1_mini.py")
 REQUIRED_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json")
 # 원본 KRAFTON 레포에는 gated 동의 필드가 있다. 라이선스 요청이 아니므로 절대 복사하지 않는다.
@@ -575,6 +575,43 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     vllm_quant_line = f"  --quantization {quant_flag} \\\n" if quant_flag else ""
     storage_format = "modelopt_fp4" if is_mopt else "compressed-tensors"
     install_line = '"nvidia-modelopt" ' if is_mopt else '"compressed-tensors" '
+    gb10_build_block = """```bash
+cd /tmp/raon-vllm-spark
+VENV=/tmp/raon-vllm-spark/.venv
+uv venv --python 3.12 "$VENV"
+uv pip install --python "$VENV/bin/python" "torch==2.13.0" --index-url https://download.pytorch.org/whl/cu130
+uv pip install --python "$VENV/bin/python" setuptools wheel packaging ninja cmake setuptools_rust setuptools_scm
+MAX_JOBS=8 TORCH_CUDA_ARCH_LIST="12.0a+PTX" uv pip install --python "$VENV/bin/python" --no-build-isolation "vllm @ git+https://github.com/tayaee/raon-vllm-spark.git@gb10-support"
+"$VENV/bin/python" -c "import vllm; print('vllm', vllm.__version__)"
+```"""
+    if is_mopt:
+        vllm_serve_launcher = ("VENV=/tmp/raon-vllm-spark/.venv  # same venv as the build step\n"
+                               "$VENV/bin/vllm serve")
+        vllm_step1 = ("Step 1 — build vLLM from source (GB10). Prerequisites: `nvcc`\n"
+                      "from CUDA 13.0 on `PATH`, ~50 GB free disk. Run verbatim in order;\n"
+                      "the last line verifies the install.\n\n" + gb10_build_block + "\n\n"
+                      "Step 2 — serve with the built binary.")
+    else:
+        vllm_serve_launcher = (f"VLLM_REF=\"{VLLM_REF}\"\n"
+                               f"VLLM_USE_PRECOMPILED=1 uvx --from \"vllm @ git+{VLLM_REPO}@${{VLLM_REF}}\" \\\n"
+                               "  vllm serve")
+        vllm_step1 = ""
+    prebuilt_note_lines = [
+        "> On B300 / RTX 5090 — the GPUs KRAFTON tested — the precompiled fork works",
+        "> without a source build: replace `$VENV/bin/vllm` above with",
+        '> `VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@raon-1-mini-preview" vllm`.',
+    ]
+    vllm_prebuilt_note = ("\n".join(prebuilt_note_lines) + "\n") if is_mopt else ""
+    if is_mopt:
+        vllm_intro = ("The Raon-1-mini family uses a custom architecture, so stock vLLM cannot serve\n"
+                      "it. On GB10 (sm_121) the KRAFTON precompiled fork fails at engine init, so\n"
+                      "build the GB10 fork from source first (one-time), then serve with it.")
+    else:
+        vllm_intro = (f"The Raon-1-mini family uses a custom architecture, so stock vLLM cannot serve\n"
+                      f"it. Use the KRAFTON vLLM fork (`{VLLM_REF}` branch). `uvx --from`\n"
+                      "pins that exact fork without touching your environment\n"
+                      "(`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start\n"
+                      "compiles the model's kernels and takes about 10 minutes).")
 
     tags = ", ".join(["raon", "moe", storage_format, *spec["tags"]])
     fm = [
@@ -688,20 +725,16 @@ python app.py  # runs in .venv above
 
 ## Usage - vLLM
 
-The Raon-1-mini family uses a custom architecture, so stock vLLM cannot serve
-it. Use the KRAFTON vLLM fork (`{VLLM_REF}` branch). `uvx --from`
-pins that exact fork without touching your environment
-(`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start
-compiles the model's kernels and takes about 10 minutes).
+{vllm_intro}
+
+{vllm_step1}
 
 Full-context serving on a single GB10: flags follow the vendor B300 profile,
 scaled to 128 GB. The 18 RDA layers hold fixed-size state and only the 7 MLA
 layers keep KV cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
 
 ```bash
-VLLM_REF="{VLLM_REF}"
-VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
-  vllm serve {repo_id} \\
+{vllm_serve_launcher} {repo_id} \\
   --host 127.0.0.1 --port 8000 \\
   --served-model-name {repo_id} \\
   --tensor-parallel-size {VLLM_SERVE[target]['tp']} \\
@@ -723,8 +756,7 @@ VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+{VLLM_REPO}@${{VLLM_REF}}" \\
 > On a busy node lower `--gpu-memory-utilization` (e.g. `0.3`).
 > Compatibility note: the fork is verified against KRAFTON's own checkpoints
 > (`modelopt_fp4` NVFP4).{(' This checkpoint uses the same `modelopt_fp4` loader path.' if is_mopt else ' This repository’s other checkpoints use the `compressed-tensors` format, which is a different loader path — serving them on the fork is untested.')}
-
-## License and source
+{vllm_prebuilt_note}## License and source
 
 - Apache License 2.0. The code in this repository is distributed under Apache-2.0.
 - Base model: [{BASE_MODEL}](https://huggingface.co/{BASE_MODEL}) (rev `{BASE_REVISION}`), Apache-2.0.
@@ -925,9 +957,6 @@ def run(mode: str, targets: str | list | None = None, allow_missing_metrics: boo
             print(f"-> {model_dir(mode, t)}/README.md (모델 카드, 업로드됨)")
         else:
             print(f"FAIL {t}: {'; '.join(r['errors'])}")
-    if reports:
-        sp = summary_path(mode)
-        print(f"-> {sp} (전체 양자화 버전 비교 리포트)")
     print(f"-> {fp} (ok={manifest['ok']})")
     return manifest
 

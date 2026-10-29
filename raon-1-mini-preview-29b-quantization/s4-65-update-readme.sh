@@ -25,5 +25,13 @@ fi
 rm -f "$PREP_LOG"
 
 echo ---- result ----
-(set -x; ls -l "$RQ_MODELS"/raon-*-"$MODE"/README.md)
+# 요청한 타깃의 카드만 보여준다 (모드 전체 glob 금지 — 건드리지 않은 타깃이 섞임)
+_targets_disp="$TARGETS"
+if [ "$_targets_disp" = all ]; then
+  _targets_disp="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"
+fi
+for _t in $(echo "$_targets_disp" | tr ',' ' '); do
+  (set -x; ls -l "$RQ_MODELS/raon-$_t-$MODE/README.md")
+done
+(set -x; ls -l "$RQ_MODELS/README-$MODE.md")
 (set -x; cat "$RQ_OUTPUTS/prep-upload-$MODE.json")

@@ -2,10 +2,10 @@
 # s3-01-quant-awq-w3-transformers.sh [smoke|full] [calib] — 원본→AWQ-W3A16-g128 (품질 위험, smoke 먼저).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-rq_banner "s3-01-quant-awq-w3-transformers" "Stage 3 - AWQ smoothing + GPTQ W3A16 quantization (models/raon-awq-w3-<mode>)"
+rq_banner "s3-01-quant-awq-w3-transformers" "Stage 3 - AWQ smoothing + GPTQ W3A16 quantization (models/raon-awq-w3-transformers-<mode>)"
 CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$RQ_DATASETS/raon-calibration-$CALIB.jsonl}"
-OUT="$RQ_MODELS/raon-awq-w3-$MODE"
+OUT="$RQ_MODELS/raon-awq-w3-transformers-$MODE"
 rq_lock "$OUT"
 : "${RQ_SRC:=$RQ_MODELS/raon-bf16}"
 rq_require "$CALIB_FILE" "$RQ_SRC/config.json"

@@ -30,7 +30,7 @@ grep -q '# {repo_id}' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: 카드 제목이 repo id가 아님"; fail=1; }
 grep -q 'model_id = "{repo_id}"' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: transformers 예제가 repo id를 안 씀"; fail=1; }
-grep -q 'vllm serve {repo_id}' "$ROOT/s4-65-update-readme.py" \
+grep -q '{vllm_serve_launcher} {repo_id}' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: vLLM 예제가 repo id를 안 씀"; fail=1; }
 echo "OK: 카드 표·제목·사용 예제 = repo id"
 

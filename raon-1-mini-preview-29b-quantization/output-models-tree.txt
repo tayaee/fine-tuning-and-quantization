@@ -5,17 +5,19 @@
 
 smoke (CALIB_N=8, SEQ_LEN=512, EVAL_N=8, PPL_N=8 — 10분 목표)
   base raon-bf16 (19-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
-  awq-w3 raon-awq-w3-smoke [22] (U) => tayaee/Raon-1-mini-preview-awq-w3-smoke
-  awq-w5 raon-awq-w5-smoke [25] (U) => tayaee/Raon-1-mini-preview-awq-w5-smoke
-  nvfp4-awq raon-nvfp4-awq-smoke [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-smoke
-  nvfp4-gptq raon-nvfp4-gptq-smoke [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq-smoke
+  awq-w3-transformers raon-awq-w3-transformers-smoke [22] (U) => tayaee/Raon-1-mini-preview-awq-w3-transformers-smoke
+  awq-w5-transformers raon-awq-w5-transformers-smoke [25] (U) => tayaee/Raon-1-mini-preview-awq-w5-transformers-smoke
+  nvfp4-awq-transformers raon-nvfp4-awq-transformers-smoke [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-transformers-smoke
+  nvfp4-gptq-transformers raon-nvfp4-gptq-transformers-smoke [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq-transformers-smoke
+  nvfp4-awq-vllm raon-nvfp4-awq-vllm-smoke [34] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-vllm-smoke
 
 full (CALIB_N=256, SEQ_LEN=2048, EVAL_N=200, PPL_N=32 — 밤샘 권장)
   base raon-bf16 (19-dequant 복원, 48 PPL 기준·50 eval 대조용, 미업로드)
-  awq-w3 raon-awq-w3-full [22] (U) => tayaee/Raon-1-mini-preview-awq-w3
-  awq-w5 raon-awq-w5-full [25] (U) => tayaee/Raon-1-mini-preview-awq-w5
-  nvfp4-awq raon-nvfp4-awq-full [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq
-  nvfp4-gptq raon-nvfp4-gptq-full [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq
+  awq-w3-transformers raon-awq-w3-transformers-full [22] (U) => tayaee/Raon-1-mini-preview-awq-w3-transformers
+  awq-w5-transformers raon-awq-w5-transformers-full [25] (U) => tayaee/Raon-1-mini-preview-awq-w5-transformers
+  nvfp4-awq-transformers raon-nvfp4-awq-transformers-full [28] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-transformers
+  nvfp4-gptq-transformers raon-nvfp4-gptq-transformers-full [31] (U) => tayaee/Raon-1-mini-preview-nvfp4-gptq-transformers
+  nvfp4-awq-vllm raon-nvfp4-awq-vllm-full [34] (U) => tayaee/Raon-1-mini-preview-nvfp4-awq-vllm
 
 # 설계 결정
 # 1. full 업로드명은 무접미사, smoke는 -smoke. smoke는 절대 업로드하지 않으나

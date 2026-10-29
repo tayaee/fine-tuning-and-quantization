@@ -24,10 +24,10 @@ if [ -z "$TARGET" ]; then
   SUF=""; NUM=""; QUANT="compressed-tensors"; VTP_DEF=1
 else
   case "$TARGET" in
-    awq-w3-transformers)      SUF="raon-awq-w3-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    awq-w5-transformers)      SUF="raon-awq-w5-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    nvfp4-awq-transformers)   SUF="raon-nvfp4-awq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    nvfp4-gptq-transformers)  SUF="raon-nvfp4-gptq-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
+    awq-w3-transformers)      SUF="raon-awq-w3-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
+    awq-w5-transformers)      SUF="raon-awq-w5-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
+    nvfp4-awq-transformers)   SUF="raon-nvfp4-awq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
+    nvfp4-gptq-transformers)  SUF="raon-nvfp4-gptq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
     nvfp4-awq-vllm) SUF="raon-nvfp4-awq-vllm-$MODE"; QUANT=""; VTP_DEF=1; NUM=01 ;;
     *) echo "target: awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers" >&2; exit 2 ;;
   esac
