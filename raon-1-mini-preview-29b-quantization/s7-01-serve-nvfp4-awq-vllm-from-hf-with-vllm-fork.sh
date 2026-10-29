@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# s7-01-test-nvfp4-awq-vllm-with-vllm-fork.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다 (production, nvfp4-awq-vllm).
+# s7-01-serve-nvfp4-awq-vllm-with-vllm-fork-from-hf-with-vllm-fork.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다 (production, nvfp4-awq-vllm).
 # ModelOpt NVFP4는 --quantization 없이 자동 감지된다 (compressed-tensors 지정 금지).
-# 사용: ./s7-01-test-nvfp4-awq-vllm-with-vllm-fork.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
+# 사용: ./s7-01-serve-nvfp4-awq-vllm-with-vllm-fork-from-hf-with-vllm-fork.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
 # GB10: VLLM_REF에 gb10-support 패치가 있어야 한다. KRAFTON 원본에는 sm_121이 없어서
 # vsplit에서 죽는다. 당장은 로컬 빌드(~/git/raon-vllm-spark-gb10-support/scripts/gb10/serve-tayaee-nvfp4.sh)로
 # 검증하고, 포크에 머지된 뒤 이 스크립트의 VLLM_REF를 올린다.

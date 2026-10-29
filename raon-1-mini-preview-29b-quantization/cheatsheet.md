@@ -16,12 +16,12 @@ MODE=full TARGETS=nvfp4-awq-transformers ./s4-31-prep-upload.sh   # 타깃도 �
 
 ```bash
 # s0. 베이스모델 검증 (transformers half + vLLM half, 각 chat·pi·벤치)
-./s0-01-load-transformers.sh full      # transformers 서버 기동 (endpoint 상주)
+./s0-01-load-base-from-hf-with-transformers.sh full      # transformers 서버 기동 (endpoint 상주)
 ./s0-04-chat-transformers.sh full       # endpoint chat 검증
 ./s0-07-picall-transformers.sh full     # endpoint pi 툴콜 검증 (고정 질문)
 ./s0-10-bench-transformers.sh full      # endpoint 벤치 측정 + 서버 정리
 ./s0-11-stop-transformers.sh            # 잔존 transformers 서버 수동 정리 (3단위 예외)
-./s0-13-load-vllm.sh full               # 포크로 베이스 서빙 (서버 상주)
+./s0-13-serve-base-from-hf-with-vllm-fork.sh full               # 포크로 베이스 서빙 (서버 상주)
 ./s0-16-chat-vllm.sh full               # 서빙 chat 검증
 ./s0-19-picall-vllm.sh full             # 서빙 모델 pi 툴콜 검증 (고정 질문)
 ./s0-22-bench-vllm.sh full              # vLLM endpoint 벤치 측정 + 서버 정리
@@ -97,13 +97,13 @@ TARGETS=all DRY_RUN=1 ./s5-01-upload-hf.sh full     # 네트워크 없이 준비
 TARGETS=all ./s5-01-upload-hf.sh full
 
 # s6. 고객 시나리오 (transformers) — Hub 다운로드 → 로딩 → chat → pi
-./s6-01-test-nvfp4-awq-transformers-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
+./s6-01-load-nvfp4-awq-transformers-with-transformers-from-hf-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
 ./s6-13-chat.sh full tayaee/Raon-1-mini-preview-nvfp4-awq-transformers   # HF 모델명 입력도 가능
 ./s6-13-chat.sh full nvfp4-awq-transformers       # chat 검증 (all이면 4종 순차)
 ./s6-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # 임시 서버+pi 툴콜 후 정리
 
 # s7. 고객 시나리오 (vLLM 서빙) — frozen 래퍼 + chat + pi
-./s7-01-test-nvfp4-awq-transformers-with-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
+./s7-01-serve-nvfp4-awq-transformers-with-vllm-fork-from-hf-with-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
 ./s7-13-chat.sh full nvfp4-awq-transformers       # 서버 기동+chat 검증 (서버 상주)
 ./s7-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # pi 검증 후 서버 정리
 ./s7-19-verify-serving-log.sh full   # s7-13/s7-16 로그 → outputs/serve-full.json

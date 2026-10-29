@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s0-13-load-vllm.sh [smoke|full] — 베이스모델을 vLLM 포크로 서빙해 로딩 검증 (Stage 0 절차 5).
+# s0-13-serve-base-from-hf-with-vllm-fork.sh [smoke|full] — 베이스모델을 vLLM 포크로 서빙해 로딩 검증 (Stage 0 절차 5).
 # sm_103/sm_120: 포크 직접 서빙(BASE_MODEL MXFP8).
 # sm_121(GB10/DGX Spark): KRAFTON 카드의 NVFP8+sm121 컨테이너 경로
 # (MXFP8 직접 서빙은 커널 체인으로 불가). 그 외 GPU는 SKIP.
@@ -8,7 +8,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
-rq_banner "s0-13-load-vllm" "Stage 0 - serve the base model with the vLLM fork (load check)"
+rq_banner "s0-13-serve-base-from-hf-with-vllm-fork" "Stage 0 - serve the base model with the vLLM fork (load check)"
 PORT="${PORT:-8000}"
 SERVLOG="$RQ_ROOT/logs/s0-13-serve-base.log"
 PIDF="$RQ_ROOT/logs/s0-serve-base.pid"

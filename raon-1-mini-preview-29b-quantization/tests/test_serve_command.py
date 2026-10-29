@@ -117,7 +117,7 @@ def test_wrapper_scripts_embed_readme_block():
     """s7 frozen 래퍼 본문이 full 카드의 vLLM bash 블록과 바이트 동일하다."""
     for t in QUANT_TARGETS:
         slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-test-{WRAPPER_SLUG[t]}.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-serve-{WRAPPER_SLUG[t]}-from-hf-with-vllm-fork.sh").read_text(encoding="utf-8")
         r = prep.render_readme(t, "full", {}, {}, 20.0)
         assert _vllm_block(r) in wrapper, f"wrapper 본문 불일치: {t}"
         assert wrapper.startswith("#!/usr/bin/env bash"), t
@@ -125,7 +125,7 @@ def test_wrapper_scripts_embed_readme_block():
 
 def test_s713_manages_wrapper_server():
     """s7-13은 frozen 래퍼를 백그라운드로 띄워 slug 확인 후 상주시킨다 (s7-16이 재사용)."""
-    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}.sh"' in S713
+    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-serve-${TARGET}-from-hf-with-vllm-fork.sh"' in S713
     assert 'nohup "$WRAPPER" >"$SERVLOG" 2>&1 &' in S713
     assert 'model-slug.sh' in S713
     assert 's7-serve.pid' in S713
@@ -137,7 +137,7 @@ def test_no_separate_production_script():
     assert not list(ROOT.glob("*-serve-vllm-production.sh"))
     for t in QUANT_TARGETS:
         slug = prep.hf_repo_id(t, "full").split("/", 1)[1]
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-test-{WRAPPER_SLUG[t]}.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-serve-{WRAPPER_SLUG[t]}-from-hf-with-vllm-fork.sh").read_text(encoding="utf-8")
         assert "--max-model-len 262144" in wrapper, t
         assert "--kv-cache-dtype fp8_e4m3" in wrapper, t
 

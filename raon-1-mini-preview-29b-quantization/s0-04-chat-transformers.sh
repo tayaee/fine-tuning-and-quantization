@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s0-04-chat-transformers.sh [smoke|full] — transformers 서빙 endpoint로 chat 검증 (Stage 0 절차 2).
-# 전제: s0-01-load-transformers.sh가 서버를 띄운 상태. PORT(기본 8002).
+# 전제: s0-01-load-base-from-hf-with-transformers.sh가 서버를 띄운 상태. PORT(기본 8002).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo

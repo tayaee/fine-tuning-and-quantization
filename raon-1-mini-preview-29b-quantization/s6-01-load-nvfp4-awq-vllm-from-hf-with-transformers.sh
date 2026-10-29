@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s6-01-test-nvfp4-awq-vllm-with-transformers.sh [smoke|full] — 고객 시나리오: Hub에서 내려받아 transformers 로딩 (nvfp4-awq-vllm).
+# s6-01-load-nvfp4-awq-vllm-with-transformers-from-hf-with-transformers.sh [smoke|full] — 고객 시나리오: Hub에서 내려받아 transformers 로딩 (nvfp4-awq-vllm).
 # README Usage-transformers와 동일한 절차 (읽기 전용, 산출물 변경 없음).
 # smoke는 -smoke repo, full만 정식 repo를 본다. repo 미발행이면 FAIL(고객이 받을 수 없음).
 # NOTE: ModelOpt NVFP4는 transformers 내장 modelopt 로더로 읽힌다 (compressed-tensors 아님).
@@ -7,7 +7,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 source "$RQ_ROOT/config/s6-customer.inc"
 rq_repro_echo
-rq_banner "s6-01-test-nvfp4-awq-vllm-with-transformers" "Stage 6 - customer scenario: download from Hub and load with transformers (nvfp4-awq-vllm)"
+rq_banner "s6-01-load-nvfp4-awq-vllm-with-transformers-from-hf-with-transformers" "Stage 6 - customer scenario: download from Hub and load with transformers (nvfp4-awq-vllm)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 TARGET="nvfp4-awq-vllm"
 if rq_skip_transformers "$TARGET"; then

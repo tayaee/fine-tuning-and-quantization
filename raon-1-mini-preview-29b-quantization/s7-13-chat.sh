@@ -51,7 +51,7 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   rq_log "port $PORT 사용 중 — 기존 서버를 재사용 (pidfile=$PIDF)"
 else
   rm -f "$SERVLOG"
-  WRAPPER="$RQ_ROOT/s7-$NUM-test-${TARGET}.sh"
+  WRAPPER="$RQ_ROOT/s7-$NUM-serve-${TARGET}-from-hf-with-vllm-fork.sh"
   # ModelOpt NVFP4는 --quantization 없이 자동 감지 (빈 QUANT면 플래그 생략)
   QUANT_FLAG=(); [ -n "$QUANT" ] && QUANT_FLAG=(--quantization "$QUANT")
   if [ -n "${FORK_ROOT:-}" ] && [ -x "$FORK_ROOT/.venv/bin/vllm" ]; then

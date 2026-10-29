@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# s0-01-load-transformers.sh [smoke|full] — 베이스모델을 transformers로 서브 (Stage 0 절차 1).
+# s0-01-load-base-from-hf-with-transformers.sh [smoke|full] — 베이스모델을 transformers로 서브 (Stage 0 절차 1).
 # BASE_MODEL(HF gated)을 transformers 직결 OpenAI 서버로 띄워 endpoint를 연다.
 # s0-04/07/10이 이 endpoint로 chat·pi·벤치를 돌린다. 서버는 상주, s0-10이 내린다.
 # PORT(기본 8002).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
-rq_banner "s0-01-load-transformers" "Stage 0 - serve the base model with transformers (endpoint for chat/pi/bench)"
+rq_banner "s0-01-load-base-from-hf-with-transformers" "Stage 0 - serve the base model with transformers (endpoint for chat/pi/bench)"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 RQ_BASE="${BASE_MODEL:?BASE_MODEL 미설정}"
 PORT="${PORT:-8002}"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # s0-16-chat-vllm.sh [smoke|full] — vLLM 서빙 베이스로 chat 기능 검증 (Stage 0 절차 6).
-# 전제: s0-13-load-vllm.sh가 서버를 띄운 상태. PORT(기본 8000).
+# 전제: s0-13-serve-base-from-hf-with-vllm-fork.sh가 서버를 띄운 상태. PORT(기본 8000).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 rq_repro_echo
 rq_banner "s0-16-chat-vllm" "Stage 0 - verify chat on the vLLM-served base model"
 export UV_NO_SYNC=1; unset VIRTUAL_ENV
 PORT="${PORT:-8000}"
-rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-load-vllm.sh" || {
+rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-serve-base-from-hf-with-vllm-fork.sh" || {
   rc=$?
   if [ "$rc" = 2 ]; then rq_stage_record 0 base skipped "chat-vllm:no-server"; exit 0; fi
   rq_stage_record 0 base fail "chat-vllm:server-failed"; exit 1

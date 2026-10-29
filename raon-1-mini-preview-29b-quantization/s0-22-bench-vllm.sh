@@ -42,7 +42,7 @@ except FileExistsError:
 print(f"scaffold OK {d} prompts={len(prompts)}")
 PY
 fi
-rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-load-vllm.sh" || {
+rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-serve-base-from-hf-with-vllm-fork.sh" || {
   rc=$?
   if [ "$rc" = 2 ]; then rq_stage_record 0 base skipped "bench-vllm:no-server"; exit 0; fi
   rq_stage_record 0 base fail "bench-vllm:server-failed"; exit 1

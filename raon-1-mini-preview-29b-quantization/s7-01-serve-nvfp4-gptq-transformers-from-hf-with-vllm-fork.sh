@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# s7-01-test-nvfp4-gptq-with-vllm-fork.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다 (production, nvfp4-gptq-transformers).
-# 사용: ./s7-01-test-nvfp4-gptq-with-vllm-fork.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
+# s7-01-serve-nvfp4-gptq-with-vllm-fork-from-hf-with-vllm-fork.sh — README 모델카드(full)의 vLLM 명령을 그대로 실행한다 (production, nvfp4-gptq-transformers).
+# 사용: ./s7-01-serve-nvfp4-gptq-with-vllm-fork-from-hf-with-vllm-fork.sh  (Hub repo에서 내려받아 서빙, 첫 기동은 커널 컴파일로 ~10분)
 VLLM_REF="raon-1-mini-preview"
 VLLM_USE_PRECOMPILED=1 uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
   vllm serve tayaee/Raon-1-mini-preview-nvfp4-gptq-transformers \

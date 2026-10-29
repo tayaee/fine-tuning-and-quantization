@@ -43,7 +43,7 @@ PY
 fi
 ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null | "$RQ_PY" -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or [{}])[0].get("id",""))' 2>/dev/null || true)"
 if [ -z "$ACTUAL" ]; then
-  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-01-load-transformers.sh 먼저 실행" >&2
+  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-01-load-base-from-hf-with-transformers.sh 먼저 실행" >&2
   rq_stage_record 0 base fail "bench-transformers:no-server"
   exit 1
 fi

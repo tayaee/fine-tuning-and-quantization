@@ -8,7 +8,7 @@ source "$RQ_ROOT/config/s0-pi.inc"
 rq_repro_echo
 rq_banner "s0-19-picall-vllm" "Stage 0 - pi tool-call check against the vLLM-served base model"
 PORT="${PORT:-8000}"
-rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-load-vllm.sh" || {
+rq_require_serving "$PORT" "$RQ_ROOT/logs/s0-13-serve-base.log" "s0-13-serve-base-from-hf-with-vllm-fork.sh" || {
   rc=$?
   if [ "$rc" = 2 ]; then rq_stage_record 0 base skipped "pi-vllm:no-server"; exit 0; fi
   rq_stage_record 0 base fail "pi-vllm:server-failed"; exit 1

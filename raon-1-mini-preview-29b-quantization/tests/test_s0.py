@@ -13,11 +13,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 S0_SCRIPTS = [
-    "s0-01-load-transformers.sh",
+    "s0-01-load-base-from-hf-with-transformers.sh",
     "s0-04-chat-transformers.sh",
     "s0-07-picall-transformers.sh",
     "s0-10-bench-transformers.sh",
-    "s0-13-load-vllm.sh",
+    "s0-13-serve-base-from-hf-with-vllm-fork.sh",
     "s0-16-chat-vllm.sh",
     "s0-19-picall-vllm.sh",
     "s0-22-bench-vllm.sh",
@@ -84,8 +84,8 @@ def test_s6_s7_customer_sets_are_parallel():
     slugs = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
              "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
     for step, target in zip(steps, targets):
-        a = ROOT / f"s6-{step}-test-{slugs[target]}.sh"
-        b = ROOT / f"s7-{step}-test-{slugs[target]}.sh"
+        a = ROOT / f"s6-{step}-load-{slugs[target]}-from-hf-with-transformers.sh"
+        b = ROOT / f"s7-{step}-serve-{slugs[target]}-from-hf-with-vllm-fork.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
 

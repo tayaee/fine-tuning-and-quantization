@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # s0-07-picall-transformers.sh [smoke|full] — transformers endpoint로 pi 툴콜 검증 (Stage 0 절차 3).
-# 전제: s0-01-load-transformers.sh가 서버를 띄운 상태. PORT(기본 8002).
+# 전제: s0-01-load-base-from-hf-with-transformers.sh가 서버를 띄운 상태. PORT(기본 8002).
 # pi 고정 질문 왕복을 검증한다. 판정 = 서버 TOOL-CALL 증거 + 답에 기대 수 포함.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
@@ -10,7 +10,7 @@ rq_banner "s0-07-picall-transformers" "Stage 0 - pi tool-call check against the 
 PORT="${PORT:-8002}"
 ACTUAL="$(curl -s --max-time 5 "http://localhost:${PORT}/v1/models" 2>/dev/null | "$RQ_PY" -c 'import json,sys; d=json.load(sys.stdin); print((d.get("data") or [{}])[0].get("id",""))' 2>/dev/null || true)"
 if [ -z "$ACTUAL" ]; then
-  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-01-load-transformers.sh 먼저 실행" >&2
+  echo "FAIL: PORT=$PORT 에 서버 없음 — s0-01-load-base-from-hf-with-transformers.sh 먼저 실행" >&2
   rq_stage_record 0 base fail "pi-transformers:no-server"
   exit 1
 fi

@@ -42,9 +42,9 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 `TARGETS=all`로 전체) — 예: `MODE=full ./s4-31-prep-upload.sh full nvfp4-awq-transformers`.
 
 ```bash
-./s0-01-load-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
+./s0-01-load-base-from-hf-with-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
 ./s0-04-chat-transformers.sh full       # s0: chat 생성 검증 (GPU)
-./s0-13-load-vllm.sh full               # s0: 포크로 베이스 서빙 (이후 s0-16/19, s0-22가 정리)
+./s0-13-serve-base-from-hf-with-vllm-fork.sh full               # s0: 포크로 베이스 서빙 (이후 s0-16/19, s0-22가 정리)
 ./s1-01-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
 ./s1-04-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
 ./s1-07-prep-calibration.sh smoke      # calib jsonl 생성

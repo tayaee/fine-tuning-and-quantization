@@ -32,7 +32,7 @@ s<group>-##-<slug>.{sh,py}
 
 | group | 그룹 | 파일 예시 |
 |---:|---|---|
-| 0 | 베이스검증 | `s0-01-load-transformers.sh` … `s0-22-bench-vllm.sh` |
+| 0 | 베이스검증 | `s0-01-load-base-from-hf-with-transformers.sh` … `s0-22-bench-vllm.sh` |
 | 1 | 환경 체인 | `s1-01-setup.sh`, `s1-04-acceptance.{sh,py}`, `s1-07-prep-calibration.{sh,py}`, `s1-10-compat-check.{sh,py}` |
 | 2 | 베이스 복원 | `s2-01-dequant-mxfp8.{sh,py}` |
 | 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-01-quant-nvfp4-gptq-transformers.{sh,py}` |
