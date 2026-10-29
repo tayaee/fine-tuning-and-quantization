@@ -1,4 +1,4 @@
-"""tests/test_ppl_and_eval.py — issue-4 (s4-01-measure-ppl / s4-07-eval / s4-13-aggregate-gsm8k) 단위 테스트.
+"""tests/test_ppl_and_eval.py — issue-4 (s4-00-measure-ppl / s4-07-eval / s4-20-aggregate-gsm8k) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_ppl_and_eval.py
@@ -35,9 +35,9 @@ def _load_script(name: str):
     return mod
 
 
-ppl = _load_script("s4-01-measure-ppl.py")
-ev = _load_script("s4-07-eval.py")
-sc = _load_script("s4-13-aggregate-gsm8k.py")
+ppl = _load_script("s4-00-measure-ppl__transformers-only.py")
+ev = _load_script("s4-eval-backend__transformers-only.py")
+sc = _load_script("s4-20-aggregate-gsm8k__transformers_vllm_both.py")
 BENCHES = ("kmmlu_redux", "gsm8k", "humaneval")
 
 
@@ -56,7 +56,7 @@ def tmp_out(monkeypatch):
         shutil.rmtree(d, ignore_errors=True)
 
 
-# ================================================================ s4-01-measure-ppl
+# ================================================================ s4-00-measure-ppl
 
 
 def test_parse_targets_accepts_comma_and_space(tmp_out, monkeypatch):
@@ -157,7 +157,7 @@ def test_summarize_only_does_not_load_models(tmp_out, monkeypatch):
     assert summary["awq-w5-transformers"]["verdict"] == "Accept"
 
 
-# ================================================================ s4-07-eval
+# ================================================================ s4-10-answer
 
 
 class _FakeTokenizer:
@@ -336,7 +336,7 @@ def test_load_prompts_falls_back_to_calib_file_only_for_pseudo_bench(tmp_out):
 
 def test_load_prompts_fails_when_standard_prompts_missing(tmp_out):
     """표준 GSM8K 프롬프트 파일이 없으면 실패한다(임의 표본 평가 금지)."""
-    with pytest.raises(SystemExit, match="s4-04-prep-gsm8k"):
+    with pytest.raises(SystemExit, match="s4-05-prep-gsm8k"):
         ev.load_prompts("smoke", 3, None, ["gsm8k"])
 
 
@@ -393,9 +393,9 @@ def test_eval_partial_bench_run_keeps_other_bench_rows(tmp_out, monkeypatch):
 
 
 def test_run_transformers_to_score_json_chain(tmp_out, monkeypatch, fake_transformers):
-    """합성 CausalLM → run_transformers → 벤치 JSONL → s4-13-aggregate-gsm8k → score.json.
+    """합성 CausalLM → run_transformers → 벤치 JSONL → s4-20-aggregate-gsm8k → score.json.
 
-    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 s4-13-aggregate-gsm8k가 읽어
+    issue-4 §4의 요구를 그대로: 벤치마크 JSONL이 생기고, 그것을 s4-20-aggregate-gsm8k가 읽어
     산출물의 정확한 Bench 이름으로 score.json에 정확도를 남기는지까지 확인한다.
     """
     mdir = tmp_out / "models" / "base"
@@ -451,7 +451,7 @@ def test_auto_fallback_to_transformers_chain(tmp_out, monkeypatch, fake_transfor
     assert sc.score("smoke")["base"]["n"] == 1
 
 
-# ================================================================ s4-13-aggregate-gsm8k
+# ================================================================ s4-20-aggregate-gsm8k
 
 
 def test_score_answer_kmmlu():

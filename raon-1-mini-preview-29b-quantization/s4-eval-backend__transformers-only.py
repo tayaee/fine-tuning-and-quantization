@@ -1,7 +1,7 @@
-"""s4-07-eval.py — 벤치마크 프롬프트 생성 (vLLM 우선, transformers 폴백).
+"""s4-eval-backend__transformers-only.py — 벤치마크 프롬프트 생성 (vLLM 우선, transformers 폴백).
 입력: outputs/eval-<mode>/prompts-<bench>.jsonl (있으면) — 없으면 calib 파일 뒤 EVAL_N개.
 출력: outputs/eval-<mode>/<target>.jsonl ({bench, prompt, gold, output}).
-        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, s4-13-aggregate-gsm8k는 최상위만 집계)
+        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, s4-20-aggregate-gsm8k는 최상위만 집계)
 
 백엔드(요구사항 2):
   KRAFTON Raon-1-mini-preview는 자체 vllm 포크(krafton-ai/vllm@raon-1-mini-preview)를
@@ -12,7 +12,7 @@
   정상 로드하므로, backend=auto는 vLLM을 먼저 시도하고 커스텀 아키텍처 미지원일 때만
   transformers로 폴백한다 (CUDA OOM 같은 진짜 오류는 삼키지 않고 그대로 올린다).
 
-  uv run s4-07-eval.py --mode smoke --target nvfp4-gptq-transformers --backend auto --tp 2
+  uv run s4-eval-backend__transformers-only.py --mode smoke --target nvfp4-gptq-transformers --backend auto --tp 2
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from typing import Any
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 ALL_TARGETS = ["base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 # 평가 벤치마크 = 표준 GSM8K (openai/gsm8k main/test).
-# 프롬프트는 s4-04-prep-gsm8k.sh가 결정론적으로 만든다(수작업 표본 금지).
+# 프롬프트는 s4-05-prep-gsm8k.sh가 결정론적으로 만든다(수작업 표본 금지).
 BENCHMARKS = ["gsm8k"]
 QUANT_OF = {"nvfp4-awq-transformers": "compressed-tensors",
             "nvfp4-gptq-transformers": "compressed-tensors", "awq-w5-transformers": "compressed-tensors", "awq-w3-transformers": "compressed-tensors"}
@@ -231,7 +231,7 @@ def generate(target: str, model_path: str, prompts: list[str], *, max_tokens: in
         except Exception as e:  # 명시 backend면 그대로, auto면 조건부 폴백
             if backend == "vllm" or not is_unsupported_vllm_error(e):
                 raise
-            print(f"[s4-07-eval] vllm 미지원 → transformers 폴백: {e}")
+            print(f"[s4-eval-backend] vllm 미지원 → transformers 폴백: {e}")
             if on_fallback is not None:
                 on_fallback(str(e))
     bs = batch_size if batch_size is not None else int(os.environ.get("EVAL_BATCH", "1"))
@@ -289,7 +289,7 @@ def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str
     """벤치별 프롬프트 {bench, prompt, gold} 목록.
 
     1) outputs/eval-<mode>/prompts-<bench>.jsonl (정식 벤치 데이터 — 표준 GSM8K는
-       s4-04-prep-gsm8k.sh가 만든 파일이다)
+       s4-05-prep-gsm8k.sh가 만든 파일이다)
     2) **정식 파일이 없으면 실패한다** — calib-tail 폴백은 표준 벤치마크가 아니라
        임의 텍스트 평가라(수작업 표본) 표준 GSM8K 평가로는 쓰지 않는다.
        단, 의사 벤치 "smoke"만 레거시 폴백을 허용한다.
@@ -312,7 +312,7 @@ def load_prompts(mode: str, n: int, calib_file: str | None, benchmarks: list[str
         rows.extend(bench_rows[:n] if n else bench_rows)
     if missing and [b for b in missing if b != "smoke"]:
         raise SystemExit(
-            f"bench 프롬프트 파일 없음: {missing} — ./s4-04-prep-gsm8k.sh {mode} 로 먼저 준비하라"
+            f"bench 프롬프트 파일 없음: {missing} — ./s4-05-prep-gsm8k.sh {mode} 로 먼저 준비하라"
         )
     if rows:
         return rows
@@ -419,7 +419,7 @@ if __name__ == "__main__":
                     help="기본: $RQ_EVAL_BACKEND 또는 auto (vllm 미지원 시 transformers 폴백)")
     ap.add_argument("--max-tokens", type=int, default=None)
     ap.add_argument("--benchmarks", default=",".join(BENCHMARKS),
-                    help="콤마 구분 (기본: 표준 GSM8K). s4-04-prep-gsm8k.sh가 만든 prompts-<bench>.jsonl 사용")
+                    help="콤마 구분 (기본: 표준 GSM8K). s4-05-prep-gsm8k.sh가 만든 prompts-<bench>.jsonl 사용")
     ap.add_argument("--batch-size", type=int, dest="batch_size", default=None,
                     help="transformers 생성 배치 크기 (기본 EVAL_BATCH, 1=단건)")
     a = ap.parse_args()

@@ -14,9 +14,9 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
 # 1. s4 평가 체계 + 구 번호 0건
-for f in s4-04-prep-gsm8k.sh s4-04-prep-gsm8k.py s4-13-aggregate-gsm8k.sh s4-13-aggregate-gsm8k.py \
-         s4-16-prep-kmmluko.sh s4-16-prep-kmmluko.py s4-19-score-kmmluko.sh s4-19-score-kmmluko.py \
-         s4-22-check-format.sh s4-22-check-format.py s4-25-servebench.sh s4-25-servebench.py; do
+for f in s4-05-prep-gsm8k.sh s4-05-prep-gsm8k.py s4-20-aggregate-gsm8k__transformers_vllm_both.sh s4-20-aggregate-gsm8k__transformers_vllm_both.py \
+         s4-25-prep-kmmluko.sh s4-25-prep-kmmluko.py s4-30-score-kmmluko__transformers_vllm_both.sh s4-30-score-kmmluko__transformers_vllm_both.py \
+         s4-35-check-format__transformers_vllm_both.sh s4-35-check-format__transformers_vllm_both.py s4-50-servebench__vllm-only.sh s4-50-servebench__vllm-only.py; do
   [ -f "$ROOT/$f" ] || { echo "FAIL: $f 없음"; fail=1; }
 done
 if ls "$ROOT"/s8-*.sh "$ROOT"/s9-*.sh >/dev/null 2>&1; then
@@ -47,14 +47,14 @@ echo "OK: 게이트(한국어·형식)"
 
 # 4. 카드 절
 for tok in '## Check 3 - KMMLU' '## Check 4 - Instruction and format compliance' '## Serving performance'; do
-  grep -qF "$tok" "$ROOT/s4-31-update-readme.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
+  grep -qF "$tok" "$ROOT/s4-65-update-readme.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
 done
-grep -qF '내용이 너무 짧음' "$ROOT/s4-34-verify-upload.py" || { echo "FAIL: 46-verify에 카드 실질 검사 없음"; fail=1; }
+grep -qF '내용이 너무 짧음' "$ROOT/s4-70-verify-upload.py" || { echo "FAIL: 46-verify에 카드 실질 검사 없음"; fail=1; }
 echo "OK: 카드 Check 3/4 + 서빙 성능"
 
 # 5. 파이프라인 배선
 for f in build-ppl-eval.inc; do
-  for tok in 's4-16-prep-kmmluko.sh' 's4-19-score-kmmluko.sh' 's4-22-check-format.sh' 's4-25-servebench.sh'; do
+  for tok in 's4-25-prep-kmmluko.sh' 's4-30-score-kmmluko__transformers_vllm_both.sh' 's4-35-check-format__transformers_vllm_both.sh' 's4-50-servebench__vllm-only.sh'; do
     grep -qF "$tok" "$ROOT/$f" || { echo "FAIL: $f 에 '$tok' 배선 없음"; fail=1; }
   done
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }
@@ -72,18 +72,18 @@ fi
 echo "OK: 단위 테스트 (test_s7_checks)"
 
 # 7. 계약 대조 판정(가짜 통과 방지) + prepare 종료코드
-grep -qF 'pass_rate_min' "$ROOT/s4-22-check-format.py" \
-  || { echo "FAIL: s4-22-check-format.py가 계약 하한(pass_rate_min)을 쓰지 않음"; fail=1; }
-grep -qF '"verdict"' "$ROOT/s4-22-check-format.py" \
-  || { echo "FAIL: s4-22-check-format.py가 verdict를 산출하지 않음"; fail=1; }
+grep -qF 'pass_rate_min' "$ROOT/s4-35-check-format__transformers_vllm_both.py" \
+  || { echo "FAIL: s4-35-check-format__transformers_vllm_both.py가 계약 하한(pass_rate_min)을 쓰지 않음"; fail=1; }
+grep -qF '"verdict"' "$ROOT/s4-35-check-format__transformers_vllm_both.py" \
+  || { echo "FAIL: s4-35-check-format__transformers_vllm_both.py가 verdict를 산출하지 않음"; fail=1; }
 # 판정은 통과율이 아니라 계약 하한으로 — 모델 카드가 verdict를 그대로 쓴다
-grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s4-31-update-readme.py" \
-  || { echo "FAIL: s4-31-update-readme.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
+grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s4-65-update-readme.py" \
+  || { echo "FAIL: s4-65-update-readme.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
 _tmprq="$(mktemp -d)"
-if RQ_SHARED="$_tmprq" "$ROOT/s4-22-check-format.sh" smoke --prepare >/dev/null 2>&1; then
+if RQ_SHARED="$_tmprq" "$ROOT/s4-35-check-format__transformers_vllm_both.sh" smoke --prepare >/dev/null 2>&1; then
   :
 else
-  echo "FAIL: s4-22-check-format.sh --prepare 가 0이 아닌 상태로 종료(파이프라인 중단)"; fail=1
+  echo "FAIL: s4-35-check-format__transformers_vllm_both.sh --prepare 가 0이 아닌 상태로 종료(파이프라인 중단)"; fail=1
 fi
 rm -rf "$_tmprq"
 echo "OK: 형식 판정 = 계약 대조 + prepare 종료코드"

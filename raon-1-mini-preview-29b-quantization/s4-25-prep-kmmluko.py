@@ -1,15 +1,15 @@
-"""s4-16-prep-kmmluko.py — 표준 한국어 KMMLU 평가 세트 준비 (Tier 2: 한국어 커버리지).
+"""s4-25-prep-kmmluko.py — 표준 한국어 KMMLU 평가 세트 준비 (Tier 2: 한국어 커버리지).
 
 GSM8K가 영어 수학이라 이 모델(한국어 우선)의 한국어 능력을 아무것도 재지 않는다.
 여기서는 **표준 한국어 벤치마크** `HAERAE-HUB/KMMLU`(44개 과목 4지선다 MCQ)에서
 과목별로 고르게 표본을 뽑아 `outputs/eval-<mode>/prompts-kmmluko.jsonl`을 만든다.
-생성은 s4-07-answer-benchmarks-base.sh/s4-10-answer-benchmarks-quantized.sh(벤치 공통), 채점은 s4-19-score-kmmluko.sh.
+생성은 s4-10-answer-benchmarks-base__transformers-only.sh/s4-15-answer-benchmarks-quantized__transformers-only.sh(벤치 공통), 채점은 s4-30-score-kmmluko__transformers_vllm_both.sh.
 
   - 프롬프트: Raon chat template + 4지선다 + "정답은 X" 지시
   - gold: 정답 인덱스(0~3) → 채점 시 A/B/C/D로 매핑
   - 결정론: (과목 목록, seed, n)으로 항상 같은 문제들
 
-  uv run s4-16-prep-kmmluko.py --mode full --n 200 --subjects 8
+  uv run s4-25-prep-kmmluko.py --mode full --n 200 --subjects 8
 """
 
 from __future__ import annotations

@@ -62,7 +62,7 @@ PY
 
 # --- 게이트 2: PPL 유효성 + 수용 기준 일치 ----------------------------------
 # NaN/미측정이면 '오염된 모델'을 eval에 흘려보내지 않는다.
-# (s4-01-measure-ppl.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
+# (s4-01-measure-ppl__transformers-only.py는 NaN이면 <target>.json을 아예 쓰지 않는다.)
 rq_gate_ppl() {
   local f="$1" target="${2:-}"
   if [ ! -f "$f" ]; then
@@ -187,7 +187,7 @@ PY
 rq_gate_kmmluko() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s4-19-score-kmmluko.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s4-19-score-kmmluko__transformers_vllm_both.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys
@@ -217,7 +217,7 @@ PY
 rq_gate_format() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s4-22-check-format.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s4-22-check-format__transformers_vllm_both.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys

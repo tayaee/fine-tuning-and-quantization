@@ -31,8 +31,8 @@ else
   echo "OK: smoke → -smoke repo 규칙 exactly once"
 fi
 
-# 4. s4-07-eval.py QUANT_OF 매핑 검증 (AST)
-if ! python3 - "$ROOT/s4-07-eval.py" <<'EOF'; then
+# 4. s4-eval-backend__transformers-only.py QUANT_OF 매핑 검증 (AST)
+if ! python3 - "$ROOT/s4-eval-backend__transformers-only.py" <<'EOF'; then
 import ast, sys
 src = open(sys.argv[1], encoding="utf-8").read()
 tree = ast.parse(src)
@@ -43,19 +43,19 @@ for node in ast.walk(tree):
 exp = {"nvfp4-awq-transformers": "compressed-tensors", "nvfp4-gptq-transformers": "compressed-tensors",
        "awq-w5-transformers": "compressed-tensors", "awq-w3-transformers": "compressed-tensors"}
 assert found == exp, f"QUANT_OF mismatch: {found}"
-print(f"OK: s4-07-eval.py QUANT_OF={found}")
+print(f"OK: s4-eval-backend__transformers-only.py QUANT_OF={found}")
 EOF
-  echo "FAIL: s4-07-eval.py QUANT_OF mapping wrong"; fail=1
+  echo "FAIL: s4-eval-backend__transformers-only.py QUANT_OF mapping wrong"; fail=1
 fi
 
-# 5. s4-10-answer-benchmarks-quantized.sh 콤마 분리 + 문법 검사 (base는 s4-07 단일 타깃이라 해당 없음)
-if grep -q "tr ',' ' '" "$ROOT/s4-10-answer-benchmarks-quantized.sh"; then
-  echo "OK: s4-10-answer-benchmarks-quantized.sh splits comma TARGETS"
+# 5. s4-15-answer-benchmarks-quantized__transformers-only.sh 콤마 분리 + 문법 검사 (base는 s4-07 단일 타깃이라 해당 없음)
+if grep -q "tr ',' ' '" "$ROOT/s4-15-answer-benchmarks-quantized__transformers-only.sh"; then
+  echo "OK: s4-15-answer-benchmarks-quantized__transformers-only.sh splits comma TARGETS"
 else
-  echo "FAIL: s4-10-answer-benchmarks-quantized.sh missing tr ',' ' ' split"; fail=1
+  echo "FAIL: s4-15-answer-benchmarks-quantized__transformers-only.sh missing tr ',' ' ' split"; fail=1
 fi
-bash -n "$ROOT/s4-07-answer-benchmarks-base.sh" && echo "OK: s4-07-answer-benchmarks-base.sh bash -n" || { echo "FAIL: s4-07-answer-benchmarks-base.sh bash -n"; fail=1; }
-bash -n "$ROOT/s4-10-answer-benchmarks-quantized.sh" && echo "OK: s4-10-answer-benchmarks-quantized.sh bash -n" || { echo "FAIL: s4-10-answer-benchmarks-quantized.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-10-answer-benchmarks-base__transformers-only.sh" && echo "OK: s4-10-answer-benchmarks-base__transformers-only.sh bash -n" || { echo "FAIL: s4-10-answer-benchmarks-base__transformers-only.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-15-answer-benchmarks-quantized__transformers-only.sh" && echo "OK: s4-15-answer-benchmarks-quantized__transformers-only.sh bash -n" || { echo "FAIL: s4-15-answer-benchmarks-quantized__transformers-only.sh bash -n"; fail=1; }
 bash -n "$ROOT/s7-13-chat.sh" && echo "OK: s7-13-chat.sh bash -n" || { echo "FAIL: s7-13-chat.sh bash -n"; fail=1; }
 
 exit $fail

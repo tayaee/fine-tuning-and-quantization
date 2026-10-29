@@ -38,12 +38,12 @@ def _isolate(mod: Any, d: str) -> None:
     sdlc.SHARED = Path(d)
 
 
-g80 = _load_script("s4-13-aggregate-gsm8k.py")
-ko = _load_script("s4-19-score-kmmluko.py")
-fmt = _load_script("s4-22-check-format.py")
-sb = _load_script("s4-25-servebench.py")
-ev = _load_script("s4-07-eval.py")
-prep = _load_script("s4-31-update-readme.py")
+g80 = _load_script("s4-20-aggregate-gsm8k__transformers_vllm_both.py")
+ko = _load_script("s4-30-score-kmmluko__transformers_vllm_both.py")
+fmt = _load_script("s4-35-check-format__transformers_vllm_both.py")
+sb = _load_script("s4-50-servebench__vllm-only.py")
+ev = _load_script("s4-eval-backend__transformers-only.py")
+prep = _load_script("s4-65-update-readme.py")
 
 
 # ---------------------------------------------------------------- GSM8K 통계

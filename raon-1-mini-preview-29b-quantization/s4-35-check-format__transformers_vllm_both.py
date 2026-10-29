@@ -1,17 +1,17 @@
-"""s4-22-check-format.py — 지시/형식 준수 스위트 (Tier 2: 생성 규약).
+"""s4-35-check-format__transformers_vllm_both.py — 지시/형식 준수 스위트 (Tier 2: 생성 규약).
 
 PPL은 teacher-forced, GSM8K/KMMLU는 "정답이 맞는가"만 본다. **"요청한 형식을 지켰는가"**
 는 어느 검사도 하지 않는다 — 실제 배포에서 가장 흔한 실패 모드다(언어 지정 무시,
 지시 무시, Rambling, JSON 미출력).
 
-고정된 케이스(내장)를 prompts-format.jsonl로 만들어 s4-07-answer-benchmarks-base.sh/s4-10-answer-benchmarks-quantized.sh가 생성하고,
+고정된 케이스(내장)를 prompts-format.jsonl로 만들어 s4-10-answer-benchmarks-base__transformers-only.sh/s4-15-answer-benchmarks-quantized__transformers-only.sh가 생성하고,
 이 스크립트가 응답을 검사해 pass_rate를 산출한다.
 
   --prepare : 프롬프트 세트 생성(파이프라인의 eval 단계 앞에서 1회)
   (기본)    : 생성된 응답을 검사 → checks.json의 "format" 섹션
 
-  uv run s4-22-check-format.py --mode smoke --prepare
-  uv run s4-22-check-format.py --mode smoke
+  uv run s4-35-check-format__transformers_vllm_both.py --mode smoke --prepare
+  uv run s4-35-check-format__transformers_vllm_both.py --mode smoke
 """
 
 from __future__ import annotations

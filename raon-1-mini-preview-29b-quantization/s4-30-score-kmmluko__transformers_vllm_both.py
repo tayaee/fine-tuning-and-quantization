@@ -1,10 +1,10 @@
-"""s4-19-score-kmmluko.py — 표준 한국어 KMMLU 채점 + 수용 기준 대조 (Tier 2: 한국어 커버리지).
+"""s4-30-score-kmmluko__transformers_vllm_both.py — 표준 한국어 KMMLU 채점 + 수용 기준 대조 (Tier 2: 한국어 커버리지).
 
-s4-07-answer-benchmarks-base.sh/s4-10-answer-benchmarks-quantized.sh가 생성한 응답(eval-<mode>/<target>.jsonl) 중 bench=="kmmluko" 행만 모아
+s4-10-answer-benchmarks-base__transformers-only.sh/s4-15-answer-benchmarks-quantized__transformers-only.sh가 생성한 응답(eval-<mode>/<target>.jsonl) 중 bench=="kmmluko" 행만 모아
 4지선다 정답을 파싱해 정확도를 계산하고, Stage 1 계약(base 대비 하락 허용폭)과 대조한다.
 결과는 checks.json의 "kmmluko" 섹션으로 병합한다(카드·릴리스 노트가 읽는다).
 
-  uv run s4-19-score-kmmluko.py --mode smoke
+  uv run s4-30-score-kmmluko__transformers_vllm_both.py --mode smoke
 """
 
 from __future__ import annotations

@@ -3,7 +3,7 @@
 #   1. sdlc.py 원장 API(락·타깃 집계) + CLI
 #   2. common.env 의 rq_stage_record/rq_stage_target/rq_stage_of
 #   3. run-*.sh / build-ppl-eval.inc 가 단계마다 원장 기록
-#   4. s4-37-release-notes.py 존재 + 릴리스 노트 생성
+#   4. s4-75-release-notes.py 존재 + 릴리스 노트 생성
 #   5. 단위 테스트 (tests/test_sdlc.py)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -22,11 +22,11 @@ for f in build-ppl-eval.inc; do
   grep -q 'rq_stage_record' "$ROOT/$f" || { echo "FAIL: $f 가 원장을 기록하지 않음"; fail=1; }
 done
 grep -q 'rq_bpe_step' "$ROOT/build-ppl-eval.inc" || { echo "FAIL: build 엔진이 스텝별 원장을 기록하지 않음"; fail=1; }
-[ -f "$ROOT/s4-37-release-notes.py" ] || { echo "FAIL: s4-37-release-notes.py 없음"; fail=1; }
+[ -f "$ROOT/s4-75-release-notes.py" ] || { echo "FAIL: s4-75-release-notes.py 없음"; fail=1; }
 for tok in 'release-notes-' '수용 기준' 'def render(' 'def _stage_rows(' 'def _metric_rows('; do
-  grep -qF -- "$tok" "$ROOT/s4-37-release-notes.py" || { echo "FAIL: s4-37-release-notes.py에 '$tok' 없음"; fail=1; }
+  grep -qF -- "$tok" "$ROOT/s4-75-release-notes.py" || { echo "FAIL: s4-75-release-notes.py에 '$tok' 없음"; fail=1; }
 done
-echo "OK: 원장 API + 파이프라인 기록 + s4-37-release-notes.py"
+echo "OK: 원장 API + 파이프라인 기록 + s4-75-release-notes.py"
 
 if "$PY" -c "import pytest" >/dev/null 2>&1; then
   if "$PY" -m pytest "$ROOT/tests/test_sdlc.py" -q >/tmp/verify-issue-8.log 2>&1; then

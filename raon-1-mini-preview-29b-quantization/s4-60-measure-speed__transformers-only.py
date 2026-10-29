@@ -1,14 +1,14 @@
-"""s4-28-measure-speed-with-transformers.py — transformers 인프로세스 처리량 측정 (Tier 3: 배포 성능 증거).
+"""s4-60-measure-speed__transformers-only.py — transformers 인프로세스 처리량 측정 (Tier 3: 배포 성능 증거).
 
 배경: stock vLLM(0.31.0)은 Raon 커스텀 아키텍처를 서빙하지 못한다
 (TransformersMoEForCausalLM 폴백 → `assert top_k is not None`으로 사망).
 HF 카드의 정석 로딩은 transformers + trust_remote_code이므로,
 서빙 처리량도 같은 스택에서 인프로세스로 잰다 — 서버가 필요 없다.
 
-워크로드는 s4-25-servebench.py와 같은 고정 8프롬프트(타깃 간 비교 공정용).
+워크로드는 s4-50-servebench__vllm-only.py와 같은 고정 8프롬프트(타깃 간 비교 공정용).
 C=1 순차 greedy 생성만 측정한다 (동시성은 vLLM 서버 전제라 해당 없음).
 
-  uv run s4-28-measure-speed-with-transformers.py --mode full --targets base,nvfp4-awq-transformers --n 8
+  uv run s4-60-measure-speed__transformers-only.py --mode full --targets base,nvfp4-awq-transformers --n 8
 
 산출물:
   outputs/eval-<mode>/bench-transformers-<mode>.json  (전체 기록)
@@ -36,7 +36,7 @@ SHARED = Path(os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-previe
 
 ALL_TARGETS = ("base", "awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers")
 
-#: s4-25-servebench.py와 동일한 고정 워크로드 (수치 비교 공정용).
+#: s4-50-servebench__vllm-only.py와 동일한 고정 워크로드 (수치 비교 공정용).
 PROMPTS = [
     "1부터 100까지의 합을 구하고, 계산 과정과 최종 답을 보여 주세요.",
     "세종대왕이 훈민정음을 만든 이유를 3문장으로 설명해 주세요.",
@@ -52,7 +52,7 @@ WARMUP = 1
 
 
 def resolve_target(target: str, mode: str) -> Path:
-    """타깃 → 로컬 모델 디렉터리 (s4-07-eval.py resolve와 동일)."""
+    """타깃 → 로컬 모델 디렉터리 (s4-eval-backend__transformers-only.py resolve와 동일)."""
     if target == "base":
         return SHARED / "models" / "raon-bf16"  # 19-dequant 복원본
     return SHARED / "models" / f"raon-{target}-{mode}"
@@ -93,7 +93,7 @@ def mem_snapshot() -> dict:
 
 
 def hardware_info() -> dict:
-    """측정 하드웨어·런타임 조건 (README 명시용). s4-25-servebench.py와 같은 키 + backend 표기."""
+    """측정 하드웨어·런타임 조건 (README 명시용). s4-50-servebench__vllm-only.py와 같은 키 + backend 표기."""
     import subprocess
 
     gpu, driver = "unknown", ""

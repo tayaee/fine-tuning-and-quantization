@@ -6,8 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-GUARDED="s4-01-measure-ppl.sh s4-10-answer-benchmarks-quantized.sh
-  s4-28-measure-speed-with-transformers.sh s4-31-update-readme.sh s4-34-verify-upload.sh
+GUARDED="s4-00-measure-ppl__transformers-only.sh s4-15-answer-benchmarks-quantized__transformers-only.sh s4-45-answer-via-server.sh
+  s4-60-measure-speed__transformers-only.sh s4-65-update-readme.sh s4-70-verify-upload.sh
   s5-01-upload-to-hf.sh"
 
 for f in config/common.env build-ppl-eval.inc $GUARDED; do

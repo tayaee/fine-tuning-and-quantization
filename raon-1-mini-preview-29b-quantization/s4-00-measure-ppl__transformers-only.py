@@ -1,4 +1,4 @@
-"""s4-01-measure-ppl.py — base + 4종 in-domain PPL + Δ판정.
+"""s4-00-measure-ppl__transformers-only.py — base + 4종 in-domain PPL + Δ판정.
 텍스트: calib 파일에서 앞 N개 (학습-캘리브 동일 분포).
 판정 (base 대비 Δ): <0.3 Accept / 0.3~1.0 Conditional / >=1.0 Discard.
 출력: outputs/ppl-<mode>/<target>.json + 집계 outputs/ppl-<mode>/summary.json
@@ -6,11 +6,11 @@
 메모리 격리(요구사항 1): 29B 모델 5개를 한 프로세스에서 순차 로드하면 GB10
 (128GB 통합 메모리)에서 이전 모델의 CUDA 캐시/파편화가 반환되지 않아 2번째
 로드부터 OOM이 난다. 그래서 타겟 1개를 측정하고 나서 gc.collect() +
-torch.cuda.empty_cache()로 cuda 캐시를 비우고, s4-01-measure-ppl.sh는 타겟마다
+torch.cuda.empty_cache()로 cuda 캐시를 비우고, s4-00-measure-ppl__transformers-only.sh는 타겟마다
 별도 프로세스로 띄워 OS 메모리까지 100% 회수한다.
 
-  uv run s4-01-measure-ppl.py --mode smoke|full [--n N] [--targets all|base,nvfp4-gptq-transformers,...]
-  uv run s4-01-measure-ppl.py --mode smoke --summarize-only
+  uv run s4-00-measure-ppl__transformers-only.py --mode smoke|full [--n N] [--targets all|base,nvfp4-gptq-transformers,...]
+  uv run s4-00-measure-ppl__transformers-only.py --mode smoke --summarize-only
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 # base = 19-dequant 복원본(공정 기준). 이슈는 bf16으로 부르지만 기존 산출물
-# 파일명(base.json)과 s4-07-eval/s4-13-aggregate-gsm8k 관례가 base라 별칭으로만 받는다.
+# 파일명(base.json)과 s4-07-eval/s4-20-aggregate-gsm8k 관례가 base라 별칭으로만 받는다.
 ALL_TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 TARGET_ALIASES = {"bf16": "base", "raon-bf16": "base"}
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# s4-07-answer-benchmarks-base.sh [smoke|full] — 베이스 모델 벤치마크 응답 생성.
-# s4-07-eval.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
+# s4-10-answer-benchmarks-base__transformers-only.sh [smoke|full] — 베이스 모델 벤치마크 응답 생성.
+# s4-eval-backend__transformers-only.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 N="$EVAL_N"
@@ -8,11 +8,19 @@ N="$EVAL_N"
 : "${RQ_EVAL_BACKEND:=auto}"
 export VLLM_GPU_MEM_UTIL RQ_EVAL_BACKEND
 rq_repro_echo
-rq_banner "s4-07-answer-benchmarks-base" "Stage 4 - generate benchmark answers for the base model and save them"
-# 평가 벤치(기본: 표준 GSM8K). s4-04-prep-gsm8k.sh가 prompts-<bench>.jsonl을 만든다.
+rq_banner "s4-10-answer-benchmarks-base__transformers-only" "Stage 4 - generate benchmark answers for the base model and save them"
+# 평가 벤치(기본: 표준 GSM8K). s4-05-prep-gsm8k.sh가 prompts-<bench>.jsonl을 만든다.
 BENCHES="${EVAL_BENCHMARKS:-gsm8k}"
 rq_log "tp=$TP target=base n=$N benches=$BENCHES batch=${EVAL_BATCH:-1} gpu_mem_util=$VLLM_GPU_MEM_UTIL backend=$RQ_EVAL_BACKEND"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
+# s4-24/s4-26 서버가 떠 있으면 모델 이중 적재(OOM 위험) — 먼저 내리고 실행할 것.
+for _pf in "$RQ_ROOT/logs/s4-transformers.pid" "$RQ_ROOT/logs/s4-vllm-fork.pid"; do
+  _pid="$(cat "$_pf" 2>/dev/null || true)"
+  if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+    rq_log "WARN: local server alive (pid=$_pid, $_pf) — in-process 측정과 모델 이중 적재됨. s4-55-stop-serve-local-weight.sh로 먼저 내릴 것"
+  fi
+done
+unset _pf _pid
 out="$RQ_OUTPUTS/eval-$MODE/base.jsonl"
 m="$RQ_MODELS/raon-bf16"
 # 요청한 벤치 응답이 없으면 신선하지 않다 (일부 벤치만 돌린 결과).
@@ -32,7 +40,7 @@ if [ -z "$_missing_bench" ] && [ -f "$m/config.json" ] && [ -f "$out" ] && [ "${
   rq_log "skip: fresh $out (FORCE=1 to rebuild)"
 else
   [ -f "$m/config.json" ] || { rq_log "missing model: $m (run s2-01-dequant-mxfp8-into-bf16.sh first)"; exit 1; }
-  (set -x; uv run "$RQ_ROOT/s4-07-eval.py" --mode "$MODE" --target base --n "$N" --tp "$TP" \
+  (set -x; uv run "$RQ_ROOT/s4-eval-backend__transformers-only.py" --mode "$MODE" --target base --n "$N" --tp "$TP" \
      --backend "$RQ_EVAL_BACKEND" --benchmarks "$BENCHES" --batch-size "${EVAL_BATCH:-1}")
 fi
 

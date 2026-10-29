@@ -8,11 +8,11 @@
 이 모듈은 그중 "계약(acceptance)"과 "증빙(ledger)" 두 가지를 담당한다.
 
   - config/acceptance.toml = Stage 1 산출물(수용 기준의 단일 소스).
-    s4-01-measure-ppl.py(Δ 판정), s4-34-verify-upload.py(용량 범위),
-    s4-31-update-readme.py(모델 카드) 모두 여기 정의된 값만 사용한다.
+    s4-00-measure-ppl__transformers-only.py(Δ 판정), s4-70-verify-upload.py(용량 범위),
+    s4-65-update-readme.py(모델 카드) 모두 여기 정의된 값만 사용한다.
     파일이 없으면 DEFAULT_ACCEPTANCE로 폴백(하위 호환).
   - outputs/stage-ledger-<mode>.json = 단계 원장. 각 단계가
-    status/artifact/verdict를 남기고, s4-37-release-notes.py가 릴리스 노트로 굽는다.
+    status/artifact/verdict를 남기고, s4-75-release-notes.py가 릴리스 노트로 굽는다.
 
 표준 라이브러리만 사용한다(uv sync/lock을 건드리지 않기 위함).
 """

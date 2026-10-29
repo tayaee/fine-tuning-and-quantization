@@ -38,7 +38,7 @@ for f in "$ROOT"/run-s1-to-s4-*.sh; do
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 10 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (10 기대)"; fail=1; }
-for f in s4-37-release-notes.py; do
+for f in s4-75-release-notes.py; do
   grep -qE 'print\("\[s[0-9]-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"

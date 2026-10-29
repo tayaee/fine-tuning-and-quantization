@@ -1,4 +1,4 @@
-"""s4-31-update-readme.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
+"""s4-65-update-readme.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
 s8-01-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올리기만 한다
 (메타데이터는 업로드 지점에서 즉석 생성하면 요약 정보가 빠진다).
 
@@ -12,7 +12,7 @@ s8-01-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올�
      + transformers/vLLM 실행 예제 + 라이선스)
   5) 요약 매니페스트를 outputs/prep-upload-<mode>.json에 기록
 
-  uv run s4-31-update-readme.py --mode smoke --targets nvfp4-awq-transformers --allow-missing-metrics
+  uv run s4-65-update-readme.py --mode smoke --targets nvfp4-awq-transformers --allow-missing-metrics
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ COPY_FROM_BF16 = ("chat_template.jinja", "configuration_raon1_mini.py", "modelin
 REQUIRED_FILES = ("config.json", "tokenizer.json", "tokenizer_config.json")
 # 원본 KRAFTON 레포에는 gated 동의 필드가 있다. 라이선스 요청이 아니므로 절대 복사하지 않는다.
 FORBIDDEN_FRONTMATTER = ("extra_gated_",)
-# 표준 GSM8K 단일 벤치 (s4-04-prep-gsm8k.sh가 만든 openai/gsm8k test 샘플)
+# 표준 GSM8K 단일 벤치 (s4-05-prep-gsm8k.sh가 만든 openai/gsm8k test 샘플)
 BENCH_LABELS = {"gsm8k": "GSM8K"}
 BENCH_ORDER = ("gsm8k",)
 
@@ -286,6 +286,12 @@ def _existing_targets(mode: str, ppl: dict, scores: dict) -> list[str]:
     return out
 
 
+def _numbered_rows(items: list[tuple[bool, str]]) -> list[str]:
+    """(표시 여부, 본문) 목록에서 표시분만 꺼내 `| n | 본문 |` 형태로 번호를 다시 매긴다."""
+    return [f"| {i} | {body} |" for i, (_, body) in
+            enumerate([it for it in items if it[0]], 1)]
+
+
 def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: float,
                       checks: dict) -> str:
     """Base 대비 바뀐 점 1표 (모델 카드용).
@@ -371,15 +377,27 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     rows = [
         "| # | Configuration | Base Model | This Model | Change | Notes |",
         "| --- | --- | ---: | ---: | --- | --- |",
-        f"| 1 | PPL (in-domain) | {_fmt(base_p.get('ppl'), 3)} | {_fmt(cur_p.get('ppl'), 3)} | Δ {_fmt(delta, 3)} | {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd}) |",
-        f"| 2 | Checkpoint size | {base_size} GB | {size_gb} GB | {size_change} | {size_note} |",
-        f"| 3 | Storage format | BF16 (dequantized) | `{SPECS[target]['format']}` | — | {fmt_note} |",
-        f"| 4 | GSM8K accuracy | {_fmt(b_acc, 3)} ({b_cnt}) | {_fmt(c_acc, 3)} ({c_cnt}) | drop {gsm_drop} | {gsm_note} |",
-        f"| 5 | KMMLU accuracy | {_fmt(kb_acc, 3)} ({kb_cnt}) | {_fmt(k_acc, 3)} ({k_cnt}) | drop {_fmt(_kmmluko_drop(checks, target), 3)} | {k_note} |",
-        f"| 6 | Format compliance | {_fmt(fb_rate, 3)} ({fb_cnt}) | {_fmt(f_rate, 3)} ({f_cnt}) | — | {f_note} |",
-        f"| 7 | Throughput C=1, transformers | {btps} | {tps} | {tf_change} | reference only[^2] — both slow eager (stack, not a quantization regression) |",
-        f"| 8 | Latency p50, transformers | {blat} | {lat} | {lat_change} | same fixed workload[^2] |",
-        f"| 9 | vLLM fork latency, s (C=1; n={len(v_rows)}, ok={v_ok}) | {v_lat if v_lat is not None else '—'} | n/a[^1] | unmeasurable — see note |",
+        # 측정 불가 항목은 빼고 번호를 다시 매긴다 (예: ModelOpt는 in-process PPL 불가).
+        *_numbered_rows([
+            (SPECS[target]["format"] != MOPT_NVFP4,
+             f"PPL (in-domain) | {_fmt(base_p.get('ppl'), 3)} | {_fmt(cur_p.get('ppl'), 3)} | Δ {_fmt(delta, 3)} | {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd})"),
+            (True,
+             f"Checkpoint size | {base_size} GB | {size_gb} GB | {size_change} | {size_note}"),
+            (True,
+             f"Storage format | BF16 (dequantized) | `{SPECS[target]['format']}` | — | {fmt_note}"),
+            (True,
+             f"GSM8K accuracy | {_fmt(b_acc, 3)} ({b_cnt}) | {_fmt(c_acc, 3)} ({c_cnt}) | drop {gsm_drop} | {gsm_note}"),
+            (True,
+             f"KMMLU accuracy | {_fmt(kb_acc, 3)} ({kb_cnt}) | {_fmt(k_acc, 3)} ({k_cnt}) | drop {_fmt(_kmmluko_drop(checks, target), 3)} | {k_note}"),
+            (True,
+             f"Format compliance | {_fmt(fb_rate, 3)} ({fb_cnt}) | {_fmt(f_rate, 3)} ({f_cnt}) | — | {f_note}"),
+            (True,
+             f"Throughput C=1, transformers | {btps} | {tps} | {tf_change} | reference only[^2] — both slow eager (stack, not a quantization regression)"),
+            (True,
+             f"Latency p50, transformers | {blat} | {lat} | {lat_change} | same fixed workload[^2]"),
+            (True,
+             f"vLLM fork latency, s (C=1; n={len(v_rows)}, ok={v_ok}) | {v_lat if v_lat is not None else '—'} | n/a[^1] | unmeasurable — see note"),
+        ]),
         "",
         "[^2]: Rows 7–8 measured on a single NVIDIA GB10 (DGX Spark), in-process "
         "transformers, same fixed 8 prompts. Numbers move with hardware — compare "
@@ -467,7 +485,7 @@ def _check_tables(
 def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
     """서빙 성능 비교표 + 측정 하드웨어 조건.
 
-    `s4-28-measure-speed-with-transformers.py`가 타깃별로 누적한 checks.json servebench.targets를
+    `s4-60-measure-speed__transformers-only.py`가 타깃별로 누적한 checks.json servebench.targets를
     타깃 × concurrency 표로 렌더링한다. 구 형태(단일 측정 payload)도 fallback 지원.
     backend가 transformers면 인프로세스 측정 조건을, vLLM이면 서버 조건을 표기한다
     (하드웨어 키가 달라 `vLLM ?` 같은 빈 값을 찍지 않기 위함).
@@ -835,19 +853,19 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
     scores = _eval_scores(mode)
     if not allow_missing_metrics:
         if target not in ppl:
-            report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s4-01-measure-ppl first)")
+            report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s4-00-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s4-10-answer-benchmarks-quantized.sh/s4-13-aggregate-gsm8k.sh first)")
+            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s4-15-answer-benchmarks-quantized__transformers-only.sh/s4-20-aggregate-gsm8k__transformers_vllm_both.sh first)")
         else:
             # score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 카드의 Check 2가 빈다
             # (일부 벤치만 다시 생성한 경우). base도 있어야 하락폭을 판정할 수 있다.
             for r in ("base", target):
-                rerun = (f"./s4-07-answer-benchmarks-base.sh {mode}" if r == "base"
-                         else f"./s4-10-answer-benchmarks-quantized.sh {mode} {r}")
+                rerun = (f"./s4-10-answer-benchmarks-base__transformers-only.sh {mode}" if r == "base"
+                         else f"./s4-15-answer-benchmarks-quantized__transformers-only.sh {mode} {r}")
                 if _gsm8k_acc(scores, r) is None:
                     report["errors"].append(
                         f"no GSM8K accuracy for '{r}' in outputs/eval-{mode}/score.json "
-                        f"(rerun: EVAL_BENCHMARKS=gsm8k {rerun} && ./s4-13-aggregate-gsm8k.sh {mode})"
+                        f"(rerun: EVAL_BENCHMARKS=gsm8k {rerun} && ./s4-20-aggregate-gsm8k__transformers_vllm_both.sh {mode})"
                     )
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])

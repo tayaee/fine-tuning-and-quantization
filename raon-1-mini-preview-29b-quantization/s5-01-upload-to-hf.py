@@ -4,7 +4,7 @@ smoke → <HF_ID>/<BASE>-<target>-smoke (만약의 오업로드가 full을 덮�
 smoke는 절대 업로드하지 않는다 (우회 수단 없음). full만 업로드 가능.
 로컬 산출물 없으면 SKIP.
 
-메타데이터(README.md) 생성은 s4-31-update-readme.py가 담당한다 — 여기서는
+메타데이터(README.md) 생성은 s4-65-update-readme.py가 담당한다 — 여기서는
 `config.json` + 비어 있지 않은 `README.md`가 이미 있는지만 확인하고 올린다.
 
   uv run s5-01-upload-to-hf.py --mode full --targets all [--dry-run]
@@ -46,7 +46,7 @@ def check_ready(target: str, mode: str) -> str | None:
         with open(readme, encoding="utf-8") as f:
             blank = not f.read().strip()
     if blank:
-        raise SystemExit(f"README.md missing in {local}; run ./s4-31-update-readme.sh first")
+        raise SystemExit(f"README.md missing in {local}; run ./s4-65-update-readme.sh first")
     return local
 
 

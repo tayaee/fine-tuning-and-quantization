@@ -1,27 +1,35 @@
 #!/usr/bin/env bash
-# s4-10-answer-benchmarks-quantized.sh [smoke|full] [targets] — 양자화 모델 벤치마크 응답 생성. targets 필수.
-# base는 s4-07-answer-benchmarks-base.sh를 쓴다.
-# s4-07-eval.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
+# s4-15-answer-benchmarks-quantized__transformers-only.sh [smoke|full] [targets] — 양자화 모델 벤치마크 응답 생성. targets 필수.
+# base는 s4-10-answer-benchmarks-base__transformers-only.sh를 쓴다.
+# s4-eval-backend__transformers-only.py가 backend를 고른다(기본 auto: vLLM → 커스텀 아키텍처 미지원 시 transformers 폴백).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
-TARGETS="$(rq_require_targets "./s4-10-answer-benchmarks-quantized.sh $MODE" "${2:-}" awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers)" || exit 2
+TARGETS="$(rq_require_targets "./s4-15-answer-benchmarks-quantized__transformers-only.sh $MODE" "${2:-}" awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers)" || exit 2
 N="$EVAL_N"
 : "${VLLM_GPU_MEM_UTIL:=0.9}"
 : "${RQ_EVAL_BACKEND:=auto}"
 export VLLM_GPU_MEM_UTIL RQ_EVAL_BACKEND
 rq_repro_echo
-rq_banner "s4-10-answer-benchmarks-quantized" "Stage 4 - generate benchmark answers for quantized models and save them"
+rq_banner "s4-15-answer-benchmarks-quantized__transformers-only" "Stage 4 - generate benchmark answers for quantized models and save them"
 target_model() {
   case "$1" in
     *) echo "$RQ_MODELS/raon-$1-$MODE" ;;
   esac
 }
-# 평가 벤치(기본: 표준 GSM8K). s4-04-prep-gsm8k.sh가 prompts-<bench>.jsonl을 만든다.
+# 평가 벤치(기본: 표준 GSM8K). s4-05-prep-gsm8k.sh가 prompts-<bench>.jsonl을 만든다.
 BENCHES="${EVAL_BENCHMARKS:-gsm8k}"
 rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES batch=${EVAL_BATCH:-1} gpu_mem_util=$VLLM_GPU_MEM_UTIL backend=$RQ_EVAL_BACKEND"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
-# `all`을 명시 목록으로 펴야 한다: 그대로 넘기면 s4-07-eval.py --target all이 29B 모델
-# 4개를 한 프로세스에서 로드해 GPU/통합 메모리를 다 먹는다 (s4-01-measure-ppl.sh와 동일).
+# s4-24/s4-26 서버가 떠 있으면 모델 이중 적재(OOM 위험) — 먼저 내리고 실행할 것.
+for _pf in "$RQ_ROOT/logs/s4-transformers.pid" "$RQ_ROOT/logs/s4-vllm-fork.pid"; do
+  _pid="$(cat "$_pf" 2>/dev/null || true)"
+  if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+    rq_log "WARN: local server alive (pid=$_pid, $_pf) — in-process 측정과 모델 이중 적재됨. s4-55-stop-serve-local-weight.sh로 먼저 내릴 것"
+  fi
+done
+unset _pf _pid
+# `all`을 명시 목록으로 펴야 한다: 그대로 넘기면 s4-eval-backend__transformers-only.py --target all이 29B 모델
+# 4개를 한 프로세스에서 로드해 GPU/통합 메모리를 다 먹는다 (s4-00-measure-ppl__transformers-only.sh와 동일).
 EVAL_ALL_TARGETS="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"
 _ts=""
 for t in $(echo "$TARGETS" | tr ',' ' '); do
@@ -30,7 +38,7 @@ for t in $(echo "$TARGETS" | tr ',' ' '); do
     break
   fi
   case "$t" in
-    base) echo "base는 s4-07-answer-benchmarks-base.sh를 쓰라." >&2; exit 1 ;;
+    base) echo "base는 s4-10-answer-benchmarks-base__transformers-only.sh를 쓰라." >&2; exit 1 ;;
   esac
   _ts="${_ts:+$_ts }$t"
 done
@@ -60,7 +68,7 @@ for t in $_ts; do
     rq_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
   [ -f "$m/config.json" ] || { rq_log "missing model: $m (run the quant step first)"; exit 1; }
-  (set -x; uv run "$RQ_ROOT/s4-07-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP" \
+  (set -x; uv run "$RQ_ROOT/s4-eval-backend__transformers-only.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP" \
      --backend "$RQ_EVAL_BACKEND" --benchmarks "$BENCHES" --batch-size "${EVAL_BATCH:-1}")
 done
 

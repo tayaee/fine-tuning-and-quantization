@@ -31,7 +31,7 @@
 | 1. 환경체인 | `s1-01-setup` → `s1-04-acceptance` → `s1-07-calib` → `s1-10-compat` | env sync + `acceptance-<mode>.json` + calib jsonl + compat stamp | gate-acceptance(계약 스키마) |
 | 2. 복원 | `s2-01-dequant-mxfp8` | MXFP8 repo → `models/raon-bf16` (1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 3. 양자화 | `s3-01/04/07/10-quant-*` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
-| 4. 측정·평가 | `s4-01-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-34-verify-upload` → `s4-37-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
+| 4. 측정·평가 | `s4-00-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-70-verify-upload` → `s4-75-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
 | 5. 업로드 | `s5-01-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
 | 6. 고객-transformers | `s6-*-test-*-with-transformers` (Hub→로딩) / `s6-13-chat` / `s6-16-pi-tool-call-test`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
 | 7. 고객-vLLM | `s7-01-serve-*-from-hf-with-vllm-fork` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
@@ -45,8 +45,8 @@
 > ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) — 한국어 능력(GSM8K가 못 재는 축)
 > ③ 지시/형식 준수 스위트(고정 10케이스) — 언어지시·JSON·마커·길이·bullet
 > ④ PPL(s4-01) — teacher-forced 회귀
-> ⑤ 서빙 처리량(`s4-25-servebench`, 서버 필요) — 양자화의 이유(속도)를 같은 축에서
-> 프롬프트는 `s4-04-prep-gsm8k.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
+> ⑤ 서빙 처리량(`s4-50-servebench`, 서버 필요) — 양자화의 이유(속도)를 같은 축에서
+> 프롬프트는 `s4-05-prep-gsm8k.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
 
 ## s0 베이스검증 (8절차 — transformers half + vLLM half)
 
@@ -88,7 +88,7 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 ## 단계 원장 · 릴리스 노트
 
 - 원장: `outputs/stage-ledger-<mode>.json` (각 그룹의 status/artifact/verdict, 타깃별 집계)
-- 릴리스 노트: `python s4-37-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
+- 릴리스 노트: `python s4-75-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
   (원장 + 수용 기준 + 실측 지표 대조표)
 
 ## TARGETS는 필수
@@ -98,13 +98,13 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 "인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
 대상 스크립트
-(`s4-01-measure-ppl` · `s4-10-answer-benchmarks-quantized` · `s4-28-measure-speed-with-transformers` ·
-`s4-31-prep-upload` · `s4-34-verify-upload` · `s5-01-upload-hf`):
+(`s4-00-measure-ppl` · `s4-15-answer-benchmarks-quantized` · `s4-60-measure-speed__transformers-only` ·
+`s4-31-prep-upload` · `s4-70-verify-upload` · `s5-01-upload-hf`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (s6/s7 검증 스크립트는 `[mode] [HF repo id|short target|all]` 형태다.)
 
 ```bash
-./s4-01-measure-ppl.sh smoke base,nvfp4-awq-transformers   # 개별 스크립트 ($2 또는 TARGETS)
+./s4-00-measure-ppl__transformers-only.sh smoke base,nvfp4-awq-transformers   # 개별 스크립트 ($2 또는 TARGETS)
 TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all로만
 ```
 
@@ -124,7 +124,7 @@ TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all�
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)
 
 전체 빌드를 한 타깃으로 좁힌 진입점 8종 (STEPS 부분 실행 지원).
-**두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-13-aggregate-gsm8k):
+**두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-20-aggregate-gsm8k):
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |
 |---|---|---|
@@ -162,7 +162,7 @@ timing은 `logs/timing-build-<mode>.log`에(run-*.sh와 별도 파일).
 | s3 quant | `rq_lock $OUT` (타깃별) | `rq_fresh` | 타깃이 다르면 동시 실행 가능, 같으면 직렬+skip |
 | s4-01-ppl | `rq_lock $RQ_OUTPUTS/ppl-$MODE` | 타깃별 `rq_fresh` | 직렬(29B 모델 동시 로드 방지) |
 | s4-07-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |
-| s4-13-aggregate-gsm8k | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | s4-07과 같은 lock → jsonl 쓰는 중엔 대기 |
+| s4-20-aggregate-gsm8k | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | s4-07과 같은 lock → jsonl 쓰는 중엔 대기 |
 
 stamp는 `FORCE=1`로 무시된다. GPU/라이브러리 버전이 바뀌면 stamp가 불일치해
 자동으로 다시 검증된다.

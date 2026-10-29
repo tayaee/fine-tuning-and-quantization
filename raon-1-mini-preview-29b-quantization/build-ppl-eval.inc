@@ -138,37 +138,37 @@ rq_bpe_main() {
     rq_stage_target 3 quant pass "$target" "$model_dir"
   fi
   if rq_bpe_want_step ppl; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-01-ppl" ./s4-01-measure-ppl.sh "$mode" "$eval_targets"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-00-ppl" ./s4-00-measure-ppl__transformers-only.sh "$mode" "$eval_targets"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-ppl" rq_gate_ppl "$RQ_OUTPUTS/ppl-$mode/$target.json" "$target"
     rq_stage_record 4 measure pass "$RQ_OUTPUTS/ppl-$mode/summary.json"
   fi
   if rq_bpe_want_step eval; then
     if rq_bpe_want_step evalset; then
-      rq_bpe_step "$mode" "$BPE_TIMING" "s4-04-evalset" ./s4-04-prep-gsm8k.sh "$mode"
-      rq_bpe_step "$mode" "$BPE_TIMING" "s4-16-prep-kmmluko" ./s4-16-prep-kmmluko.sh "$mode"
-      rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-check-format-prepare" ./s4-22-check-format.sh "$mode" --prepare
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-05-evalset" ./s4-05-prep-gsm8k.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-25-prep-kmmluko" ./s4-25-prep-kmmluko.sh "$mode"
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-35-check-format-prepare" ./s4-35-check-format__transformers_vllm_both.sh "$mode" --prepare
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-07-answer-benchmarks-base" ./s4-07-answer-benchmarks-base.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-10-answer-benchmarks-quantized" ./s4-10-answer-benchmarks-quantized.sh "$mode" "$target"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-13-aggregate-gsm8k" ./s4-13-aggregate-gsm8k.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-19-score-kmmluko" ./s4-19-score-kmmluko.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-check-format" ./s4-22-check-format.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-10-answer-benchmarks-base" ./s4-10-answer-benchmarks-base__transformers-only.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-15-answer-benchmarks-quantized" ./s4-15-answer-benchmarks-quantized__transformers-only.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-20-aggregate-gsm8k" ./s4-20-aggregate-gsm8k__transformers_vllm_both.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-30-score-kmmluko" ./s4-30-score-kmmluko__transformers_vllm_both.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-35-check-format" ./s4-35-check-format__transformers_vllm_both.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-kmmluko" rq_gate_kmmluko "$mode" "$target"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-format" rq_gate_format "$mode" "$target"
     # Tier 3: 서빙 처리량(STEPS=serve로 명시 요청 시에만 — 서버가 떠 있어야 측정된다)
     case ",${STEPS:-$BPE_STEPS_DEFAULT}," in *,serve,*)
-      rq_bpe_step "$mode" "$BPE_TIMING" "s4-25-servebench" ./s4-25-servebench.sh "$mode" ;;
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-50-servebench" ./s4-50-servebench__vllm-only.sh "$mode" ;;
     esac
     rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-31-prep" ./s4-31-update-readme.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-65-prep" ./s4-65-update-readme.sh "$mode" "$target"
     rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-34-verify" ./s4-34-verify-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-70-verify" ./s4-70-verify-upload.sh "$mode" "$target"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-release" rq_gate_release "$mode"
   fi
 

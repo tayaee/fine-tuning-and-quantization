@@ -1,10 +1,10 @@
-"""s4-13-aggregate-gsm8k.py — eval 산출물 집계 (완결율 + 벤치마크별 정확도).
+"""s4-20-aggregate-gsm8k__transformers_vllm_both.py — eval 산출물 집계 (완결율 + 벤치마크별 정확도).
 입력: outputs/eval-<mode>/<target>.jsonl (최상위 glob만 — bench/ 하위는 상세 사본)
 지표: 완결율(빈 출력 제외), 평균 출력 길이, thinking 포함률(<think> 흔적),
       벤치별 정확도 (kmmlu_redux / gsm8k / humaneval, gold가 있는 행만)
 출력: outputs/eval-<mode>/score.json (stdout 표)
 
-  uv run s4-13-aggregate-gsm8k.py --mode smoke
+  uv run s4-20-aggregate-gsm8k__transformers_vllm_both.py --mode smoke
 """
 
 from __future__ import annotations

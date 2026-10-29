@@ -35,12 +35,12 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-31-update-readme.py")
+prep = _load_script("s4-65-update-readme.py")
 up = _load_script("s5-01-upload-to-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"
-# 표준 GSM8K 단일 벤치 (s4-07-eval이 표준 GSM8K만 평가)
+# 표준 GSM8K 단일 벤치 (s4-10-answer가 표준 GSM8K만 평가)
 BENCHES = ("gsm8k",)
 
 
@@ -140,7 +140,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     )
 
 
-# ---------------------------------------------------------------- s4-31-prep-upload
+# ---------------------------------------------------------------- s4-65-update-readme
 
 
 def test_prep_rejects_dense_fallback(workspace):

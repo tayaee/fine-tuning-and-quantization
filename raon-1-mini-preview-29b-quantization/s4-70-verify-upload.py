@@ -1,6 +1,6 @@
-"""s4-34-verify-upload.py — HF Hub 업로드 전 모델·지표·README·vLLM 호환성 종합 감사(Audit).
+"""s4-70-verify-upload.py — HF Hub 업로드 전 모델·지표·README·vLLM 호환성 종합 감사(Audit).
 
-s4-31-update-readme.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-01-upload-hf.py로
+s4-65-update-readme.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-01-upload-hf.py로
 실제 업로드하기 직전에 지금까지 발견된 모든 결함 유형을 전수 점검한다:
 
   1) 상류 BF16 복원본(models/raon-bf16) 무결성 (issue-2):
@@ -30,7 +30,7 @@ s4-31-update-readme.py가 모델 디렉터리 보충과 README.md 생성을 마�
      - README.md YAML frontmatter 필수 키, extra_gated_* 금지, 실제 체크포인트 용량(GB) 및
        검사 표(PPL/GSM8K) 내 타것 행의 실제 수치 기입 여부 확인
 
-  uv run s4-34-verify-upload.py --mode full --targets nvfp4-awq-transformers
+  uv run s4-70-verify-upload.py --mode full --targets nvfp4-awq-transformers
 """
 
 from __future__ import annotations
@@ -150,7 +150,7 @@ def model_dir(mode: str, target: str) -> Path:
     return Path(f"{MODELS_DIR(mode)}/raon-{target}-{mode}")
 
 
-#: Hub repo id 규칙 — s8-01-upload-hf.py / s4-31-update-readme.py와 같아야 한다
+#: Hub repo id 규칙 — s8-01-upload-hf.py / s4-65-update-readme.py와 같아야 한다
 #: (full → <HF_ID>/<BASE>-<target>, smoke → ...-<target>-smoke)
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
@@ -493,7 +493,7 @@ def _check_metrics(
     ppl_data: dict = {}
     if not ppl_fp.is_file():
         if not allow_missing_metrics:
-            errors.append(f"{ppl_fp}: 파일 없음 (s4-01-measure-ppl.sh 먼저 실행)")
+            errors.append(f"{ppl_fp}: 파일 없음 (s4-00-measure-ppl__transformers-only.sh 먼저 실행)")
     else:
         ppl_data = json.loads(ppl_fp.read_text(encoding="utf-8"))
         for req_key in ("base", target):
@@ -530,7 +530,7 @@ def _check_metrics(
 
     if not score_fp.is_file():
         if not allow_missing_metrics:
-            errors.append(f"{score_fp}: 파일 없음 (s4-07-answer-benchmarks-base.sh / s4-10-answer-benchmarks-quantized.sh / s4-13-aggregate-gsm8k.sh 먼저 실행)")
+            errors.append(f"{score_fp}: 파일 없음 (s4-10-answer-benchmarks-base__transformers-only.sh / s4-15-answer-benchmarks-quantized__transformers-only.sh / s4-20-aggregate-gsm8k__transformers_vllm_both.sh 먼저 실행)")
     else:
         score_data = json.loads(score_fp.read_text(encoding="utf-8"))
         bad_keys = [k for k in score_data if k.startswith("prompts-")]
@@ -578,7 +578,7 @@ def _check_readme(
     errors: list[str] = []
     readme_fp = d / "README.md"
     if not readme_fp.is_file():
-        return [f"{readme_fp}: 파일 없음 (s4-31-update-readme.sh 먼저 실행)"]
+        return [f"{readme_fp}: 파일 없음 (s4-65-update-readme.sh 먼저 실행)"]
     text = readme_fp.read_text(encoding="utf-8")
     if len(text.strip()) < 500:
         errors.append(f"{readme_fp}: 내용이 너무 짧음 ({len(text)} chars)")
@@ -775,7 +775,7 @@ def verify_target(
     # 9) 모드 전체 비교 리포트(models/README-<mode>.md) 존재 확인
     sp = Path(MODELS_DIR(mode)) / f"README-{mode}.md"
     if not sp.is_file():
-        report["errors"].append(f"{sp}: 파일 없음 (s4-31-update-readme.sh 먼저 실행)")
+        report["errors"].append(f"{sp}: 파일 없음 (s4-65-update-readme.sh 먼저 실행)")
     elif sp.stat().st_size < 500:
         report["errors"].append(f"{sp}: 내용이 너무 짧음 ({sp.stat().st_size} bytes)")
 
@@ -840,7 +840,7 @@ def run(
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if not all_ok:
         failed = [t for t, r in reports.items() if not r["ok"]]
-        raise SystemExit(f"s4-34-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
+        raise SystemExit(f"s4-70-verify-upload FAILED: bf16_errors={len(bf16_errors)}, failed_targets={failed}")
     return summary
 
 

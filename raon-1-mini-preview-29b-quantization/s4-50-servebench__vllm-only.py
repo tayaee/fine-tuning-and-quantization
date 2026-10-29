@@ -1,4 +1,4 @@
-"""s4-25-servebench.py — 서빙 처리량 측정 (Tier 3: 배포 성능 증거).
+"""s4-50-servebench__vllm-only.py — 서빙 처리량 측정 (Tier 3: 배포 성능 증거).
 
 양자화의 이유(속도·메모리)는 품질 검사로 증명되지 않는다. KRAFTON 베이스 카드에는
 처리량 표(AR/DFlash2 × C=1/8/32)가 공개돼 있고, 그 값은 **다른 스택·하드웨어**의
@@ -7,7 +7,7 @@
 이 스크립트는 이미 떠 있는 OpenAI-호환 서버(vLLM, s7-13-chat.sh가 띄운 것)에 요청을 보내
 TTFT(latency)와 출력 토큰/초를 측정한다. 서버가 없으면 측정하지 않고 사유를 남긴다.
 
-  uv run s4-25-servebench.py --mode full --n 8 --concurrency 1
+  uv run s4-50-servebench__vllm-only.py --mode full --n 8 --concurrency 1
 """
 
 from __future__ import annotations
@@ -65,7 +65,8 @@ def outdir(mode: str) -> Path:
 def infer_target(model_id: str) -> str:
     """served-model-name(tayaee/Raon-1-mini-preview[-smoke][-suffix]) → 타깃 slug."""
     mid = (model_id or "").lower()
-    for t in ("nvfp4-awq-transformers", "nvfp4-gptq-transformers", "awq-w3-transformers", "awq-w5-transformers"):
+    for t in ("nvfp4-awq-transformers", "nvfp4-gptq-transformers", "awq-w3-transformers", "awq-w5-transformers",
+            "nvfp4-awq-vllm"):
         if t in mid:
             return t
     return "base"

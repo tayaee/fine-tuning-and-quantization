@@ -1,11 +1,11 @@
-"""s4-37-release-notes.py — SDLC 릴리스 노트 생성 (Stage 7 산출물).
+"""s4-75-release-notes.py — SDLC 릴리스 노트 생성 (Stage 7 산출물).
 
 단계 원장(outputs/stage-ledger-<mode>.json) + 수용 기준(Stage 1) + 실측 지표
 (PPL summary / eval score)를 합쳐 "이 릴리스가 무엇이고 어떤 계약을 만족하는지"를
 한 파일로 남긴다. SDLC의 "증빙"이 이 문서다.
 
-  uv run s4-37-release-notes.py --mode smoke
-  uv run s4-37-release-notes.py --mode full --print
+  uv run s4-75-release-notes.py --mode smoke
+  uv run s4-75-release-notes.py --mode full --print
 """
 
 from __future__ import annotations
@@ -207,7 +207,7 @@ def main() -> int:
     ap.add_argument("--print", dest="show", action="store_true")
     a = ap.parse_args()
 
-    print("[s4-37-release-notes] Stage 4 - build the release notes from the stage ledger and the measured metrics")
+    print("[s4-75-release-notes] Stage 4 - build the release notes from the stage ledger and the measured metrics")
     data = collect(a.mode)
     text = render(data)
     if a.show:
