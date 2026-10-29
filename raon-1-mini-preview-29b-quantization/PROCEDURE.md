@@ -32,9 +32,10 @@
 | 2. 복원 | `s2-01-dequant-mxfp8` | MXFP8 repo → `models/raon-bf16` (1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 3. 양자화 | `s3-01/04/07/10-quant-*` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
 | 4. 측정·평가 | `s4-00-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-70-verify-upload` → `s4-75-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
+| 4′. 측정·평가 (vLLM 전용 타깃) | `run-s4-metrics-via-serving.sh` → `s4-40`(서빙) → `s4-45`(서버로 벤치 응답) → `s4-50` → `s4-20/30/35`(집계) → `s4-65`(카드) → `s4-70`(감사) | transformers 적재 불가 타깃(modelopt_fp4)의 GSM8K·KMMLU·형식 (PPL 은 불가 — 카드에서 행 생략) | 동일 게이트 + **gate-release** |
 | 5. 업로드 | `s5-01-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
-| 6. 고객-transformers | `s6-*-test-*-with-transformers` (Hub→로딩) / `s6-13-chat` / `s6-16-pi-tool-call-test`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7. 고객-vLLM | `s7-01-serve-*-from-hf-with-vllm-fork` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
+| 6. 고객-transformers | `s6-02-verify-*-with-transformers` (Hub 카드의 '## Usage - transformers' 블록을 바이트 그대로 실행 — transformers 적재 가능 4종) | Hub README 실행 + `outputs/s6-<mode>/` | chat 응답 존재 (미발행 repo면 FAIL) |
+| 7. 고객-vLLM | `s7-02-verify-readme-with-*-and-vllm-fork` (Hub 카드의 '## Usage - vLLM' 블록을 **바이트 검증** 후 **카드 순서대로 실행** — nvfp4-awq-vllm 은 Step1 포크 빌드까지 포함, 5종 전부) / `s7-13-chat`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라

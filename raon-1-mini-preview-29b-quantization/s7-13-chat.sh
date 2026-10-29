@@ -24,11 +24,11 @@ if [ -z "$TARGET" ]; then
   SUF=""; NUM=""; QUANT="compressed-tensors"; VTP_DEF=1
 else
   case "$TARGET" in
-    awq-w3-transformers)      SUF="raon-awq-w3-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    awq-w5-transformers)      SUF="raon-awq-w5-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    nvfp4-awq-transformers)   SUF="raon-nvfp4-awq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    nvfp4-gptq-transformers)  SUF="raon-nvfp4-gptq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=01 ;;
-    nvfp4-awq-vllm) SUF="raon-nvfp4-awq-vllm-$MODE"; QUANT=""; VTP_DEF=1; NUM=01 ;;
+    awq-w3-transformers)      SUF="raon-awq-w3-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=02 ;;
+    awq-w5-transformers)      SUF="raon-awq-w5-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=02 ;;
+    nvfp4-awq-transformers)   SUF="raon-nvfp4-awq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=02 ;;
+    nvfp4-gptq-transformers)  SUF="raon-nvfp4-gptq-transformers-$MODE"; QUANT="compressed-tensors"; VTP_DEF=1; NUM=02 ;;
+    nvfp4-awq-vllm) SUF="raon-nvfp4-awq-vllm-$MODE"; QUANT=""; VTP_DEF=1; NUM=02 ;;
     *) echo "target: awq-w3-transformers|awq-w5-transformers|nvfp4-awq-vllm|nvfp4-awq-transformers|nvfp4-gptq-transformers" >&2; exit 2 ;;
   esac
 fi
@@ -51,7 +51,7 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   rq_log "port $PORT 사용 중 — 기존 서버를 재사용 (pidfile=$PIDF)"
 else
   rm -f "$SERVLOG"
-  WRAPPER="$RQ_ROOT/s7-$NUM-serve-${TARGET}-from-hf-with-vllm-fork.sh"
+  WRAPPER="$RQ_ROOT/s7-$NUM-verify-readme-with-${TARGET}-and-vllm-fork.sh"
   # ModelOpt NVFP4는 --quantization 없이 자동 감지 (빈 QUANT면 플래그 생략)
   QUANT_FLAG=(); [ -n "$QUANT" ] && QUANT_FLAG=(--quantization "$QUANT")
   if [ -n "${FORK_ROOT:-}" ] && [ -x "$FORK_ROOT/.venv/bin/vllm" ]; then
@@ -75,8 +75,10 @@ else
       >"$SERVLOG" 2>&1 &
   elif [ "$SOURCE" = "hf" ] && [ -f "$WRAPPER" ] \
     && [ "${PORT:-8000}" = 8000 ]; then
-    rq_log "frozen card command (background): $WRAPPER"
-    nohup "$WRAPPER" >"$SERVLOG" 2>&1 &
+    rq_log "frozen card command (background): $WRAPPER $MODE"
+    # mode 를 명시적으로 넘긴다 — 안 넘기면 래퍼가 default(full)로 서빙해
+    # smoke 검증에서 full 모델을 서빙하는 함정이 생긴다.
+    nohup "$WRAPPER" "$MODE" >"$SERVLOG" 2>&1 &
   else
     VLLM_REF="${VLLM_REF:-raon-1-mini-preview}"
     VLLM_USE_PRECOMPILED=1 nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
@@ -107,6 +109,11 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   if [ -n "$slug" ] && [ "$slug" != "null" ]; then echo "Model loaded: $slug (${elapsed}s)."; break; fi
   if grep -qE "Engine core initialization failed|Traceback \(most recent" "$SERVLOG" 2>/dev/null; then
     echo "serve died early (see $SERVLOG)"; slug=""; died=1; break
+  fi
+  # 래퍼(카드 검증 포함)가 프로세스째로 죽으면 로그에 엔진 오류가 없을 수 있다 —
+  # 살아 있는지 확인해 20분 대기 없이 실패로 판정한다.
+  if [ -f "$PIDF" ] && ! kill -0 "$(cat "$PIDF" 2>/dev/null)" 2>/dev/null; then
+    echo "serve process exited early (see $SERVLOG)"; slug=""; died=1; break
   fi
   sleep 5; elapsed=$((elapsed + 5))
 done

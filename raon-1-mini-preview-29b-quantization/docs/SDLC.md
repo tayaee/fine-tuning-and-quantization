@@ -18,8 +18,8 @@
 | 3 | 양자화 실행 | `01/04/07/10-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
 | 4 | 측정·평가·카드·감사 | `s4-00-measure-ppl__transformers-only.sh` → `04/07/10/13/16/19/22/25/28` → `s4-65-update-readme.sh` → `s4-70-verify-upload.sh` → `s4-75-release-notes.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json`, `outputs/release-notes-<mode>.md` | **gate-ppl**·**gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조, **gate-release**: 카드·지표·감사 |
 | 5 | 업로드 | `s5-01-upload-to-hf.sh` | Hub 업로드 | 카드·감사 선행 (없으면 중단) |
-| 6 | 고객인수(transformers) | `s6-*-test-*-with-transformers.sh` (Hub→로딩) / `s6-13-chat.sh` / `s6-16-pi-tool-call-test.sh`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7 | 고객인수(vLLM) | `s7-01-serve-*-from-hf-with-vllm-fork.sh` frozen 래퍼 / `s7-13-chat.sh`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test.sh`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
+| 6 | 고객인수(transformers) | `s6-02-verify-*-with-transformers.sh` (Hub 카드의 '## Usage - transformers' 블록을 바이트 그대로 실행 — **transformers 적재 가능 4종**) | Hub README 실행 + `outputs/s6-<mode>/` | chat 응답 존재 (미발행 repo면 FAIL) |
+| 7 | 고객인수(vLLM) | `s7-02-verify-readme-with-*-and-vllm-fork.sh` (Hub 카드의 '## Usage - vLLM' 블록을 **바이트 검증** 후 **카드 순서대로 실행** — nvfp4-awq-vllm 은 Step1 포크 빌드까지 포함, **5종 전부**) / `s7-13-chat.sh`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test.sh`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
 
 ## 0. 파일 명명 규칙
 
@@ -38,8 +38,8 @@ s<group>-##-<slug>.{sh,py}
 | 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-01-quant-nvfp4-gptq-transformers.{sh,py}` |
 | 4 | 측정·평가 | `s4-00-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-20-aggregate-gsm8k.{sh,py}`, `s4-25-prep-kmmluko.{sh,py}`, `s4-30-score-kmmluko.{sh,py}`, `s4-35-check-format.{sh,py}`, `s4-50-servebench.{sh,py}`, `s4-60-measure-speed__transformers-only.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-70-verify-upload.{sh,py}`, `s4-75-release-notes.{sh,py}` |
 | 5 | 업로드 | `s5-01-upload-hf.{sh,py}` |
-| 6 | 고객-transformers | `s6-*-test-*-with-transformers.sh`, `s6-13-chat.sh`, `s6-16-pi-tool-call-test.sh` |
-| 7 | 고객-vLLM | `s7-01-serve-*-from-hf-with-vllm-fork.sh`, `s7-13-chat.sh`, `s7-16-pi-tool-call-test.sh` |
+| 6 | 고객-transformers | `s6-02-verify-*-with-transformers.sh` (4종: vLLM 전용 타깃은 제외) |
+| 7 | 고객-vLLM | `s7-02-verify-readme-with-*-and-vllm-fork.sh`, `s7-13-chat.sh`, `s7-16-pi-tool-call-test.sh` |
 
 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는 진입점이라
 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·카드·감사까지 기본 포함, s5 업로드·s6/s7 CAT는 별도 실행).
@@ -160,7 +160,7 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | 3 양자화 | `rq_fresh`(산출물 > calib/스크립트) | |
 | 4 측정·평가 | 산출물 > 모델 `config.json` | **스크립트 mtime이 아니라 산출물 기준** |
 | 5 업로드 | s4-31/34 산출물 존재 | |
-| 6 CAT-tf | `outputs/s6-<mode>/` 존재 시 skip(타깃별) | s6-13/16 (실패 로그도 skip — 지우고 재실행) |
+| 6 CAT-tf | `outputs/s6-<mode>/` 존재 시 skip(타깃별) | s6-02 (실패 로그도 skip — 지우고 재실행) |
 | 7 CAT-vllm | `logs/s7-13·s7-16.<slug>.log` 존재 시 skip | s7-13/16 (실패 로그도 skip — 지우고 재실행) |
 
 원칙: **스크립트를 고쳐도 이미 얻은 측정값은 무효가 되지 않는다.**

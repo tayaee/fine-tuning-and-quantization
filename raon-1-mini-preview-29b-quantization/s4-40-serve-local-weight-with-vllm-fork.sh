@@ -39,13 +39,40 @@ if ss -ltn 2>/dev/null | grep -q ":${PORT} "; then
   echo "REFUSE: port $PORT busy — 다른 서버가 떠 있음 (끄거나 PORT를 바꿔라)" >&2; exit 1
 fi
 rm -f "$SERVLOG"
-export VLLM_USE_PRECOMPILED=1
-nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" vllm serve "$MODEL" \
-  --host 127.0.0.1 --port "$PORT" \
-  --served-model-name "$TARGET" \
-  --tensor-parallel-size "${TP:-1}" \
-  --trust-remote-code \
-  >"$SERVLOG" 2>&1 &
+# ---- 서버 실행 바이너리 선택 --------------------------------------------------
+# GB10(sm_121)에서는 KRAFTON 사전빌드 포크가 엔진 init 에서 죽는다 (2026-10-29 실측:
+# logs/s4-40-serve-vllm-fork.log "Engine core initialization failed"). 그래서
+# 소스 빌드 포크(tayaee/raon-vllm-spark@gb10-support)를 쓴다 — s7-02-verify-readme-with-nvfp4-awq-vllm-and-vllm-fork.sh (카드 블록이 Step1 빌드까지 포함)
+# 가 만든 venv. 없으면 사전빌드 포크로 폴백 (B300/RTX 5090 계열에서만 동작).
+#
+# 플래그는 카드(snippets/nvfp4-awq-vllm/serve-vllm.sh)의 서빙 설정과 맞춘다 —
+# servebench 수치가 '게시된 카드 그대로'의 조건이어야 한다.
+GB10_VENV="${GB10_VENV:-/tmp/raon-1-mini-preview-nvfp4-awq-vllm/.venv}"
+SERVE_ARGS=(
+  serve "$MODEL"
+  --host 127.0.0.1 --port "$PORT"
+  --served-model-name "$TARGET"
+  --tensor-parallel-size "${TP:-1}"
+  --max-model-len "${VLLM_MAX_LEN:-262144}"
+  --max-num-batched-tokens 16384
+  --max-num-seqs 128
+  --gpu-memory-utilization "${GPU_UTIL:-0.85}"
+  --kv-cache-dtype fp8_e4m3
+  --enable-prefix-caching
+  --reasoning-parser raon_1
+  --tool-call-parser raon_1
+  --enable-auto-tool-choice
+  --trust-remote-code
+  --default-chat-template-kwargs '{"enable_thinking": true, "truncate_history_thinking": false}'
+)
+if [ -x "$GB10_VENV/bin/vllm" ]; then
+  rq_log "serve binary: $GB10_VENV/bin/vllm (GB10 source build)"
+  nohup "$GB10_VENV/bin/vllm" "${SERVE_ARGS[@]}" >"$SERVLOG" 2>&1 &
+else
+  rq_log "serve binary: precompiled KRAFTON fork (GB10 에서는 엔진 init 실패 — ./s7-02-verify-readme-with-nvfp4-awq-vllm-and-vllm-fork.sh (카드 블록이 Step1 빌드까지 포함) 를 먼저)"
+  VLLM_USE_PRECOMPILED=1 nohup uvx --from "vllm @ git+https://github.com/krafton-ai/vllm.git@${VLLM_REF}" \
+    vllm "${SERVE_ARGS[@]}" >"$SERVLOG" 2>&1 &
+fi
 echo $! >"$PIDF"
 rq_log "serve start target=$TARGET port=$PORT pid=$(cat "$PIDF") log=$SERVLOG fork=krafton-ai/vllm@$VLLM_REF"
 elapsed=0

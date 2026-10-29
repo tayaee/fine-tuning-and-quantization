@@ -96,18 +96,22 @@ TARGETS=all ./s4-65-update-readme.sh smoke
 TARGETS=all DRY_RUN=1 ./s5-01-upload-to-hf.sh full     # 네트워크 없이 준비 상태만 검증
 TARGETS=all ./s5-01-upload-to-hf.sh full
 
-# s6. 고객 시나리오 (transformers) — Hub 다운로드 → 로딩 → chat → pi
-./s6-02-verify-nvfp4-awq-transformers-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
-./s6-13-chat.sh full tayaee/Raon-1-mini-preview-nvfp4-awq-transformers   # HF 모델명 입력도 가능
-./s6-13-chat.sh full nvfp4-awq-transformers       # chat 검증 (all이면 4종 순차)
-./s6-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # 임시 서버+pi 툴콜 후 정리
+# s6. 고객 시나리오 (transformers) — Hub 카드의 '## Usage - transformers' 예제를 바이트 그대로 실행
+#     (transformers 적재 가능 4종만 — nvfp4-awq-vllm 은 vLLM 전용이라 s7 에서 검증한다)
+./s6-00-clean-serving-workspace.sh full                 # README 예제가 쓰는 작업 디렉터리 정리 (먼저 실행)
+./s6-02-verify-readme-with-nvfp4-awq-transformers-and-transformers.sh full   # Hub README를 바이트 그대로 실행 (미발행 repo면 FAIL)
 
-# s7. 고객 시나리오 (vLLM 서빙) — frozen 래퍼 + chat + pi
-./s7-01-serve-nvfp4-awq-transformers-with-vllm-fork-from-hf-with-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
+# s7. 고객 시나리오 (vLLM 서빙) — Hub 카드의 '## Usage - vLLM' 예제를 바이트 검증 후 실행
+./s7-00-clean-serving-workspace.sh full                 # vLLM 예제 작업 디렉터리 정리 (포크 빌드 포함)
+./s7-02-verify-readme-with-nvfp4-awq-vllm-and-vllm-fork.sh (카드 블록이 Step1 빌드까지 포함) full    # 카드 Step 1: GB10 vLLM 포크 소스 빌드 (nvfp4-awq-vllm 전용, 수십 분)
+./s7-02-verify-readme-with-nvfp4-awq-transformers-and-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
 ./s7-13-chat.sh full nvfp4-awq-transformers       # 서버 기동+chat 검증 (서버 상주)
 ./s7-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # pi 검증 후 서버 정리
 
 # s4/s7. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / CAT 서빙 검증
+# transformers 적재 불가 타깃(modelopt_fp4)의 품질 지표는 서빙 스택으로 잰다:
+./run-s4-metrics-via-serving.sh full nvfp4-awq-vllm  # 서버→벤치 응답→집계→카드 갱신
+./s5-01-upload-to-hf.sh full nvfp4-awq-vllm          # 갱신된 카드로 재게시
 python s4-75-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)

@@ -9,11 +9,14 @@ TARGETS="$(rq_require_targets "./s4-45-answer-via-server.sh $MODE" "${2:-}" base
 N="$EVAL_N"
 : "${BASE_URL:=}"
 : "${PORT:=8000}"
+# 서버의 served-model-name 이 타깃 slug 가 아닐 때 (예: 카드의 서빙 명령은 repo id 를 쓴다)
+# → --model 로 명시해야 오귀인 차단을 통과한다. SERVER_MODEL 로 넘긴다.
+: "${SERVER_MODEL:=}"
 export BASE_URL PORT
 rq_repro_echo
 rq_banner "s4-45-answer-via-server" "Stage 4 - generate benchmark answers via the running server (for in-process-unloadable weights)"
 BENCHES="${EVAL_BENCHMARKS:-gsm8k}"
-rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES backend=server url=${BASE_URL:-localhost:$PORT}"
+rq_log "tp=$TP targets=$TARGETS n=$N benches=$BENCHES backend=server url=${BASE_URL:-localhost:$PORT} server_model=${SERVER_MODEL:-<auto>}"
 rq_lock "$RQ_OUTPUTS/eval-$MODE"
 EVAL_ALL_TARGETS="base awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"
 _ts=""
@@ -44,7 +47,8 @@ for t in $_ts; do
   fi
   [ -f "$m/config.json" ] || { rq_log "missing model: $m (run the quant step first)"; exit 1; }
   (set -x; uv run "$RQ_ROOT/s4-45-answer-via-server.py" --mode "$MODE" --target "$t" --n "$N" \
-    --benchmarks "$BENCHES" --base-url "$BASE_URL" --port "$PORT")
+    --benchmarks "$BENCHES" --base-url "$BASE_URL" --port "$PORT" \
+    ${SERVER_MODEL:+--model "$SERVER_MODEL"})
 done
 
 echo ---- result ----

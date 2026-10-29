@@ -36,7 +36,7 @@ prep = _load_script("s4-65-update-readme.py")
 
 QUANT_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 LLMC_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
-WRAPPER_NUM = {"awq-w3-transformers": "01", "awq-w5-transformers": "01", "nvfp4-awq-vllm": "01", "nvfp4-awq-transformers": "01", "nvfp4-gptq-transformers": "01"}
+WRAPPER_NUM = {"awq-w3-transformers": "02", "awq-w5-transformers": "02", "nvfp4-awq-vllm": "02", "nvfp4-awq-transformers": "02", "nvfp4-gptq-transformers": "02"}
 # 래퍼 파일명의 타깃 토큰 (= 타깃 슬러그)
 WRAPPER_SLUG = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
                 "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
@@ -140,18 +140,18 @@ def test_wrapper_scripts_embed_readme_block():
     """s7 frozen 래퍼 = 스니펫 exec이며, 스니펫은 full 카드의 vLLM serve 블록과 바이트 동일하다."""
     for t in QUANT_TARGETS:
         repo = prep.hf_repo_id(t, "full")
-        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-serve-{WRAPPER_SLUG[t]}-from-hf-with-vllm-fork.sh").read_text(encoding="utf-8")
+        wrapper = (ROOT / f"s7-{WRAPPER_NUM[t]}-verify-readme-with-{WRAPPER_SLUG[t]}-and-vllm-fork.sh").read_text(encoding="utf-8")
         assert wrapper.startswith("#!/usr/bin/env bash"), t
-        assert f"snippets/{t}/serve-vllm.sh" in wrapper, f"wrapper가 스니펫을 실행하지 않음: {t}"
+        assert f's7_serve_frozen "{t}"' in wrapper, f"wrapper가 자기 타깃을 지정하지 않음: {t}"
         r = prep.render_readme(t, "full", {}, {}, 20.0)
         assert _vllm_serve_block(r) == _snippet_serve(t, repo), f"스니펫≠카드 serve 블록: {t}"
 
 
 def test_s713_manages_wrapper_server():
     """s7-13은 frozen 래퍼를 백그라운드로 띄워 slug 확인 후 상주시킨다 (s7-16이 재사용)."""
-    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-serve-${TARGET}-from-hf-with-vllm-fork.sh"' in S713
-    assert 'nohup "$WRAPPER" >"$SERVLOG" 2>&1 &' in S713
-    assert 'model-slug.sh' in S713
+    assert 'WRAPPER="$RQ_ROOT/s7-$NUM-verify-readme-with-${TARGET}-and-vllm-fork.sh"' in S713
+    assert 'nohup "$WRAPPER" "$MODE" >"$SERVLOG" 2>&1 &' in S713
+    assert "model-slug.sh" in S713
     assert 's7-serve.pid' in S713
     assert '[SERVE-FAIL]' in S713 and '[CHAT-FAIL]' in S713 and '"[OK] $slug"' in S713
 

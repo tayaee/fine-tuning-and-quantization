@@ -1,14 +1,25 @@
 # app.py - copied from the base model
+import subprocess
+import sys
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 model_id = "__REPO_ID__"
 
+# This checkpoint is stored in the ModelOpt `modelopt_fp4` format (NVFP4-packed weights
+# plus ModelOpt scales). Transformers has no `modelopt_fp4` quantizer, so it cannot read
+# the checkpoint directly. Convert it to BF16 once with the converter shipped in this
+# repository, then load the converted copy. (The vLLM fork reads `modelopt_fp4`
+# natively — see "Usage - vLLM" if you just want to serve it.)
+local_dir = "./bf16"
+subprocess.run([sys.executable, "nvfp4_to_bf16.py", model_id, "--out", local_dir], check=True)
+
 tokenizer = AutoTokenizer.from_pretrained(
-    model_id,
+    local_dir,
     trust_remote_code=True,
 )
 model = AutoModelForCausalLM.from_pretrained(
-    model_id,
+    local_dir,
     dtype="auto",
     device_map="auto",
     trust_remote_code=True,

@@ -27,6 +27,23 @@ SRC = os.environ.get("RQ_SRC", f"{SHARED}/models/raon-bf16")
 TARGET = "nvfp4-awq-vllm"
 
 
+def _copy_nvfp4_converter(out_dir: str) -> None:
+    """modelopt_fp4 체크포인트에 NVFP4→BF16 변환 도구를 함께 넣는다.
+
+    transformers 는 modelopt_fp4 포맷을 읽지 못한다(양자화기 없음). 그래서 이 모델을
+    transformers 로 쓰려면 BF16 로 변환해야 하는데, 그 변환기를 모델 repo 에 같이
+    올려야 카드의 README 를 '있는 그대로' 따라 할 수 있다.
+    """
+    import shutil
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parent / "config" / "nvfp4_to_bf16.py"
+    if not src.is_file():
+        raise RuntimeError(f"{src} 없음 — 변환기를 모델 repo 에 넣을 수 없다")
+    shutil.copy(src, Path(out_dir) / "nvfp4_to_bf16.py")
+    print(f"nvfp4_to_bf16.py copied -> {out_dir}")
+
+
 def build_config(with_awq: bool = True) -> dict:
     import modelopt.torch.quantization as mtq
 
@@ -137,6 +154,7 @@ def main(mode: str, calib: int, calib_file: str | None, seq_len: int):
             _stamp_modelopt_fp4(tmp)
             tok.save_pretrained(tmp)
             save_custom_code(tmp, SRC)
+            _copy_nvfp4_converter(tmp)
             verify_mopt_output(tmp)
             commit_dir(tmp, out)
             print(f"[{mode}] {TARGET} awq={with_awq} calib={calib} seq={seq_len} -> {out}")

@@ -222,11 +222,11 @@ def test_rq_stage_of_mapping_covers_all_groups():
         "source config/common.env smoke; "
         "for s in s1-01-setup-environment s1-04-setup-acceptance-criteria s1-07-calib s1-10-preflight s2-01-dequant "
         "s3-01-quant-nvfp4-awq-transformers s4-00-ppl s4-10-answer-benchmarks-base s4-15-answer-benchmarks-quantized s5-01-upload-to-hf "
-        "s4-65-prep s4-70-verify s6-13-chat s6-16-pi-tool-call-test s7-13-chat s7-16-pi; do rq_stage_of $s; done"
+        "s4-65-prep s4-70-verify s6-02-verify s7-13-chat s7-16-pi; do rq_stage_of $s; done"
     )
     assert out.returncode == 0, out.stderr
     ids = [line.split()[0] for line in out.stdout.strip().splitlines() if line.strip()]
-    assert ids == ["1", "1", "1", "1", "2", "3", "4", "4", "4", "5", "4", "4", "6", "6", "7", "7"]
+    assert ids == ["1", "1", "1", "1", "2", "3", "4", "4", "4", "5", "4", "4", "6", "7", "7"]
 
 
 if __name__ == "__main__":

@@ -96,6 +96,13 @@ def main(mode: str, target: str, n: int, benchmarks: list[str], base_url: str, p
             for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
     print(f"[{mode}/{target}] n={len(prompts)} backend=server({model_id}) -> {main_path}")
+    # 측정 스택을 남긴다 — 카드가 base(transformers)와 다른 스택의 수치를 비교할 때
+    # 그 사실을 숨기면 안 된다 (Δ에 양자화 손실과 스택 차이가 섞인다).
+    with open(os.path.join(outdir, f"backend-{target}.json"), "w", encoding="utf-8") as f:
+        json.dump({"target": target, "backend": "server", "model": model_id,
+                   "n": len(prompts), "benchmarks": sorted(detail),
+                   "base_url": base_url or f"http://localhost:{port}/v1"},
+                  f, ensure_ascii=False, indent=2)
     return {"ok": True, "status": "ok", "n": len(prompts), "model": model_id}
 
 

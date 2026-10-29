@@ -1,6 +1,6 @@
 """config/transformers-server.py — transformers 직결 최소 OpenAI 호환 서버 (stdlib만 사용).
 
-s0-01(베이스 서빙)과 s6-16(고객 모델 pi 검증)이 공유한다.
+s0-01(베이스 서빙)과 s4-40(로컬 가중치 서빙)이 공유한다.
 chat template 네이티브 툴콜(<tool_call>/<function=>)을 OpenAI tool_calls로 번역하고
 SSE 스트리밍을 지원한다. tool 호출이 일어나면 stderr에 TOOL-CALL을 남긴다.
 

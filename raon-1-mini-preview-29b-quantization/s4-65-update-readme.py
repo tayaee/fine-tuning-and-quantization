@@ -386,6 +386,23 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     lat_change = ("—" if b_lat is None or c_lat is None
                   else f"{b_lat} → {c_lat} ({_pct(c_lat, b_lat)})")
     size_change = ("—" if base_size is None else f"{base_size} → {size_gb} ({_pct(size_gb, base_size)})")
+    # 측정 스택 주석: base 는 transformers in-process, 이 타깃은 vLLM 포크 서빙일 수 있다.
+    # 스택이 다르면 Δ 에 양자화 손실과 스택 차이가 섞인다 — 카드에 명시한다.
+    _stack_note = ""
+    _bmark = Path(OUT_ROOT()) / f"eval-{mode}" / f"backend-{target}.json"
+    if _bmark.is_file():
+        try:
+            _bm = json.loads(_bmark.read_text(encoding="utf-8"))
+        except ValueError:
+            _bm = {}
+        if _bm.get("backend") == "server":
+            _stack_note = (
+                "[^3]: This model's accuracy rows were measured through the vLLM fork "
+                "(the checkpoint cannot be loaded in-process by `transformers`), while "
+                "the Base column is transformers in-process. The drop therefore mixes "
+                "quantization loss with stack/kernel differences — read it as an upper "
+                "bound on the quantization loss, not an exact delta."
+            )
     rows = [
         "| # | Configuration | Base Model | This Model | Change | Notes |",
         "| --- | --- | ---: | ---: | --- | --- |",
@@ -419,6 +436,8 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
         "profiles → `TypeError`), and upstream vLLM lacks RDA `linear_attention`. "
         "Serving these PTQ checkpoints needs a ModelOpt-NVFP4 recipe.",
     ]
+    if _stack_note:
+        rows.append(_stack_note)
     return "\n".join(rows) + "\n"
 
 
@@ -614,13 +633,58 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
                       "(`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start\n"
                       "compiles the model's kernels and takes about 10 minutes).")
 
+    # transformers 가 못 읽는 포맷(modelopt_fp4)의 카드도 transformers 실행 예제는 싣는다 —
+    # 예제 안에서 BF16 로 변환하고(모델 repo 에 동봉된 nvfp4_to_bf16.py) 그것을 로드한다.
+    # '아예 안 싣기'는 옛 판: 그랬더니 s6(transformers) 검증 대상이 사라져 카드가
+    # transformers 경로로 검증되지 않은 채 게시됐다.
+    if is_mopt:
+        transformers_section = f"""## Usage - transformers
+
+`transformers` has no `modelopt_fp4` quantizer, so it cannot read this checkpoint
+directly (`Unknown quantization type, got modelopt_fp4`, then a weight shape
+mismatch — the NVFP4-packed tensors are never unpacked). This repository ships
+`nvfp4_to_bf16.py`, which converts the packed weights to BF16; the snippet below
+converts once and then loads the converted copy. If you only want to *serve* the
+model, the vLLM fork below reads `modelopt_fp4` natively and needs no conversion.
+
+```bash
+{usage_body}
+```
+
+```python
+{app_body}
+```
+```bash
+python app.py  # runs in .venv above
+```
+"""
+        load_claim = (", which `transformers` cannot read directly — convert it with the\n"
+                      "shipped `nvfp4_to_bf16.py` (see **Usage - transformers** below) or serve\n"
+                      "it with the vLLM fork (see **Usage - vLLM** below)")
+    else:
+        transformers_section = f"""## Usage - transformers
+
+```bash
+{usage_body}
+```
+
+```python
+{app_body}
+```
+```bash
+python app.py  # runs in .venv above
+```
+"""
+        load_claim = (", so it\n"
+                      "loads directly with `transformers`' `AutoModelForCausalLM`")
+
     tags = ", ".join(["raon", "moe", storage_format, *spec["tags"]])
     fm = [
         "---",
         "license: apache-2.0",
         f"base_model: {BASE_MODEL}",
         "base_model_relation: quantized",
-        "library_name: transformers",
+        "library_name: vllm" if is_mopt else "library_name: transformers",
         "pipeline_tag: text-generation",
         "language:",
         "- ko",
@@ -635,8 +699,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
 
 This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
-The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`), so it
-loads directly with `transformers`' `AutoModelForCausalLM`.
+The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`){load_claim}.
 
 ## Quantization spec
 
@@ -660,19 +723,7 @@ What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
 
 {comparison}
 
-## Usage - transformers
-
-```bash
-{usage_body}
-```
-
-```python
-{app_body}
-```
-```bash
-python app.py  # runs in .venv above
-```
-
+{transformers_section}
 ## Usage - vLLM
 
 {vllm_intro}

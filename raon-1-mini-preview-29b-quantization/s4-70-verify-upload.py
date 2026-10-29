@@ -587,11 +587,15 @@ def _check_readme(
         return errors
 
     fm = text.split("---", 2)[1]
+    # transformers 로 적재 불가한 타깃(modelopt_fp4)은 카드가 vLLM 전용이라고 밝힌다.
+    # frontmatter 의 library_name 도 거기에 맞춰야 한다 (transformers 라고 쓰면
+    # Hub 이 못 읽는 모델을 transformers 로 표기한다).
+    is_mopt = target == "nvfp4-awq-vllm"
     for req_fm in (
         "license: apache-2.0",
         f"base_model: {BASE_MODEL}",
         "base_model_relation: quantized",
-        "library_name: transformers",
+        "library_name: vllm" if is_mopt else "library_name: transformers",
         "pipeline_tag: text-generation",
     ):
         if req_fm not in fm:
@@ -619,6 +623,18 @@ def _check_readme(
     for req_body in req_bodies:
         if req_body not in text:
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
+
+    if is_mopt:
+        # transformers 로 적재 불가한 타깃(modelopt_fp4)도 카드는 transformers 경로를
+        # 안내한다 — 예제 안에서 동봉된 nvfp4_to_bf16.py 로 BF16 변환 후 로드한다.
+        # 예제가 없으면 transformers 사용자를 막는다.
+        _sec = re.search(r"^## Usage - transformers[ \t]*\n(.*?)(?=^## |\Z)", text, re.DOTALL | re.MULTILINE)
+        if not (_sec and re.search(r"^```", _sec.group(1), re.MULTILINE)):
+            errors.append(f"{readme_fp}: '## Usage - transformers' 에 실행 예제가 없다 — "
+                          "이 타깃은 transformers 로 바로 못 읽으므로(BF16 변환 경로) 예제를 반드시 제시해야 한다")
+        if "nvfp4_to_bf16.py" not in text:
+            errors.append(f"{readme_fp}: 변환 도구 nvfp4_to_bf16.py 를 언급하지 않는다 — "
+                          "transformers 경로에서 BF16 변환 방법이 사라졌다")
 
     # 비교표에서 현재 타겟 수치 확인 (This Model 컬럼 = 측정값, 미기입 '—' 금지)
     repo_id = hf_repo_id(target, mode)
