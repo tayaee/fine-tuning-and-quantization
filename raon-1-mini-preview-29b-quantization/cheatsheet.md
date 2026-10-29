@@ -97,7 +97,7 @@ TARGETS=all DRY_RUN=1 ./s5-01-upload-to-hf.sh full     # 네트워크 없이 준
 TARGETS=all ./s5-01-upload-to-hf.sh full
 
 # s6. 고객 시나리오 (transformers) — Hub 다운로드 → 로딩 → chat → pi
-./s6-01-serve-nvfp4-awq-transformers-with-transformers-from-hf-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
+./s6-02-verify-nvfp4-awq-transformers-with-transformers.sh full   # 고객 절차 그대로 (미발행 repo면 FAIL)
 ./s6-13-chat.sh full tayaee/Raon-1-mini-preview-nvfp4-awq-transformers   # HF 모델명 입력도 가능
 ./s6-13-chat.sh full nvfp4-awq-transformers       # chat 검증 (all이면 4종 순차)
 ./s6-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # 임시 서버+pi 툴콜 후 정리

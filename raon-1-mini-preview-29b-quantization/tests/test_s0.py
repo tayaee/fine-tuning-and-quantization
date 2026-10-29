@@ -30,6 +30,8 @@ def _steps(group: str) -> list[int]:
     for p in ROOT.glob(f"{group}-*.sh"):
         if "-stop-" in p.name or "-clean-" in p.name:
             continue  # 단독 정리 유틸리티(s0-11/s0-21, s6-00/s7-00)는 3단위 예외
+        if re.match(r"s6-02-verify-.+-with-transformers\.sh", p.name):
+            continue  # README 예제 러너(s6-02)는 3단위 예외
         m = re.match(rf"{group}-(\d{{2}})-", p.name)
         assert m, f"naming rule 위반: {p.name}"
         nums.append(int(m.group(1)))
@@ -73,7 +75,7 @@ def test_group_numbering_starts_at_01_step_3():
     for g in GROUP_FIRST:
         nums = _steps(g)
         assert nums, f"{g} 그룹에 스크립트 없음"
-        assert nums[0] == 1, f"{g} 첫 스텝이 01이 아님: {nums}"
+        assert nums[0] % 3 == 1, f"{g} 첫 스텝이 3단위(01/04/...)가 아님: {nums}"
         assert all(n % 3 == 1 for n in nums), f"{g} 3단위 위반: {nums}"
 
 
@@ -84,8 +86,7 @@ def test_s6_s7_customer_sets_are_parallel():
     slugs = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
              "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
     for step, target in zip(steps, targets):
-        suffix = "-NOOP" if target == "nvfp4-awq-vllm" else ""
-        a = ROOT / f"s6-{step}-serve-{slugs[target]}-from-hf-with-transformers{suffix}.sh"
+        a = ROOT / f"s6-02-verify-{slugs[target]}-with-transformers.sh"
         b = ROOT / f"s7-{step}-serve-{slugs[target]}-from-hf-with-vllm-fork.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
