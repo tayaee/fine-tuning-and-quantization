@@ -576,8 +576,8 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     storage_format = "modelopt_fp4" if is_mopt else "compressed-tensors"
     install_line = '"nvidia-modelopt" ' if is_mopt else '"compressed-tensors" '
     gb10_build_block = """```bash
-cd /tmp/raon-vllm-spark
-VENV=/tmp/raon-vllm-spark/.venv
+mkdir -p /tmp/raon-1-mini-preview-nvfp4-awq && cd /tmp/raon-1-mini-preview-nvfp4-awq
+VENV=/tmp/raon-1-mini-preview-nvfp4-awq/.venv
 uv venv --python 3.12 "$VENV"
 uv pip install --python "$VENV/bin/python" "torch==2.13.0" --index-url https://download.pytorch.org/whl/cu130
 uv pip install --python "$VENV/bin/python" setuptools wheel packaging ninja cmake setuptools_rust setuptools_scm
@@ -585,7 +585,7 @@ MAX_JOBS=8 TORCH_CUDA_ARCH_LIST="12.0a+PTX" uv pip install --python "$VENV/bin/p
 "$VENV/bin/python" -c "import vllm; print('vllm', vllm.__version__)"
 ```"""
     if is_mopt:
-        vllm_serve_launcher = ("VENV=/tmp/raon-vllm-spark/.venv  # same venv as the build step\n"
+        vllm_serve_launcher = ("VENV=/tmp/raon-1-mini-preview-nvfp4-awq/.venv  # same venv as the build step\n"
                                "$VENV/bin/vllm serve")
         vllm_step1 = ("Step 1 — build vLLM from source (GB10). Prerequisites: `nvcc`\n"
                       "from CUDA 13.0 on `PATH`, ~50 GB free disk. Run verbatim in order;\n"
@@ -632,7 +632,7 @@ MAX_JOBS=8 TORCH_CUDA_ARCH_LIST="12.0a+PTX" uv pip install --python "$VENV/bin/p
 
 # {repo_id}
 
-This is a **{repo_id}** quantized version of `{BASE_MODEL}`. Only the weights are
+This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
 The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`), so it
 loads directly with `transformers`' `AutoModelForCausalLM`.
@@ -662,6 +662,7 @@ What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
 ## Usage - transformers
 
 ```bash
+mkdir -p /tmp/raon-1-mini-preview-nvfp4-awq && cd /tmp/raon-1-mini-preview-nvfp4-awq
 uv venv --python 3.12 .venv && source .venv/bin/activate  # ignore any active venv
 uv pip install "torch" --index-url https://download.pytorch.org/whl/cu130  # GB10/Blackwell; CPU-only hosts can skip the index-url
 uv pip install "transformers==5.14.1" {install_line}accelerate huggingface_hub
