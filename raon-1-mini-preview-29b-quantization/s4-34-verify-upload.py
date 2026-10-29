@@ -635,7 +635,8 @@ def _check_readme(
         elif not allow_missing_metrics:
             for r in metric_rows:
                 cells = [c.strip() for c in r.strip().strip("|").split("|")]
-                if len(cells) >= 4 and cells[3] in ("—", "", "None", "nan"):
+                if len(cells) >= 6 and cells[3] in ("—", "", "None", "nan") \
+                        and "skipped" not in cells[5].lower():
                     errors.append(f"{readme_fp}: 비교표 This Model 컬럼에 미기입 결측치: {r}")
                     break
 

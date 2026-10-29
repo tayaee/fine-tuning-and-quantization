@@ -39,8 +39,9 @@ def build_config(with_awq: bool = True) -> dict:
 def _strip_mopt_extras(out_dir: str) -> None:
     """포크 Marlin MoE가 등록하지 않는 여분 텐서를 export 산출물에서 제거한다.
     - *pre_quant_scale: awq_lite 탐색 메타데이터 (수치에 반영済み, KRAFTON 표에 없음)
-    - *weight_scale_2: 전역 스케일 (포크 Marlin MoE 미등록, KRAFTON 표에 없음)
-    input_scale/weight_scale는 Marlin이 등록하므로 유지한다."""
+    weight_scale_2(전역 스케일)는 Marlin 커널이 w13/w2_weight_scale_2로 등록해
+    사용하므로 반드시 유지한다 (삭제 시 미초기화 메모리 → 음절 샐러드, 2026-10-28 확인).
+    input_scale/weight_scale도 유지한다."""
     import json
 
     import torch
@@ -50,7 +51,7 @@ def _strip_mopt_extras(out_dir: str) -> None:
     idx_fp = f"{out}/model.safetensors.index.json"
     idx = json.load(open(idx_fp, encoding="utf-8"))
     wmap = idx["weight_map"]
-    drop = [k for k in wmap if k.endswith("pre_quant_scale") or k.endswith("weight_scale_2")]
+    drop = [k for k in wmap if k.endswith("pre_quant_scale")]
     if not drop:
         print("strip: no extras")
         return
@@ -72,7 +73,7 @@ def _strip_mopt_extras(out_dir: str) -> None:
             del wmap[k]
         save_file(tensors, fp)
     json.dump(idx, open(idx_fp, "w"), ensure_ascii=False, indent=2)
-    print(f"strip: removed {len(drop)} extras (pre_quant_scale/weight_scale_2)")
+    print(f"strip: removed {len(drop)} extras (pre_quant_scale only)")
 
 
 def _stamp_modelopt_fp4(out_dir: str) -> None:

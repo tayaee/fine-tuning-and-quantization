@@ -18,7 +18,8 @@ TARGETS="$(rq_require_targets "./s5-01-upload-hf.sh $MODE" "$_pos" awq-w3-transf
 rq_repro_echo
 rq_banner "s5-01-upload-hf" "Stage 8 - upload the prepared model folder to the HuggingFace Hub"
 if [ "${SKIP_VERIFY:-0}" != 1 ]; then
-  "$RQ_ROOT/s4-34-verify-upload.sh" "$MODE" "$TARGETS"
+  # vLLM 전용 타깃의 transformers 지표 면제를 하류 감사에도 전파한다
+  ALLOW_MISSING_METRICS="${ALLOW_MISSING_METRICS:-0}" "$RQ_ROOT/s4-34-verify-upload.sh" "$MODE" "$TARGETS"
 fi
 (set -x; uv run "$RQ_ROOT/s5-01-upload-hf.py" --mode "$MODE" --targets "$TARGETS" $DRY)
 
