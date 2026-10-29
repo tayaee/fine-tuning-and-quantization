@@ -28,7 +28,7 @@ def _load_script(name: str):
     return mod
 
 
-bt = _load_script("s4-28-bench-transformers.py")
+bt = _load_script("s4-28-measure-speed-with-transformers.py")
 
 
 def _isolate(d: str) -> None:

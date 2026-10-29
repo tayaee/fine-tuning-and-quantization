@@ -46,7 +46,7 @@ def check_ready(target: str, mode: str) -> str | None:
         with open(readme, encoding="utf-8") as f:
             blank = not f.read().strip()
     if blank:
-        raise SystemExit(f"README.md missing in {local}; run ./s4-31-prep-upload.sh first")
+        raise SystemExit(f"README.md missing in {local}; run ./s4-31-update-readme.sh first")
     return local
 
 

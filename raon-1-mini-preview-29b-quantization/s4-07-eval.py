@@ -1,7 +1,7 @@
 """s4-07-eval.py — 벤치마크 프롬프트 생성 (vLLM 우선, transformers 폴백).
 입력: outputs/eval-<mode>/prompts-<bench>.jsonl (있으면) — 없으면 calib 파일 뒤 EVAL_N개.
 출력: outputs/eval-<mode>/<target>.jsonl ({bench, prompt, gold, output}).
-        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, s4-13-gsm8k는 최상위만 집계)
+        outputs/eval-<mode>/bench/<bench>/<target>.jsonl (벤치별 상세, s4-13-aggregate-gsm8k는 최상위만 집계)
 
 백엔드(요구사항 2):
   KRAFTON Raon-1-mini-preview는 자체 vllm 포크(krafton-ai/vllm@raon-1-mini-preview)를
@@ -366,7 +366,7 @@ def run_target(mode: str, target: str, backend: str | None, prompts: list[dict],
     """타겟 1개를 생성해 <target>.jsonl + bench/<bench>/<target>.jsonl 저장."""
     name = resolve(target, mode)
     if not os.path.exists(f"{name}/config.json"):
-        hint = " (run s2-01-dequant-mxfp8.sh first)" if target == "base" else ""
+        hint = " (run s2-01-dequant-mxfp8-into-bf16.sh first)" if target == "base" else ""
         raise SystemExit(f"missing model: {name}{hint}")
     texts = [p["prompt"] for p in prompts]
     outputs = generate(target, name, texts, max_tokens=max_tokens, tp=tp, backend=backend,

@@ -13,14 +13,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 S0_SCRIPTS = [
-    "s0-01-load-base-from-hf-with-transformers.sh",
-    "s0-04-chat-transformers.sh",
-    "s0-07-picall-transformers.sh",
-    "s0-10-bench-transformers.sh",
+    "s0-01-serve-base-from-hf-with-transformers.sh",
+    "s0-04-chat-with-transformers.sh",
+    "s0-07-pi-tool-call-with-transformers.sh",
+    "s0-10-bench-latency-with-transformers.sh",
     "s0-13-serve-base-from-hf-with-vllm-fork.sh",
-    "s0-16-chat-vllm.sh",
-    "s0-19-picall-vllm.sh",
-    "s0-22-bench-vllm.sh",
+    "s0-16-chat-with-vllm-fork.sh",
+    "s0-19-pi-tool-call-with-vllm-fork.sh",
+    "s0-22-bench-latency-with-vllm-fork.sh",
 ]
 
 GROUP_FIRST = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"}
@@ -41,7 +41,7 @@ def test_s0_eight_procedures_exist_and_executable():
         p = ROOT / name
         assert p.is_file(), f"{name} 없음"
         assert p.stat().st_mode & 0o111, f"{name} 실행 권한 없음"
-    for name in ("s0-11-stop-transformers.sh", "s0-21-stop-vllm.sh"):
+    for name in ("s0-11-stop-server-with-transformers.sh", "s0-21-stop-server-with-vllm-fork.sh"):
         p = ROOT / name
         assert p.is_file(), f"{name} 없음"
         assert p.stat().st_mode & 0o111, f"{name} 실행 권한 없음"
@@ -78,19 +78,19 @@ def test_group_numbering_starts_at_01_step_3():
 
 
 def test_s6_s7_customer_sets_are_parallel():
-    """s6 test-*-with-transformers 5종과 s7 test-*-with-vllm-fork 5종은 같은 스텝·타깃으로 일치한다."""
+    """s6 serve 5종과 s7 serve 5종은 같은 스텝·타깃으로 일치한다."""
     targets = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
     steps = ["01", "01", "01", "01", "01"]
     slugs = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
              "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
     for step, target in zip(steps, targets):
-        a = ROOT / f"s6-{step}-load-{slugs[target]}-from-hf-with-transformers.sh"
+        a = ROOT / f"s6-{step}-serve-{slugs[target]}-from-hf-with-transformers.sh"
         b = ROOT / f"s7-{step}-serve-{slugs[target]}-from-hf-with-vllm-fork.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
 
 
-STOP_SCRIPTS = ["s0-11-stop-transformers.sh", "s0-21-stop-vllm.sh"]
+STOP_SCRIPTS = ["s0-11-stop-server-with-transformers.sh", "s0-21-stop-server-with-vllm-fork.sh"]
 
 
 def test_s0_stop_scripts_bash_syntax():

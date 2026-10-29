@@ -30,12 +30,12 @@ grep -q 's4-04-prep-gsm8k.sh' "$ROOT/s4-07-eval.py" || { echo "FAIL: s4-07-eval.
 for tok in 'batch_size' 'padding=bs > 1' 'padding_side = "left"' 'attention_mask=mask'; do
   grep -qF -- "$tok" "$ROOT/s4-07-eval.py" || { echo "FAIL: s4-07-eval.py에 '$tok' 없음"; fail=1; }
 done
-for _sh in s4-07-eval-base.sh s4-10-eval-quantized.sh; do
+for _sh in s4-07-answer-benchmarks-base.sh s4-10-answer-benchmarks-quantized.sh; do
   grep -q 'EVAL_BENCHMARKS' "$ROOT/$_sh" || { echo "FAIL: $_sh에 EVAL_BENCHMARKS 없음"; fail=1; }
   grep -q '_missing_bench' "$ROOT/$_sh" || { echo "FAIL: $_sh freshness에 벤치 존재 검사 없음"; fail=1; }
   grep -q 'has no rows for bench' "$ROOT/$_sh" || { echo "FAIL: $_sh 누락 벤치 보고 없음"; fail=1; }
 done
-echo "OK: s4-07-eval-base/s4-10-eval-quantized 표준 GSM8K + 배치 생성"
+echo "OK: s4-07-answer-benchmarks-base/s4-10-answer-benchmarks-quantized 표준 GSM8K + 배치 생성"
 
 # 3. s4-31-prep-upload.py 카드 2종 검사
 for tok in '## Check 1 - PPL' '## Check 2 - GSM8K' '## Quantization spec' 'def _gsm8k_verdict(' 'def _gsm8k_acc_n(' 'def _evalset_meta('; do

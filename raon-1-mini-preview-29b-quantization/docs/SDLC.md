@@ -13,13 +13,13 @@
 | # | 그룹 | 스크립트 | 산출물 | Exit 게이트 (다음으로 가려면) |
 |---:|---|---|---|---|
 | 0 | 베이스모델 검증 | `s0-01-serve`(상주) → `04/07/10` endpoint 검증 → `s0-13-serve`(상주) → `16/19/22` endpoint 검증 | `outputs/s0-<mode>.json` + 벤치 결과 2종 | chat/pi/bench 응답 존재 (13 vLLM half는 포크 검증 GPU sm_103/sm_120에서만) |
-| 1 | 환경 체인 | `s1-01-setup.sh` → `s1-04-acceptance.sh` → `s1-07-prep-calibration.sh` → `s1-10-compat-check.sh` | `.venv/.rq-setup-stamp`, `outputs/acceptance-<mode>.json`, calib jsonl, `outputs/compat.stamp` | 의존성 핀·계약 스키마·GPU(NVFP4=Blackwell) 확인 |
-| 2 | 베이스 복원 | `s2-01-dequant-mxfp8.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
+| 1 | 환경 체인 | `s1-01-setup-environment.sh` → `s1-04-setup-acceptance-criteria.sh` → `s1-07-prep-calibration.sh` → `s1-10-preflight-check.sh` | `.venv/.rq-setup-stamp`, `outputs/acceptance-<mode>.json`, calib jsonl, `outputs/compat.stamp` | 의존성 핀·계약 스키마·GPU(NVFP4=Blackwell) 확인 |
+| 2 | 베이스 복원 | `s2-01-dequant-mxfp8-into-bf16.sh` | `models/raon-bf16` | MXFP8→BF16 수치 대조·`quantization_config` 제거·MoE 전-expert 캘리브레이션 심 |
 | 3 | 양자화 실행 | `01/04/07/10-quant-*.sh` | `models/raon-<target>-<mode>` | **gate-quant**: 패킹 포맷·`global_scale` 값·dense 폴백 차단 |
-| 4 | 측정·평가·카드·감사 | `s4-01-measure-ppl.sh` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload.sh` → `s4-34-verify-upload.sh` → `s4-37-release-notes.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json`, `outputs/release-notes-<mode>.md` | **gate-ppl**·**gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조, **gate-release**: 카드·지표·감사 |
-| 5 | 업로드 | `s5-01-upload-hf.sh` | Hub 업로드 | 카드·감사 선행 (없으면 중단) |
+| 4 | 측정·평가·카드·감사 | `s4-01-measure-ppl.sh` → `04/07/10/13/16/19/22/25/28` → `s4-31-update-readme.sh` → `s4-34-verify-upload.sh` → `s4-37-release-notes.sh` | `outputs/eval-<mode>/<target>.jsonl`, `score.json`, `checks.json`, 모델카드 `README.md`, `prep-upload-<mode>.json`, `verify-upload-<mode>.json`, `outputs/release-notes-<mode>.md` | **gate-ppl**·**gate-eval**: 응답이 실제로 생성됨(빈 응답 차단), **gate-kmmluko**/**gate-format**: 정확도·통과율 계약 대조, **gate-release**: 카드·지표·감사 |
+| 5 | 업로드 | `s5-01-upload-to-hf.sh` | Hub 업로드 | 카드·감사 선행 (없으면 중단) |
 | 6 | 고객인수(transformers) | `s6-*-test-*-with-transformers.sh` (Hub→로딩) / `s6-13-chat.sh` / `s6-16-pi-tool-call-test.sh`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7 | 고객인수(vLLM) | `s7-*-test-*-with-vllm-fork.sh` frozen 래퍼 / `s7-13-chat.sh`(서버 상주) / `s7-16-pi-tool-call-test.sh`(검증 후 정리) / `s7-19-verify-serving-log.sh` | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
+| 7 | 고객인수(vLLM) | `s7-01-serve-*-from-hf-with-vllm-fork.sh` frozen 래퍼 / `s7-13-chat.sh`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test.sh`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 확인 (PTQ 4종 현재 실패 — 포크 한계, PROCEDURE.md 참조) |
 
 ## 0. 파일 명명 규칙
 
@@ -32,14 +32,14 @@ s<group>-##-<slug>.{sh,py}
 
 | group | 그룹 | 파일 예시 |
 |---:|---|---|
-| 0 | 베이스검증 | `s0-01-load-base-from-hf-with-transformers.sh` … `s0-22-bench-vllm.sh` |
-| 1 | 환경 체인 | `s1-01-setup.sh`, `s1-04-acceptance.{sh,py}`, `s1-07-prep-calibration.{sh,py}`, `s1-10-compat-check.{sh,py}` |
+| 0 | 베이스검증 | `s0-01-serve-base-from-hf-with-transformers.sh` … `s0-22-bench-latency-with-vllm-fork.sh` |
+| 1 | 환경 체인 | `s1-01-setup-environment.sh`, `s1-04-acceptance.{sh,py}`, `s1-07-prep-calibration.{sh,py}`, `s1-10-preflight-check.{sh,py}` |
 | 2 | 베이스 복원 | `s2-01-dequant-mxfp8.{sh,py}` |
 | 3 | 양자화 | `s3-01-quant-awq-w3-transformers.{sh,py}` … `s3-01-quant-nvfp4-gptq-transformers.{sh,py}` |
-| 4 | 측정·평가 | `s4-01-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-13-gsm8k.{sh,py}`, `s4-16-prep-kmmluko.{sh,py}`, `s4-19-kmmluko.{sh,py}`, `s4-22-format.{sh,py}`, `s4-25-servebench.{sh,py}`, `s4-28-bench-transformers.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-34-verify-upload.{sh,py}`, `s4-37-release-notes.{sh,py}` |
+| 4 | 측정·평가 | `s4-01-measure-ppl.{sh,py}`, `s4-07-eval.{sh,py}`, `s4-13-aggregate-gsm8k.{sh,py}`, `s4-16-prep-kmmluko.{sh,py}`, `s4-19-score-kmmluko.{sh,py}`, `s4-22-check-format.{sh,py}`, `s4-25-servebench.{sh,py}`, `s4-28-measure-speed-with-transformers.{sh,py}`, `s4-31-prep-upload.{sh,py}`, `s4-34-verify-upload.{sh,py}`, `s4-37-release-notes.{sh,py}` |
 | 5 | 업로드 | `s5-01-upload-hf.{sh,py}` |
 | 6 | 고객-transformers | `s6-*-test-*-with-transformers.sh`, `s6-13-chat.sh`, `s6-16-pi-tool-call-test.sh` |
-| 7 | 고객-vLLM | `s7-*-test-*-with-vllm-fork.sh`, `s7-13-chat.sh`, `s7-16-pi-tool-call-test.sh`, `s7-19-verify-serving-log.{sh,py}` |
+| 7 | 고객-vLLM | `s7-01-serve-*-from-hf-with-vllm-fork.sh`, `s7-13-chat.sh`, `s7-16-pi-tool-call-test.sh` |
 
 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는 진입점이라
 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·카드·감사까지 기본 포함, s5 업로드·s6/s7 CAT는 별도 실행).
@@ -95,9 +95,9 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | # | 검사 | 스크립트 | 데이터 | 잡는 것 | 잡지 못하는 것 |
 |---:|---|---|---|---|---|
 | 1 | in-domain PPL | `s4-01-measure-ppl` | 캘리브 코퍼스 | 가중치 손상·스케일 붕괴(NaN) | 생성 품질·한국어 |
-| 2 | 표준 GSM8K | `s4-04-prep-gsm8k` → `s4-13-gsm8k` | `openai/gsm8k` test | 영어 수학 추론 붕괴 | 코드·지식·한국어 |
-| 3 | 표준 한국어 KMMLU | `s4-16-prep-kmmluko` → `s4-19-kmmluko` | `HAERAE-HUB/KMMLU` test | 한국어 능력·토크나이저 손상 | 영어 앵커링 |
-| 4 | 지시/형식 준수 | `s4-22-format` | 고정 10케이스 | 언어지시·JSON·마커·길이·bullet | 정확성 자체 |
+| 2 | 표준 GSM8K | `s4-04-prep-gsm8k` → `s4-13-aggregate-gsm8k` | `openai/gsm8k` test | 영어 수학 추론 붕괴 | 코드·지식·한국어 |
+| 3 | 표준 한국어 KMMLU | `s4-16-prep-kmmluko` → `s4-19-score-kmmluko` | `HAERAE-HUB/KMMLU` test | 한국어 능력·토크나이저 손상 | 영어 앵커링 |
+| 4 | 지시/형식 준수 | `s4-22-check-format` | 고정 10케이스 | 언어지시·JSON·마커·길이·bullet | 정확성 자체 |
 | 5 | 서빙 처리량 | `s4-25-servebench` | 실서빙(없으면 skip) | 양자화의 대가(속도) | 품질 |
 
 - 1~4는 **품질 회귀**(base 대비 하락 허용폭이 계약 `config/acceptance.toml`에 있음).
@@ -112,9 +112,9 @@ TOML을 쓰는 이유: python 3.12 표준 `tomllib`로 읽혀 **새 의존성이
 | 검사 | 지표 | 기준 | 출처 |
 |---|---|---|---|
 | Check 1 — PPL | in-domain PPL, base 대비 Δ | `ppl_delta_warn` / `ppl_delta_max` | `s4-01-measure-ppl.sh` |
-| Check 2 — GSM8K | 표준 테스트셋 정확도 (+답 마커율·절단률) | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s4-07-eval-base.sh` + `s4-10-eval-quantized.sh` + `s4-13-gsm8k.sh` |
-| Check 3 — KMMLU | 표준 한국어 정확도 | base 대비 하락 ≤ `kmmluko_acc_drop_max` | `s4-16-prep-kmmluko.sh` + `s4-19-kmmluko.sh` |
-| Check 4 — 형식/지시 준수 | 고정 10케이스 통과율 | ≥ `format_pass_rate_min` | `s4-22-format.sh` |
+| Check 2 — GSM8K | 표준 테스트셋 정확도 (+답 마커율·절단률) | base 대비 하락 ≤ `gsm8k_acc_drop_max` | `s4-07-answer-benchmarks-base.sh` + `s4-10-answer-benchmarks-quantized.sh` + `s4-13-aggregate-gsm8k.sh` |
+| Check 3 — KMMLU | 표준 한국어 정확도 | base 대비 하락 ≤ `kmmluko_acc_drop_max` | `s4-16-prep-kmmluko.sh` + `s4-19-score-kmmluko.sh` |
+| Check 4 — 형식/지시 준수 | 고정 10케이스 통과율 | ≥ `format_pass_rate_min` | `s4-22-check-format.sh` |
 | (참고) 서빙 성능 | 출력 tok/s · 요청 지연 | 방향성(공개 처리량과 같은 축) | `s4-25-servebench.sh` |
 
 ## 2. 게이트 (그룹 간 계약)

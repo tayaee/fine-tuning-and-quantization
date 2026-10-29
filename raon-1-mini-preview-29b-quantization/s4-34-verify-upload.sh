@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # s4-34-verify-upload.sh [smoke|full] [targets] — 업로드 전 모델·지표·README·vLLM 호환성 종합 감사.
 # targets 필수 (미지정 시 사용법 출력 후 종료, TARGETS=all로 전체).
-# s4-31-prep-upload.sh 실행 후, s8-01-upload-hf.sh 실행 전에 모든 산출물의 결함 여부를 전수 점검한다.
+# s4-31-update-readme.sh 실행 후, s8-01-upload-hf.sh 실행 전에 모든 산출물의 결함 여부를 전수 점검한다.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
 TARGETS="$(rq_require_targets "./s4-34-verify-upload.sh $MODE" "${2:-}" awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers)" || exit 2

@@ -48,14 +48,14 @@ EOF
   echo "FAIL: s4-07-eval.py QUANT_OF mapping wrong"; fail=1
 fi
 
-# 5. s4-10-eval-quantized.sh 콤마 분리 + 문법 검사 (base는 s4-07 단일 타깃이라 해당 없음)
-if grep -q "tr ',' ' '" "$ROOT/s4-10-eval-quantized.sh"; then
-  echo "OK: s4-10-eval-quantized.sh splits comma TARGETS"
+# 5. s4-10-answer-benchmarks-quantized.sh 콤마 분리 + 문법 검사 (base는 s4-07 단일 타깃이라 해당 없음)
+if grep -q "tr ',' ' '" "$ROOT/s4-10-answer-benchmarks-quantized.sh"; then
+  echo "OK: s4-10-answer-benchmarks-quantized.sh splits comma TARGETS"
 else
-  echo "FAIL: s4-10-eval-quantized.sh missing tr ',' ' ' split"; fail=1
+  echo "FAIL: s4-10-answer-benchmarks-quantized.sh missing tr ',' ' ' split"; fail=1
 fi
-bash -n "$ROOT/s4-07-eval-base.sh" && echo "OK: s4-07-eval-base.sh bash -n" || { echo "FAIL: s4-07-eval-base.sh bash -n"; fail=1; }
-bash -n "$ROOT/s4-10-eval-quantized.sh" && echo "OK: s4-10-eval-quantized.sh bash -n" || { echo "FAIL: s4-10-eval-quantized.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-07-answer-benchmarks-base.sh" && echo "OK: s4-07-answer-benchmarks-base.sh bash -n" || { echo "FAIL: s4-07-answer-benchmarks-base.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-10-answer-benchmarks-quantized.sh" && echo "OK: s4-10-answer-benchmarks-quantized.sh bash -n" || { echo "FAIL: s4-10-answer-benchmarks-quantized.sh bash -n"; fail=1; }
 bash -n "$ROOT/s7-13-chat.sh" && echo "OK: s7-13-chat.sh bash -n" || { echo "FAIL: s7-13-chat.sh bash -n"; fail=1; }
 
 exit $fail

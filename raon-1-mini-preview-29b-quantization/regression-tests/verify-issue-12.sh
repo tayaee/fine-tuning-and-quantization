@@ -14,10 +14,10 @@ for f in run-smoke.sh run-full.sh run-smoke.inc run-full.inc; do
 done
 echo "OK: 모놀리식 러너 archive/ 은퇴"
 
-# 2. per-script TARGETS 가드 spot check (s5-01-upload-hf.sh)
-out="$(cd "$ROOT" && env -u TARGETS ./s5-01-upload-hf.sh smoke 2>&1 || true)"
+# 2. per-script TARGETS 가드 spot check (s5-01-upload-to-hf.sh)
+out="$(cd "$ROOT" && env -u TARGETS ./s5-01-upload-to-hf.sh smoke 2>&1 || true)"
 echo "$out" | grep -q "TARGETS is not specified" || { echo "FAIL: s5-01 미지정 안내 없음"; fail=1; }
-( cd "$ROOT" && ./s5-01-upload-hf.sh smoke >/dev/null 2>&1 ) && rc=0 || rc=$?
+( cd "$ROOT" && ./s5-01-upload-to-hf.sh smoke >/dev/null 2>&1 ) && rc=0 || rc=$?
 [ "$rc" = 2 ] || { echo "FAIL: s5-01 미지정 시 exit=$rc (expected 2)"; fail=1; }
 echo "OK: per-script TARGETS 가드 spot check"
 

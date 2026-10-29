@@ -38,9 +38,9 @@ def _isolate(mod: Any, d: str) -> None:
     sdlc.SHARED = Path(d)
 
 
-g80 = _load_script("s4-13-gsm8k.py")
-ko = _load_script("s4-19-kmmluko.py")
-fmt = _load_script("s4-22-format.py")
+g80 = _load_script("s4-13-aggregate-gsm8k.py")
+ko = _load_script("s4-19-score-kmmluko.py")
+fmt = _load_script("s4-22-check-format.py")
 sb = _load_script("s4-25-servebench.py")
 ev = _load_script("s4-07-eval.py")
 prep = _load_script("s4-31-prep-upload.py")

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 # base = 19-dequant 복원본(공정 기준). 이슈는 bf16으로 부르지만 기존 산출물
-# 파일명(base.json)과 s4-07-eval/s4-13-gsm8k 관례가 base라 별칭으로만 받는다.
+# 파일명(base.json)과 s4-07-eval/s4-13-aggregate-gsm8k 관례가 base라 별칭으로만 받는다.
 ALL_TARGETS = ["base", "awq-w5-transformers", "awq-w3-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 TARGET_ALIASES = {"bf16": "base", "raon-bf16": "base"}
 
@@ -189,7 +189,7 @@ def measure_targets(mode: str, n: int, targets: str | None, seq: int, outdir: st
     for t in parse_targets(targets):
         name = resolve(t, mode)
         if not model_exists(name):
-            hint = " (run s2-01-dequant-mxfp8.sh first)" if t == "base" else ""
+            hint = " (run s2-01-dequant-mxfp8-into-bf16.sh first)" if t == "base" else ""
             print(f"SKIP {t}: missing {name}{hint}")
             continue
         value = ppl_of(name, texts, seq)

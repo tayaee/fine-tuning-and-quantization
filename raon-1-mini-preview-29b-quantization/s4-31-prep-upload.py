@@ -467,7 +467,7 @@ def _check_tables(
 def _serve_section(sb: dict, rows: list[str], mode: str) -> str:
     """서빙 성능 비교표 + 측정 하드웨어 조건.
 
-    `s4-28-bench-transformers.py`가 타깃별로 누적한 checks.json servebench.targets를
+    `s4-28-measure-speed-with-transformers.py`가 타깃별로 누적한 checks.json servebench.targets를
     타깃 × concurrency 표로 렌더링한다. 구 형태(단일 측정 payload)도 fallback 지원.
     backend가 transformers면 인프로세스 측정 조건을, vLLM이면 서버 조건을 표기한다
     (하드웨어 키가 달라 `vLLM ?` 같은 빈 값을 찍지 않기 위함).
@@ -837,17 +837,17 @@ def prepare_target(mode: str, target: str, allow_missing_metrics: bool = False) 
         if target not in ppl:
             report["errors"].append(f"no measured value for '{target}' in outputs/ppl-{mode}/summary.json (run s4-01-measure-ppl first)")
         if target not in scores:
-            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s4-10-eval-quantized.sh/s4-13-gsm8k.sh first)")
+            report["errors"].append(f"no result for '{target}' in outputs/eval-{mode}/score.json (run s4-10-answer-benchmarks-quantized.sh/s4-13-aggregate-gsm8k.sh first)")
         else:
             # score.json에 타깃 행이 있어도 GSM8K 정확도가 없으면 카드의 Check 2가 빈다
             # (일부 벤치만 다시 생성한 경우). base도 있어야 하락폭을 판정할 수 있다.
             for r in ("base", target):
-                rerun = (f"./s4-07-eval-base.sh {mode}" if r == "base"
-                         else f"./s4-10-eval-quantized.sh {mode} {r}")
+                rerun = (f"./s4-07-answer-benchmarks-base.sh {mode}" if r == "base"
+                         else f"./s4-10-answer-benchmarks-quantized.sh {mode} {r}")
                 if _gsm8k_acc(scores, r) is None:
                     report["errors"].append(
                         f"no GSM8K accuracy for '{r}' in outputs/eval-{mode}/score.json "
-                        f"(rerun: EVAL_BENCHMARKS=gsm8k {rerun} && ./s4-13-gsm8k.sh {mode})"
+                        f"(rerun: EVAL_BENCHMARKS=gsm8k {rerun} && ./s4-13-aggregate-gsm8k.sh {mode})"
                     )
     report["size_gb"] = _dir_size_gb(d)
     readme = render_readme(target, mode, ppl, scores, report["size_gb"])

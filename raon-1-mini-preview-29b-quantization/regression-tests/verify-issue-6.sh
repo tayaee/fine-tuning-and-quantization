@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # verify-issue-6.sh — issue-6(Stage 1 수용 기준 계약화) 승인 기준 기계 검증
 #   1. config/acceptance.toml 존재 + 4타깃 기준 정의 + 스키마 정상
-#   2. s1-04-acceptance.py/.sh 존재(+실행 권한), 스키마 오류 시 rc=1, 산출물 생성
+#   2. s1-04-setup-acceptance-criteria.py/.sh 존재(+실행 권한), 스키마 오류 시 rc=1, 산출물 생성
 #   3. s4-01-measure-ppl.py / s4-34-verify-upload.py / s4-31-prep-upload.py 가 기준을 참조
 #   4. 단위 테스트 (tests/test_sdlc.py)
 set -euo pipefail
@@ -20,11 +20,11 @@ done
 echo "OK: config/acceptance.toml 존재 + 4타깃 기준 + gates.release"
 
 # 2. s1-04-acceptance
-for f in s1-04-acceptance.py s1-04-acceptance.sh sdlc.py; do
+for f in s1-04-setup-acceptance-criteria.py s1-04-setup-acceptance-criteria.sh sdlc.py; do
   [ -f "$ROOT/$f" ] || { echo "FAIL: $f 없음"; fail=1; }
 done
-[ -x "$ROOT/s1-04-acceptance.sh" ] || { echo "FAIL: s1-04-acceptance.sh 실행 권한 없음"; fail=1; }
-bash -n "$ROOT/s1-04-acceptance.sh" || { echo "FAIL: s1-04-acceptance.sh bash -n"; fail=1; }
+[ -x "$ROOT/s1-04-setup-acceptance-criteria.sh" ] || { echo "FAIL: s1-04-setup-acceptance-criteria.sh 실행 권한 없음"; fail=1; }
+bash -n "$ROOT/s1-04-setup-acceptance-criteria.sh" || { echo "FAIL: s1-04-setup-acceptance-criteria.sh bash -n"; fail=1; }
 for tok in 'def load_acceptance(' 'def acceptance_errors(' 'def verdict_for_delta(' \
            'def update_ledger(' 'def read_ledger(' 'acceptance-' 'acceptance_errors'; do
   grep -qF -- "$tok" "$ROOT/sdlc.py" || { echo "FAIL: sdlc.py에 '$tok' 없음"; fail=1; }

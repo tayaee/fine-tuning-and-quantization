@@ -1,4 +1,4 @@
-"""tests/test_sdlc.py — SDLC 공통 모듈(sdlc.py · s1-04-acceptance.py · gates.inc) 단위 테스트.
+"""tests/test_sdlc.py — SDLC 공통 모듈(sdlc.py · s1-04-setup-acceptance-criteria.py · gates.inc) 단위 테스트.
 
 pytest가 없는 환경에서도 단독 실행된다:
     .venv/bin/python tests/test_sdlc.py
@@ -7,7 +7,7 @@ pytest가 없는 환경에서도 단독 실행된다:
   - config/acceptance.toml 스키마 검증 + 기본값 폴백
   - Δ 판정(verdict_for_delta)
   - 단계 원장(ledger) 기록/병합/타깃 집계
-  - s1-04-acceptance.py 산출물(acceptance-<mode>.json)
+  - s1-04-setup-acceptance-criteria.py 산출물(acceptance-<mode>.json)
   - gates.inc 게이트(acceptance/ppl/eval)의 통과·차단 동작
 """
 
@@ -38,7 +38,7 @@ def _load_script(name: str):
     return mod
 
 
-acc = _load_script("s1-04-acceptance.py")
+acc = _load_script("s1-04-setup-acceptance-criteria.py")
 
 
 # ---------------------------------------------------------------- 수용 기준
@@ -123,7 +123,7 @@ def test_07_acceptance_writes_snapshot():
     with tempfile.TemporaryDirectory() as d:
         env = dict(os.environ, RQ_SHARED=d)
         out = subprocess.run(
-            [sys.executable, str(ROOT / "s1-04-acceptance.py"), "--mode", "smoke"],
+            [sys.executable, str(ROOT / "s1-04-setup-acceptance-criteria.py"), "--mode", "smoke"],
             capture_output=True, text=True, env=env, cwd=str(ROOT), check=False,
         )
         assert out.returncode == 0, out.stderr
@@ -140,7 +140,7 @@ def test_07_acceptance_rejects_bad_file():
         bad = Path(d) / "bad.toml"
         bad.write_text("[targets.awq-w3-transformers]\nquant_format = 1\n", encoding="utf-8")
         out = subprocess.run(
-            [sys.executable, str(ROOT / "s1-04-acceptance.py"), "--mode", "smoke", "--path", str(bad)],
+            [sys.executable, str(ROOT / "s1-04-setup-acceptance-criteria.py"), "--mode", "smoke", "--path", str(bad)],
             capture_output=True, text=True, cwd=str(ROOT), check=False,
         )
         assert out.returncode == 1
@@ -220,8 +220,8 @@ def test_gate_acceptance_requires_snapshot():
 def test_rq_stage_of_mapping_covers_all_groups():
     out = _bash(
         "source config/common.env smoke; "
-        "for s in s1-01-setup s1-04-acceptance s1-07-calib s1-10-compat s2-01-dequant "
-        "s3-01-quant-nvfp4-awq-transformers s4-01-ppl s4-07-eval-base s4-10-eval-quantized s5-01-upload "
+        "for s in s1-01-setup-environment s1-04-setup-acceptance-criteria s1-07-calib s1-10-preflight s2-01-dequant "
+        "s3-01-quant-nvfp4-awq-transformers s4-01-ppl s4-07-answer-benchmarks-base s4-10-answer-benchmarks-quantized s5-01-upload-to-hf "
         "s4-31-prep s4-34-verify s6-13-chat s6-16-pi-tool-call-test s7-13-chat s7-16-pi; do rq_stage_of $s; done"
     )
     assert out.returncode == 0, out.stderr

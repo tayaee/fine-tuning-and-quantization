@@ -115,11 +115,11 @@ rq_bpe_main() {
   fi
 
   if [ "${SKIP_SETUP:-0}" != 1 ] && rq_bpe_want_step setup; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s1-01-setup" ./s1-01-setup.sh
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-01-setup" ./s1-01-setup-environment.sh
   fi
   # Stage 1 — 수용 기준(s1-04-acceptance). 게이트의 판정 기준이 여기서 정해진다.
   if rq_bpe_want_step acceptance; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s1-04-acceptance" ./s1-04-acceptance.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-04-acceptance" ./s1-04-setup-acceptance-criteria.sh "$mode"
     rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$mode.json"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-acceptance" rq_gate_acceptance "$mode"
   fi
@@ -127,10 +127,10 @@ rq_bpe_main() {
     rq_bpe_step "$mode" "$BPE_TIMING" "s1-07-calib" ./s1-07-prep-calibration.sh "$mode"
   fi
   if rq_bpe_want_step compat; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s1-10-compat" ./s1-10-compat-check.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s1-10-compat" ./s1-10-preflight-check.sh "$mode"
   fi
   if rq_bpe_want_step dequant; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s2-01-dequant" ./s2-01-dequant-mxfp8.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s2-01-dequant" ./s2-01-dequant-mxfp8-into-bf16.sh "$mode"
   fi
   if rq_bpe_want_step quant; then
     rq_bpe_step "$mode" "$BPE_TIMING" "${qscript%.sh}" "${quant_cmd[@]}" "./$qscript" "$mode"
@@ -146,13 +146,13 @@ rq_bpe_main() {
     if rq_bpe_want_step evalset; then
       rq_bpe_step "$mode" "$BPE_TIMING" "s4-04-evalset" ./s4-04-prep-gsm8k.sh "$mode"
       rq_bpe_step "$mode" "$BPE_TIMING" "s4-16-prep-kmmluko" ./s4-16-prep-kmmluko.sh "$mode"
-      rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-format-prepare" ./s4-22-format.sh "$mode" --prepare
+      rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-check-format-prepare" ./s4-22-check-format.sh "$mode" --prepare
     fi
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-07-eval-base" ./s4-07-eval-base.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-10-eval-quantized" ./s4-10-eval-quantized.sh "$mode" "$target"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-13-gsm8k" ./s4-13-gsm8k.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-19-kmmluko" ./s4-19-kmmluko.sh "$mode"
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-format" ./s4-22-format.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-07-answer-benchmarks-base" ./s4-07-answer-benchmarks-base.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-10-answer-benchmarks-quantized" ./s4-10-answer-benchmarks-quantized.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-13-aggregate-gsm8k" ./s4-13-aggregate-gsm8k.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-19-score-kmmluko" ./s4-19-score-kmmluko.sh "$mode"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-22-check-format" ./s4-22-check-format.sh "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-eval" rq_gate_eval \
       "$RQ_OUTPUTS/eval-$mode/$target.jsonl" "$target" "$mode"
     rq_bpe_step "$mode" "$BPE_TIMING" "gate-kmmluko" rq_gate_kmmluko "$mode" "$target"
@@ -164,7 +164,7 @@ rq_bpe_main() {
     rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$mode/score.json"
   fi
   if rq_bpe_want_step prep; then
-    rq_bpe_step "$mode" "$BPE_TIMING" "s4-31-prep" ./s4-31-prep-upload.sh "$mode" "$target"
+    rq_bpe_step "$mode" "$BPE_TIMING" "s4-31-prep" ./s4-31-update-readme.sh "$mode" "$target"
     rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$mode.json"
   fi
   if rq_bpe_want_step verify; then

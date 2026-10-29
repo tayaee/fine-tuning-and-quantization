@@ -39,20 +39,20 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 모든 stage 스크립트는 모드(smoke/full)를 인자로 받는다. **인자를 생략하면 환경변수 `MODE`를 보고**,
 그것도 없으면 smoke다. 타깃을 받는 스크립트는 타깃도 필수다 (미지정 시 사용법 출력 후 종료,
-`TARGETS=all`로 전체) — 예: `MODE=full ./s4-31-prep-upload.sh full nvfp4-awq-transformers`.
+`TARGETS=all`로 전체) — 예: `MODE=full ./s4-31-update-readme.sh full nvfp4-awq-transformers`.
 
 ```bash
-./s0-01-load-base-from-hf-with-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
-./s0-04-chat-transformers.sh full       # s0: chat 생성 검증 (GPU)
+./s0-01-serve-base-from-hf-with-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
+./s0-04-chat-with-transformers.sh full       # s0: chat 생성 검증 (GPU)
 ./s0-13-serve-base-from-hf-with-vllm-fork.sh full               # s0: 포크로 베이스 서빙 (이후 s0-16/19, s0-22가 정리)
-./s1-01-setup.sh                        # 양 노드 1회 (env + HF gated 로그인)
-./s1-04-acceptance.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
+./s1-01-setup-environment.sh                        # 양 노드 1회 (env + HF gated 로그인)
+./s1-04-setup-acceptance-criteria.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
 ./s1-07-prep-calibration.sh smoke      # calib jsonl 생성
-./s1-10-compat-check.sh                 # custom_arch 지원 사전 점검 (필수)
+./s1-10-preflight-check.sh                 # custom_arch 지원 사전 점검 (필수)
 ./s4-04-prep-gsm8k.sh full            # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
 ./s4-16-prep-kmmluko.sh full          # 표준 한국어 KMMLU 평가 세트 준비
-./s4-22-format.sh full --prepare      # 지시/형식 준수 고정 10케이스 준비
-./s2-01-dequant-mxfp8.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
+./s4-22-check-format.sh full --prepare      # 지시/형식 준수 고정 10케이스 준비
+./s2-01-dequant-mxfp8-into-bf16.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
 
 # 단일 타깃 빌드 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
 ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh  # smoke × nvfp4-awq-transformers (TARGETS 불필요, 1종 고정)
@@ -86,7 +86,7 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 - 계약(수용 기준): `config/acceptance.toml` — Δ 판정 임계값·용량 범위·포맷·GSM8K/KMMLU 허용폭·형식 통과율의 단일 소스
 - 평가: **5개 검사** — ① 표준 GSM8K(`openai/gsm8k` test, revision·seed 고정) ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) ③ 지시/형식 준수(고정 10케이스) ④ PPL(Stage 4) ⑤ 서빙 처리량
-  - 프롬프트 생성: `s4-04-prep-gsm8k.sh` · `s4-16-prep-kmmluko.sh` · `s4-22-format.sh` (모두 결정론·멱등)
+  - 프롬프트 생성: `s4-04-prep-gsm8k.sh` · `s4-16-prep-kmmluko.sh` · `s4-22-check-format.sh` (모두 결정론·멱등)
 - 모델 카드: **Check 1 PPL** · **Check 2 GSM8K** · **Check 3 KMMLU** · **Check 4 형식 준수** (참고: 서빙 성능)
 - 게이트 구현: `gates.inc` — `build-ppl-eval.inc` 단일 경로가 **같은 함수**를 사용
 - 증빙: `outputs/stage-ledger-<mode>.json` → `s4-37-release-notes.py` → 릴리스 노트

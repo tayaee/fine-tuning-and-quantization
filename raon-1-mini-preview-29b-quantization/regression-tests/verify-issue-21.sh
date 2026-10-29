@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # verify-issue-21.sh — issue-21(일부 벤치 재생성 시 GSM8K 응답 소실 + PPL delta 3자리) 승인 기준 기계 검증
 #   1. s4-07-eval.py가 이번에 재생성하지 않는 벤치의 기존 응답을 <target>.jsonl에 보존한다
-#   2. s4-07-eval-base/s4-10-eval-quantized의 freshness가 "요청 벤치 응답 존재"까지 본다
+#   2. s4-07-answer-benchmarks-base/s4-10-answer-benchmarks-quantized의 freshness가 "요청 벤치 응답 존재"까지 본다
 #   3. s4-31-prep-upload.py가 GSM8K 정확도 없는 카드를 거부하고, PPL delta를 3자리로 쓴다
 #   4. 단위 테스트
 set -euo pipefail
@@ -18,7 +18,7 @@ grep -q 'kept = preserved_rows(main_path' "$ROOT/s4-07-eval.py" \
 echo "OK: 일부 벤치 재생성 시 다른 벤치 응답 보존"
 
 # 2. freshness = 요청 벤치 응답 존재 (base/quantized 양쪽)
-for _sh in s4-07-eval-base.sh s4-10-eval-quantized.sh; do
+for _sh in s4-07-answer-benchmarks-base.sh s4-10-answer-benchmarks-quantized.sh; do
   grep -q '_missing_bench' "$ROOT/$_sh" \
     || { echo "FAIL: $_sh freshness가 벤치 존재를 검사하지 않음"; fail=1; }
   grep -q 'has no rows for bench(es)' "$ROOT/$_sh" \

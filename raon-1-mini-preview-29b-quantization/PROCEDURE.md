@@ -34,7 +34,7 @@
 | 4. 측정·평가 | `s4-01-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-34-verify-upload` → `s4-37-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
 | 5. 업로드 | `s5-01-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
 | 6. 고객-transformers | `s6-*-test-*-with-transformers` (Hub→로딩) / `s6-13-chat` / `s6-16-pi-tool-call-test`(임시 서버) | Hub 다운로드 + `outputs/s6-<mode>/` | chat/pi 응답 존재 (미발행 repo면 FAIL) |
-| 7. 고객-vLLM | `s7-*-test-*-with-vllm-fork` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주) / `s7-16-pi-tool-call-test`(검증 후 정리) / `s7-19`(서빙감사) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` + `outputs/serve-<mode>.json` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
+| 7. 고객-vLLM | `s7-01-serve-*-from-hf-with-vllm-fork` (frozen 서빙 래퍼) / `s7-13-chat`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
@@ -56,14 +56,14 @@
 
 | # | 스크립트 | 내용 |
 |---|---|---|
-| 01 | `s0-01-load-base-from-hf-with-transformers.sh` | transformers OpenAI 서버 기동(BASE_MODEL, endpoint 상주, s0-10이 정리) |
-| 04 | `s0-04-chat-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
-| 07 | `s0-07-picall-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
-| 10 | `s0-10-bench-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
+| 01 | `s0-01-serve-base-from-hf-with-transformers.sh` | transformers OpenAI 서버 기동(BASE_MODEL, endpoint 상주, s0-10이 정리) |
+| 04 | `s0-04-chat-with-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
+| 07 | `s0-07-pi-tool-call-with-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
+| 10 | `s0-10-bench-latency-with-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
 | 13 | `s0-13-serve-base-from-hf-with-vllm-fork.sh` | 포크 서빙(상주): sm_103/120은 MXFP8 직접 서빙, sm_121(GB10)은 KRAFTON 카드의 NVFP4+sm121 컨테이너. 그 외 GPU는 SKIP, 16/19/22 연쇄 SKIP |
-| 16 | `s0-16-chat-vllm.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
-| 19 | `s0-19-picall-vllm.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
-| 22 | `s0-22-bench-vllm.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
+| 16 | `s0-16-chat-with-vllm-fork.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
+| 19 | `s0-19-pi-tool-call-with-vllm-fork.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
+| 22 | `s0-22-bench-latency-with-vllm-fork.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
 
 pi 고정 질문의 기대값은 `outputs/s0-pi-probe/` (파일 5개 고정)의 실제 파일 수와
 대조한다. 답이 단일 숫자가 아니면 FAIL(도구 호출 미동작).
@@ -83,7 +83,7 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 레시피 추가. 그 전까지 s7 실패는 파이프라인(s1~s4·s5)을 막지 않는다
 (`rq_gate_serving`은 미수행·실패를 실패가 아닌 기록으로 남긴다 — 단 `serve-*.json`
 `ok:false`는 릴리스 노트에 그대로 노출된다).
-구 s9-13/16/19 디스패처·순회는 `archive/`로 은퇴했다 (s9-25 감사는 s7-19로 유지).
+구 s9-13/16/19 디스패처·순회는 `archive/`로 은퇴했다 (s7-19 감사도 삭제 — 기동 판정은 s7-13이 직접).
 
 ## 단계 원장 · 릴리스 노트
 
@@ -98,14 +98,14 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 "인수 깜빡하고 4종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
 대상 스크립트
-(`s4-01-measure-ppl` · `s4-10-eval-quantized` · `s4-28-bench-transformers` ·
+(`s4-01-measure-ppl` · `s4-10-answer-benchmarks-quantized` · `s4-28-measure-speed-with-transformers` ·
 `s4-31-prep-upload` · `s4-34-verify-upload` · `s5-01-upload-hf`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (s6/s7 검증 스크립트는 `[mode] [HF repo id|short target|all]` 형태다.)
 
 ```bash
 ./s4-01-measure-ppl.sh smoke base,nvfp4-awq-transformers   # 개별 스크립트 ($2 또는 TARGETS)
-TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로만
+TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all로만
 ```
 
 > 구 모놀리식 러너(`run-{smoke,full}.sh`, TARGETS/STEPS 다종 실행)는 `archive/`로
@@ -124,7 +124,7 @@ TARGETS=all ./s5-01-upload-hf.sh full        # 전체 실행은 TARGETS=all로�
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)
 
 전체 빌드를 한 타깃으로 좁힌 진입점 8종 (STEPS 부분 실행 지원).
-**두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-13-gsm8k):
+**두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-13-aggregate-gsm8k):
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |
 |---|---|---|
@@ -162,7 +162,7 @@ timing은 `logs/timing-build-<mode>.log`에(run-*.sh와 별도 파일).
 | s3 quant | `rq_lock $OUT` (타깃별) | `rq_fresh` | 타깃이 다르면 동시 실행 가능, 같으면 직렬+skip |
 | s4-01-ppl | `rq_lock $RQ_OUTPUTS/ppl-$MODE` | 타깃별 `rq_fresh` | 직렬(29B 모델 동시 로드 방지) |
 | s4-07-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |
-| s4-13-gsm8k | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | s4-07과 같은 lock → jsonl 쓰는 중엔 대기 |
+| s4-13-aggregate-gsm8k | `rq_lock $RQ_OUTPUTS/eval-$MODE` | — | s4-07과 같은 lock → jsonl 쓰는 중엔 대기 |
 
 stamp는 `FORCE=1`로 무시된다. GPU/라이브러리 버전이 바뀌면 stamp가 불일치해
 자동으로 다시 검증된다.

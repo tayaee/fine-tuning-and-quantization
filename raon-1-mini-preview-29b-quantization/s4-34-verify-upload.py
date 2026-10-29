@@ -530,7 +530,7 @@ def _check_metrics(
 
     if not score_fp.is_file():
         if not allow_missing_metrics:
-            errors.append(f"{score_fp}: 파일 없음 (s4-07-eval-base.sh / s4-10-eval-quantized.sh / s4-13-gsm8k.sh 먼저 실행)")
+            errors.append(f"{score_fp}: 파일 없음 (s4-07-answer-benchmarks-base.sh / s4-10-answer-benchmarks-quantized.sh / s4-13-aggregate-gsm8k.sh 먼저 실행)")
     else:
         score_data = json.loads(score_fp.read_text(encoding="utf-8"))
         bad_keys = [k for k in score_data if k.startswith("prompts-")]
@@ -578,7 +578,7 @@ def _check_readme(
     errors: list[str] = []
     readme_fp = d / "README.md"
     if not readme_fp.is_file():
-        return [f"{readme_fp}: 파일 없음 (s4-31-prep-upload.sh 먼저 실행)"]
+        return [f"{readme_fp}: 파일 없음 (s4-31-update-readme.sh 먼저 실행)"]
     text = readme_fp.read_text(encoding="utf-8")
     if len(text.strip()) < 500:
         errors.append(f"{readme_fp}: 내용이 너무 짧음 ({len(text)} chars)")
@@ -775,7 +775,7 @@ def verify_target(
     # 9) 모드 전체 비교 리포트(models/README-<mode>.md) 존재 확인
     sp = Path(MODELS_DIR(mode)) / f"README-{mode}.md"
     if not sp.is_file():
-        report["errors"].append(f"{sp}: 파일 없음 (s4-31-prep-upload.sh 먼저 실행)")
+        report["errors"].append(f"{sp}: 파일 없음 (s4-31-update-readme.sh 먼저 실행)")
     elif sp.stat().st_size < 500:
         report["errors"].append(f"{sp}: 내용이 너무 짧음 ({sp.stat().st_size} bytes)")
 

@@ -12,16 +12,16 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
 # 0. 파일 존재 + 실행 권한
-for f in s4-31-prep-upload.py s4-31-prep-upload.sh; do
+for f in s4-31-prep-upload.py s4-31-update-readme.sh; do
   [ -f "$ROOT/$f" ] || { echo "FAIL: $f 없음"; fail=1; }
 done
-[ -x "$ROOT/s4-31-prep-upload.sh" ] || { echo "FAIL: s4-31-prep-upload.sh에 실행 권한 없음"; fail=1; }
-bash -n "$ROOT/s4-31-prep-upload.sh" || { echo "FAIL: s4-31-prep-upload.sh bash -n"; fail=1; }
-bash -n "$ROOT/s5-01-upload-hf.sh" || { echo "FAIL: s5-01-upload-hf.sh bash -n"; fail=1; }
-grep -q ': "${ALLOW_MISSING_METRICS:=0}"' "$ROOT/s4-31-prep-upload.sh" \
-  || { echo "FAIL: s4-31-prep-upload.sh에 ALLOW_MISSING_METRICS 기본값 초기화 없음 (set -u 크래시)"; fail=1; }
-if grep -q '"$RQ_MODELS/raon-\*-$MODE/README.md"' "$ROOT/s4-31-prep-upload.sh"; then
-  echo "FAIL: s4-31-prep-upload.sh에 따옴표 안 글로브(*) 버그 잔존"; fail=1
+[ -x "$ROOT/s4-31-update-readme.sh" ] || { echo "FAIL: s4-31-update-readme.sh에 실행 권한 없음"; fail=1; }
+bash -n "$ROOT/s4-31-update-readme.sh" || { echo "FAIL: s4-31-update-readme.sh bash -n"; fail=1; }
+bash -n "$ROOT/s5-01-upload-to-hf.sh" || { echo "FAIL: s5-01-upload-to-hf.sh bash -n"; fail=1; }
+grep -q ': "${ALLOW_MISSING_METRICS:=0}"' "$ROOT/s4-31-update-readme.sh" \
+  || { echo "FAIL: s4-31-update-readme.sh에 ALLOW_MISSING_METRICS 기본값 초기화 없음 (set -u 크래시)"; fail=1; }
+if grep -q '"$RQ_MODELS/raon-\*-$MODE/README.md"' "$ROOT/s4-31-update-readme.sh"; then
+  echo "FAIL: s4-31-update-readme.sh에 따옴표 안 글로브(*) 버그 잔존"; fail=1
 fi
 echo "OK: s4-31-prep-upload.{py,sh} 존재 + 실행 권한 + bash -n + set -u 안전"
 
@@ -50,7 +50,7 @@ grep -q 'FORBIDDEN_FRONTMATTER' "$ROOT/s4-31-prep-upload.py" \
 echo "OK: README 카드 섹션 + extra_gated_* 금지"
 
 # 3. s5-01-upload-hf.py는 업로드 전담
-for tok in 'def check_ready(' 's4-31-prep-upload.sh first' '"--dry-run"' 'upload_folder' 'create_repo'; do
+for tok in 'def check_ready(' 's4-31-update-readme.sh first' '"--dry-run"' 'upload_folder' 'create_repo'; do
   grep -qF -- "$tok" "$ROOT/s5-01-upload-hf.py" || { echo "FAIL: s5-01-upload-hf.py에 '$tok' 없음"; fail=1; }
 done
 for tok in 'render_readme' 'MODEL_CARD_TMPL' 'ppl-' 'score.json'; do
@@ -64,7 +64,7 @@ fi
 echo "OK: s5-01-upload-hf.py 업로드 전담 (README 생성 로직 제거)"
 
 # 4. 파이프라인 연동 (단일 타깃 빌드 엔진; 구 run-{smoke,full}.sh는 archive/)
-grep -q '"s4-31-prep" ./s4-31-prep-upload.sh "\$mode"' "$ROOT/build-ppl-eval.inc" \
+grep -q '"s4-31-prep" ./s4-31-update-readme.sh "\$mode"' "$ROOT/build-ppl-eval.inc" \
   || { echo "FAIL: build-ppl-eval.inc에 s4-31-prep 단계 없음"; fail=1; }
 bash -n "$ROOT/build-ppl-eval.inc" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
 for w in "$ROOT"/run-s1-to-s4-*.sh; do

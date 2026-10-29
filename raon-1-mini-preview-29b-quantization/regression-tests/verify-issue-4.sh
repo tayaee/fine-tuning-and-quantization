@@ -32,10 +32,10 @@ grep -q 'PPL_ALL_TARGETS="base awq-w3-transformers awq-w5-transformers nvfp4-awq
 if grep -qE '_t=all(\s|$)' "$ROOT/s4-01-measure-ppl.sh"; then
   echo "FAIL: s4-01-measure-ppl.sh가 'all'을 단일 타겟으로 통과시킴 (프로세스 격리 무효화)"; fail=1
 fi
-grep -q 'EVAL_ALL_TARGETS="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-10-eval-quantized.sh" \
-  || { echo "FAIL: s4-10-eval-quantized.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 4개 로드)"; fail=1; }
-if grep -v '^\s*#' "$ROOT/s4-10-eval-quantized.sh" | grep -q -- '--target all'; then
-  echo "FAIL: s4-10-eval-quantized.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
+grep -q 'EVAL_ALL_TARGETS="awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers"' "$ROOT/s4-10-answer-benchmarks-quantized.sh" \
+  || { echo "FAIL: s4-10-answer-benchmarks-quantized.sh가 'all'을 명시 목록으로 펼치지 않음 (한 프로세스로 4개 로드)"; fail=1; }
+if grep -v '^\s*#' "$ROOT/s4-10-answer-benchmarks-quantized.sh" | grep -q -- '--target all'; then
+  echo "FAIL: s4-10-answer-benchmarks-quantized.sh에 --target all 단일 프로세스 경로가 남아 있음"; fail=1
 fi
 # 실제 루프가 몇 개 프로세스를 띄우는지 검증 (모델 로드 없이)
 for _case in all "" nvfp4-awq-transformers nvfp4-gptq-transformers,nvfp4-awq-transformers; do
@@ -55,10 +55,10 @@ for _case in all "" nvfp4-awq-transformers nvfp4-gptq-transformers,nvfp4-awq-tra
   _got=$(echo "$_n" | wc -w)
   [ "$_got" = "$_want" ] || { echo "FAIL: s4-01-measure-ppl.sh targets='$_case' → $_got procs (expected $_want)"; fail=1; }
 done
-echo "OK: s4-01-measure-ppl.sh/s4-10-eval-quantized.sh 프로세스 격리 + 'all' 펼침 + 캐시 집계"
+echo "OK: s4-01-measure-ppl.sh/s4-10-answer-benchmarks-quantized.sh 프로세스 격리 + 'all' 펼침 + 캐시 집계"
 bash -n "$ROOT/s4-01-measure-ppl.sh" || { echo "FAIL: s4-01-measure-ppl.sh bash -n"; fail=1; }
-bash -n "$ROOT/s4-07-eval-base.sh" || { echo "FAIL: s4-07-eval-base.sh bash -n"; fail=1; }
-bash -n "$ROOT/s4-10-eval-quantized.sh" || { echo "FAIL: s4-10-eval-quantized.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-07-answer-benchmarks-base.sh" || { echo "FAIL: s4-07-answer-benchmarks-base.sh bash -n"; fail=1; }
+bash -n "$ROOT/s4-10-answer-benchmarks-quantized.sh" || { echo "FAIL: s4-10-answer-benchmarks-quantized.sh bash -n"; fail=1; }
 
 # 3. s4-07-eval.py 백엔드
 for tok in 'def run_transformers(' 'def run_vllm(' 'def generate(' \
@@ -74,25 +74,25 @@ grep -q 'decode(out\[0\]\[n_in:\])\|gen = out\[:, ids.size(1) :\]' "$ROOT/s4-07-
   || { echo "FAIL: 신규 토큰만 디코드하지 않음"; fail=1; }
 echo "OK: s4-07-eval.py transformers 백엔드 + auto 폴백"
 
-# 3b. s4-13-gsm8k.py 벤치마크 정확도 (issue-5가 score.json을 읽으므로 선행 조건)
+# 3b. s4-13-aggregate-gsm8k.py 벤치마크 정확도 (issue-5가 score.json을 읽으므로 선행 조건)
 for tok in 'def score_answer(' '"benchmarks"' 'score.json'; do
-  grep -qF "$tok" "$ROOT/s4-13-gsm8k.py" || { echo "FAIL: s4-13-gsm8k.py에 '$tok' 없음"; fail=1; }
+  grep -qF "$tok" "$ROOT/s4-13-aggregate-gsm8k.py" || { echo "FAIL: s4-13-aggregate-gsm8k.py에 '$tok' 없음"; fail=1; }
 done
-echo "OK: s4-13-gsm8k.py 벤치마크 정확도 산출"
+echo "OK: s4-13-aggregate-gsm8k.py 벤치마크 정확도 산출"
 
 # 4. build-ppl-eval.inc 파이프라인 연동 (단일 타깃 빌드 엔진)
 f="$ROOT/build-ppl-eval.inc"
 grep -q 's4-01-measure-ppl.sh "\$mode" "\$eval_targets"' "$f" \
   || { echo "FAIL: build 엔진이 TARGETS(=base 포함)를 s4-01에 전달하지 않음"; fail=1; }
-grep -q 's4-07-eval-base.sh "\$mode"' "$f" \
+grep -q 's4-07-answer-benchmarks-base.sh "\$mode"' "$f" \
   || { echo "FAIL: build 엔진이 base eval을 호출하지 않음"; fail=1; }
-grep -q 's4-10-eval-quantized.sh "\$mode" "\$target"' "$f" \
-  || { echo "FAIL: build 엔진이 target을 s4-10-eval-quantized에 전달하지 않음"; fail=1; }
+grep -q 's4-10-answer-benchmarks-quantized.sh "\$mode" "\$target"' "$f" \
+  || { echo "FAIL: build 엔진이 target을 s4-10-answer-benchmarks-quantized에 전달하지 않음"; fail=1; }
 grep -q 'QUANT_CPU_ONLY' "$f" || { echo "FAIL: build 엔진에 QUANT_CPU_ONLY 옵션 없음"; fail=1; }
 grep -q 'quant_cmd=(env CUDA_VISIBLE_DEVICES=)' "$f" \
   || { echo "FAIL: build 엔진이 GPU 가시성을 자식 프로세스에만 제한하지 않음"; fail=1; }
-grep -q '"s4-13-gsm8k" ./s4-13-gsm8k.sh "\$mode"' "$f" \
-  || { echo "FAIL: build 엔진에서 s4-13-gsm8k 호출 체인 끊김"; fail=1; }
+grep -q '"s4-13-aggregate-gsm8k" ./s4-13-aggregate-gsm8k.sh "\$mode"' "$f" \
+  || { echo "FAIL: build 엔진에서 s4-13-aggregate-gsm8k 호출 체인 끊김"; fail=1; }
 bash -n "$f" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
 for w in "$ROOT"/run-s1-to-s4-*.sh; do
   grep -q 'source "\$ROOT/build-ppl-eval.inc"' "$w" \

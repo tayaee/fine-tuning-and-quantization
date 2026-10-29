@@ -25,7 +25,7 @@ f="$ROOT/build-ppl-eval.inc"
 grep -q '"gate-quant" rq_gate_quant' "$f" || { echo "FAIL: build 엔진에 gate-quant 없음"; fail=1; }
 grep -q '"gate-ppl" rq_gate_ppl' "$f" || { echo "FAIL: build 엔진에 gate-ppl 없음"; fail=1; }
 grep -q '"gate-eval" rq_gate_eval' "$f" || { echo "FAIL: build 엔진에 gate-eval 없음"; fail=1; }
-grep -q '"s1-04-acceptance" ./s1-04-acceptance.sh' "$f" || { echo "FAIL: build 엔진에 acceptance 단계 없음"; fail=1; }
+grep -q '"s1-04-acceptance" ./s1-04-setup-acceptance-criteria.sh' "$f" || { echo "FAIL: build 엔진에 acceptance 단계 없음"; fail=1; }
 bash -n "$f" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
 echo "OK: build-ppl-eval.inc 게이트 + acceptance 단계"
 

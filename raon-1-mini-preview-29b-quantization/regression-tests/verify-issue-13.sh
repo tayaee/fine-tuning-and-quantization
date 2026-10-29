@@ -38,15 +38,15 @@ for f in "$ROOT"/run-s1-to-s4-*.sh; do
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 10 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (10 기대)"; fail=1; }
-for f in s4-37-release-notes.py s7-19-verify-serving-log.py; do
+for f in s4-37-release-notes.py; do
   grep -qE 'print\("\[s[0-9]-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"
 
 # 실제 출력 확인(07)
-out="$(cd "$ROOT" && ./s1-04-acceptance.sh smoke 2>&1 || true)"
+out="$(cd "$ROOT" && ./s1-04-setup-acceptance-criteria.sh smoke 2>&1 || true)"
 echo "$out" | grep -qE '^\[s1-04-acceptance\] Stage 1 - .*[A-Za-z]' \
-  || { echo "FAIL: s1-04-acceptance.sh 시작 배너 출력 형식 불일치"; fail=1; }
-echo "OK: s1-04-acceptance.sh 실제 출력"
+  || { echo "FAIL: s1-04-setup-acceptance-criteria.sh 시작 배너 출력 형식 불일치"; fail=1; }
+echo "OK: s1-04-setup-acceptance-criteria.sh 실제 출력"
 
 exit $fail

@@ -22,7 +22,7 @@ rq_gate_acceptance() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/acceptance-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-04-acceptance.sh $mode)" >&2
+    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-04-setup-acceptance-criteria.sh $mode)" >&2
     return 1
   fi
   ( set -x; rq_py - "$f" <<'PY'
@@ -187,7 +187,7 @@ PY
 rq_gate_kmmluko() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s4-19-kmmluko.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 한국어 검사 미수행 (s4-19-score-kmmluko.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys
@@ -217,7 +217,7 @@ PY
 rq_gate_format() {
   local mode="${1:-$MODE}" target="${2:-}"
   local f="$RQ_OUTPUTS/eval-$mode/checks.json"
-  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s4-22-format.sh)"; return 0; }
+  [ -f "$f" ] || { echo "SKIP: $f 없음 — 형식 검사 미수행 (s4-22-check-format.sh)"; return 0; }
   [ -n "$target" ] || return 0
   ( set -x; rq_py - "$f" "$target" <<'PY'
 import json, sys
@@ -243,13 +243,13 @@ PY
 }
 
 # --- 게이트 5: 배포 후 서빙 검증 ---------------------------------------------
-# s7-19-verify-serving-log.py가 만든 outputs/serve-<mode>.json을 대조한다.
+# (s7-19 삭제됨) outputs/serve-<mode>.json이 있으면 대조한다.
 # 서빙을 아직 하지 않았다면 "미수행"은 실패가 아니라 skip으로 본다(배포는 수동 단계).
 rq_gate_serving() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/serve-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi-tool-call-test.sh 후 s7-19-verify-serving-log.sh)"
+    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi-tool-call-test.sh에서 판정)"
     return 0
   fi
   ( set -x; rq_py - "$f" <<'PY'
