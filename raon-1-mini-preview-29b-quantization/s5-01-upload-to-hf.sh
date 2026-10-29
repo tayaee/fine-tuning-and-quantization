@@ -21,7 +21,7 @@ if [ "${SKIP_VERIFY:-0}" != 1 ]; then
   # vLLM 전용 타깃의 transformers 지표 면제를 하류 감사에도 전파한다
   ALLOW_MISSING_METRICS="${ALLOW_MISSING_METRICS:-0}" "$RQ_ROOT/s4-34-verify-upload.sh" "$MODE" "$TARGETS"
 fi
-(set -x; uv run "$RQ_ROOT/s5-01-upload-hf.py" --mode "$MODE" --targets "$TARGETS" $DRY)
+(set -x; uv run "$RQ_ROOT/s5-01-upload-to-hf.py" --mode "$MODE" --targets "$TARGETS" $DRY)
 
 echo ---- result ----
 rq_log "uploaded targets=$TARGETS dry_run=${DRY:-0} (see URLs above)"

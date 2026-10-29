@@ -2,7 +2,7 @@
 # verify-issue-21.sh — issue-21(일부 벤치 재생성 시 GSM8K 응답 소실 + PPL delta 3자리) 승인 기준 기계 검증
 #   1. s4-07-eval.py가 이번에 재생성하지 않는 벤치의 기존 응답을 <target>.jsonl에 보존한다
 #   2. s4-07-answer-benchmarks-base/s4-10-answer-benchmarks-quantized의 freshness가 "요청 벤치 응답 존재"까지 본다
-#   3. s4-31-prep-upload.py가 GSM8K 정확도 없는 카드를 거부하고, PPL delta를 3자리로 쓴다
+#   3. s4-31-update-readme.py가 GSM8K 정확도 없는 카드를 거부하고, PPL delta를 3자리로 쓴다
 #   4. 단위 테스트
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,11 +28,11 @@ done
 echo "OK: freshness가 요청 벤치 응답 존재까지 확인"
 
 # 3. 카드 가드 + PPL delta 3자리
-grep -q 'no GSM8K accuracy for' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'no GSM8K accuracy for' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: prep-upload가 GSM8K 정확도 누락을 거부하지 않음"; fail=1; }
-grep -q "_fmt(delta, 3)" "$ROOT/s4-31-prep-upload.py" \
+grep -q "_fmt(delta, 3)" "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: 수용 기준 표의 PPL delta가 3자리가 아님"; fail=1; }
-grep -q "_fmt(pr.get('delta'), 3)" "$ROOT/s4-31-prep-upload.py" \
+grep -q "_fmt(pr.get('delta'), 3)" "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: Check 1 표의 PPL delta가 3자리가 아님"; fail=1; }
 echo "OK: GSM8K 누락 거부 · PPL delta 3자리"
 

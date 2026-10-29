@@ -30,7 +30,7 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-31-prep-upload.py")
+prep = _load_script("s4-31-update-readme.py")
 
 QUANT_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 LLMC_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]

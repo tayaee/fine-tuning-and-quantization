@@ -9,7 +9,7 @@
 
   - config/acceptance.toml = Stage 1 산출물(수용 기준의 단일 소스).
     s4-01-measure-ppl.py(Δ 판정), s4-34-verify-upload.py(용량 범위),
-    s4-31-prep-upload.py(모델 카드) 모두 여기 정의된 값만 사용한다.
+    s4-31-update-readme.py(모델 카드) 모두 여기 정의된 값만 사용한다.
     파일이 없으면 DEFAULT_ACCEPTANCE로 폴백(하위 호환).
   - outputs/stage-ledger-<mode>.json = 단계 원장. 각 단계가
     status/artifact/verdict를 남기고, s4-37-release-notes.py가 릴리스 노트로 굽는다.

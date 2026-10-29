@@ -47,7 +47,7 @@ echo "OK: 게이트(한국어·형식)"
 
 # 4. 카드 절
 for tok in '## Check 3 - KMMLU' '## Check 4 - Instruction and format compliance' '## Serving performance'; do
-  grep -qF "$tok" "$ROOT/s4-31-prep-upload.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
+  grep -qF "$tok" "$ROOT/s4-31-update-readme.py" || { echo "FAIL: 카드에 '$tok' 없음"; fail=1; }
 done
 grep -qF '내용이 너무 짧음' "$ROOT/s4-34-verify-upload.py" || { echo "FAIL: 46-verify에 카드 실질 검사 없음"; fail=1; }
 echo "OK: 카드 Check 3/4 + 서빙 성능"
@@ -77,8 +77,8 @@ grep -qF 'pass_rate_min' "$ROOT/s4-22-check-format.py" \
 grep -qF '"verdict"' "$ROOT/s4-22-check-format.py" \
   || { echo "FAIL: s4-22-check-format.py가 verdict를 산출하지 않음"; fail=1; }
 # 판정은 통과율이 아니라 계약 하한으로 — 모델 카드가 verdict를 그대로 쓴다
-grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s4-31-prep-upload.py" \
-  || { echo "FAIL: s4-31-prep-upload.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
+grep -qF 'checks.get("format") or {}).get("verdict")' "$ROOT/s4-31-update-readme.py" \
+  || { echo "FAIL: s4-31-update-readme.py가 형식 verdict를 계약 기준으로 대조하지 않음"; fail=1; }
 _tmprq="$(mktemp -d)"
 if RQ_SHARED="$_tmprq" "$ROOT/s4-22-check-format.sh" smoke --prepare >/dev/null 2>&1; then
   :

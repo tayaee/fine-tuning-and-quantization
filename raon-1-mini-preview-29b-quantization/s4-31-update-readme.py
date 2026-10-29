@@ -1,4 +1,4 @@
-"""s4-31-prep-upload.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
+"""s4-31-update-readme.py — 업로드 전 모델 디렉터리 검증 + 모델 카드(README.md) 생성.
 s8-01-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올리기만 한다
 (메타데이터는 업로드 지점에서 즉석 생성하면 요약 정보가 빠진다).
 
@@ -12,7 +12,7 @@ s8-01-upload-hf.py는 이 스크립트가 채운 폴더를 그대로 Hub에 올�
      + transformers/vLLM 실행 예제 + 라이선스)
   5) 요약 매니페스트를 outputs/prep-upload-<mode>.json에 기록
 
-  uv run s4-31-prep-upload.py --mode smoke --targets nvfp4-awq-transformers --allow-missing-metrics
+  uv run s4-31-update-readme.py --mode smoke --targets nvfp4-awq-transformers --allow-missing-metrics
 """
 
 from __future__ import annotations
@@ -904,6 +904,7 @@ def run(mode: str, targets: str | list | None = None, allow_missing_metrics: boo
     for t, r in reports.items():
         if r["ok"]:
             print(f"OK {t}: readme={r['readme_bytes']}B size={r['size_gb']}GB copied={r['copied']}")
+            print(f"-> {model_dir(mode, t)}/README.md (모델 카드, 업로드됨)")
         else:
             print(f"FAIL {t}: {'; '.join(r['errors'])}")
     if reports:

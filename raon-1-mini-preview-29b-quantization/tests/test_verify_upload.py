@@ -33,7 +33,7 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-31-prep-upload.py")
+prep = _load_script("s4-31-update-readme.py")
 ver = _load_script("s4-34-verify-upload.py")
 
 CUSTOM_CFG_PY = "class Raon1MiniConfig:\n    pass\n"

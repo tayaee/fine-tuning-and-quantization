@@ -35,8 +35,8 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-31-prep-upload.py")
-up = _load_script("s5-01-upload-hf.py")
+prep = _load_script("s4-31-update-readme.py")
+up = _load_script("s5-01-upload-to-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"

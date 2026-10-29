@@ -1,6 +1,6 @@
 """s4-34-verify-upload.py — HF Hub 업로드 전 모델·지표·README·vLLM 호환성 종합 감사(Audit).
 
-s4-31-prep-upload.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-01-upload-hf.py로
+s4-31-update-readme.py가 모델 디렉터리 보충과 README.md 생성을 마친 뒤, s8-01-upload-hf.py로
 실제 업로드하기 직전에 지금까지 발견된 모든 결함 유형을 전수 점검한다:
 
   1) 상류 BF16 복원본(models/raon-bf16) 무결성 (issue-2):
@@ -150,7 +150,7 @@ def model_dir(mode: str, target: str) -> Path:
     return Path(f"{MODELS_DIR(mode)}/raon-{target}-{mode}")
 
 
-#: Hub repo id 규칙 — s8-01-upload-hf.py / s4-31-prep-upload.py와 같아야 한다
+#: Hub repo id 규칙 — s8-01-upload-hf.py / s4-31-update-readme.py와 같아야 한다
 #: (full → <HF_ID>/<BASE>-<target>, smoke → ...-<target>-smoke)
 HF_ID = os.environ.get("HF_ID", "tayaee")
 BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]

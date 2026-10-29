@@ -12,7 +12,13 @@ rq_repro_echo
 rq_banner "s4-31-update-readme" "Stage 4 - verify the model directory and generate the HuggingFace model card (README.md)"
 rq_lock "$RQ_OUTPUTS"
 rq_log "prep-upload targets=$TARGETS allow_missing=$ALLOW_MISSING_METRICS"
-(set -x; uv run "$RQ_ROOT/s4-31-prep-upload.py" --mode "$MODE" --targets "$TARGETS" $ALLOW_MISSING)
+(set -x; uv run "$RQ_ROOT/s4-31-update-readme.py" --mode "$MODE" --targets "$TARGETS" $ALLOW_MISSING) && RC=0 || RC=$?
+if [ "$RC" != 0 ]; then
+  echo "==================== PREP FAILED (rc=$RC) ===================="
+  echo "모델 카드 미생성 — 위 FAIL 사유 해소 후 재실행 (vLLM 전용 타깃은 ALLOW_MISSING_METRICS=1)"
+  echo "==============================================================="
+  exit "$RC"
+fi
 
 echo ---- result ----
 (set -x; ls -l "$RQ_MODELS"/raon-*-"$MODE"/README.md)

@@ -43,7 +43,7 @@ ko = _load_script("s4-19-score-kmmluko.py")
 fmt = _load_script("s4-22-check-format.py")
 sb = _load_script("s4-25-servebench.py")
 ev = _load_script("s4-07-eval.py")
-prep = _load_script("s4-31-prep-upload.py")
+prep = _load_script("s4-31-update-readme.py")
 
 
 # ---------------------------------------------------------------- GSM8K 통계

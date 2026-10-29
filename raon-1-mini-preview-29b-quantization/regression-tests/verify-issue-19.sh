@@ -11,18 +11,18 @@ PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
 # 1. 카드의 표 행은 base + 대상만
-grep -q 'def render_readme(target: str' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'def render_readme(target: str' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: 모델 카드 렌더가 대상 1개가 아님"; fail=1; }
-grep -q 'def render_summary' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'def render_summary' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: 전체 버전 비교 리포트(render_summary) 없음"; fail=1; }
-grep -q 'def summary_path' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'def summary_path' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: 요약 리포트 경로 헬퍼(summary_path) 없음"; fail=1; }
 echo "OK: 카드(대상 1개) + 요약 리포트 분리"
 
 # 2. 요약 경로가 models/README-<mode>.md
-grep -q 'README-{mode}.md' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'README-{mode}.md' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: 요약 리포트가 models/README-<mode>.md 가 아님"; fail=1; }
-grep -q 'summary_path(mode)' "$ROOT/s4-31-prep-upload.py" \
+grep -q 'summary_path(mode)' "$ROOT/s4-31-update-readme.py" \
   || { echo "FAIL: prepare_target가 요약 리포트를 쓰지 않음"; fail=1; }
 echo "OK: 요약 경로 models/README-<mode>.md"
 
