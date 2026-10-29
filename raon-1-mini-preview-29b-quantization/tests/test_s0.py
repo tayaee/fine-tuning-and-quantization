@@ -84,7 +84,8 @@ def test_s6_s7_customer_sets_are_parallel():
     slugs = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
              "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
     for step, target in zip(steps, targets):
-        a = ROOT / f"s6-{step}-serve-{slugs[target]}-from-hf-with-transformers.sh"
+        suffix = "-NOOP" if target == "nvfp4-awq-vllm" else ""
+        a = ROOT / f"s6-{step}-serve-{slugs[target]}-from-hf-with-transformers{suffix}.sh"
         b = ROOT / f"s7-{step}-serve-{slugs[target]}-from-hf-with-vllm-fork.sh"
         assert a.is_file(), f"{a.name} 없음"
         assert b.is_file(), f"{b.name} 없음"
