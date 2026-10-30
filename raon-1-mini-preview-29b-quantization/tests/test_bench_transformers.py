@@ -1,4 +1,4 @@
-"""tests/test_bench_transformers.py — s4-60 transformers 인프로세스 벤치 단위 테스트.
+"""tests/test_bench_transformers.py — s4-65 transformers 인프로세스 벤치 단위 테스트.
 
 합성 픽스처만 사용한다(모델 로드·GPU·네트워크 없음).
 """
@@ -28,7 +28,7 @@ def _load_script(name: str):
     return mod
 
 
-bt = _load_script("s4-60-measure-speed__transformers-only.py")
+bt = _load_script("s4-65-measure-speed__transformers-only.py")
 
 
 def _isolate(d: str) -> None:
@@ -140,8 +140,8 @@ def test_hardware_keys():
 
 
 def test_prompts_match_servebench():
-    """s4-28과 s4-25는 같은 고정 8프롬프트를 쓴다 (복사본 드리프트 방지)."""
-    sb = _load_script("s4-50-servebench__vllm-only.py")
+    """s4-65와 s4-55는 같은 고정 8프롬프트를 쓴다 (복사본 드리프트 방지)."""
+    sb = _load_script("s4-55-servebench__vllm-only.py")
     assert list(bt.PROMPTS) == list(sb.PROMPTS), "벤치 프롬프트 불일치 (입력 데이터 통일 깨짐)"
     assert len(bt.PROMPTS) == 8
 

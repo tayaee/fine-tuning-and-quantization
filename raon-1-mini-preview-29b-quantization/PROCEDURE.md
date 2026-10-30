@@ -21,32 +21,32 @@
 > (0=베이스검증, 1=환경체인, 2=복원, 3=양자화, 4=측정·평가, 5=업로드, 6=고객-transformers, 7=고객-vLLM),
 > `##`은 그룹 안 순서(**01부터 3단위**, 각 그룹의 첫 스크립트는 항상 `s#-01-`),
 > `<slug>`은 작업 이름이다.
-> 예) `s3-01-quant-nvfp4-awq-transformers.sh` = 3그룹(양자화)의 07번 스텝.
+> 예) `s3-10-quant-nvfp4-awq-transformers.sh` = 3그룹(양자화)의 07번 스텝.
 > 빌드 wrapper(`run-s1-to-s4-<mode>-<target>.sh`)는 **s1~s4를 한 번에** 돌리는
 > 진입점이므로 `run-s1-to-s4-` 접두사를 쓴다(s0 베이스검증·s5 업로드·s6/s7 CAT는 별도 실행).
 
 | 그룹 | 스크립트 | 입력 → 출력 | Exit 게이트 |
 |---|---|---|---|
 | 0. 베이스검증 | `s0-01-serve`(상주) → `04/07/10` endpoint 검증 → `s0-13-serve`(상주) → `16/19/22` endpoint 검증 (+단독 정리 `s0-11/s0-21`, 3단위 예외) | BASE_MODEL → `outputs/s0-<mode>.json` + 벤치 결과 2종 | chat/pi/bench 응답 존재 |
-| 1. 환경체인 | `s1-01-setup` → `s1-04-acceptance` → `s1-07-calib` → `s1-10-compat` | env sync + `acceptance-<mode>.json` + calib jsonl + compat stamp | gate-acceptance(계약 스키마) |
-| 2. 복원 | `s2-01-dequant-mxfp8` | MXFP8 repo → `models/raon-bf16` (1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
+| 1. 환경체인 | `s1-00-setup` → `s1-05-acceptance` → `s1-15-calib` → `s1-15-compat` | env sync + `acceptance-<mode>.json` + calib jsonl + compat stamp | gate-acceptance(계약 스키마) |
+| 2. 복원 | `s2-00-dequant-mxfp8` | MXFP8 repo → `models/raon-bf16` (1회) | 수치 대조 + MoE 전-expert 캘리브레이션 심 존재 |
 | 3. 양자화 | `s3-01/04/07/10-quant-*` | 복원본 → `models/raon-<target>-<mode>` 4종 (experts-only 기본) | **gate-quant**: 패킹 포맷·global_scale·dense 폴백 차단 |
-| 4. 측정·평가 | `s4-00-measure-ppl` → `04/07/10/13/16/19/22/25/28` → `s4-31-prep-upload` → `s4-70-verify-upload` → `s4-75-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
-| 4′. 측정·평가 (vLLM 전용 타깃) | `run-s4-metrics-via-serving.sh` → `s4-40`(서빙) → `s4-45`(서버로 벤치 응답) → `s4-50` → `s4-20/30/35`(집계) → `s4-65`(카드) → `s4-70`(감사) | transformers 적재 불가 타깃(modelopt_fp4)의 GSM8K·KMMLU·형식 (PPL 은 불가 — 카드에서 행 생략) | 동일 게이트 + **gate-release** |
-| 5. 업로드 | `s5-01-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
-| 6. 고객-transformers | `s6-02-verify-*-with-transformers` (Hub 카드의 '## Usage - transformers' 블록을 바이트 그대로 실행 — transformers 적재 가능 4종) | Hub README 실행 + `outputs/s6-<mode>/` | chat 응답 존재 (미발행 repo면 FAIL) |
-| 7. 고객-vLLM | `s7-02-verify-readme-with-*-and-vllm-fork` (Hub 카드의 '## Usage - vLLM' 블록을 **바이트 검증** 후 **카드 순서대로 실행** — nvfp4-awq-vllm 은 Step1 포크 빌드까지 포함, 5종 전부) / `s7-13-chat`(서버 상주·기동 판정) / `s7-16-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-13·s7-16.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
+| 4. 측정·평가 | `s4-00-measure-ppl` → `05/10/15/20/25/30/35/40/45/50/55/60/65` → `s4-70-update-readme` → `s4-75-verify-upload` → `s4-80-release-notes` | base + 4종 PPL·GSM8K·KMMLU·형식·처리량 + 모델카드 + 감사 + 릴리스노트 | **gate-ppl**·**gate-eval**·**gate-kmmluko**·**gate-format**·**gate-release** |
+| 4′. 측정·평가 (vLLM 전용 타깃) | `run-s4-metrics-via-serving.sh` → `s4-45`(서빙) → `s4-50`(서버로 벤치 응답) → `s4-55` → `s4-20/30/35`(집계) → `s4-70`(카드) → `s4-75`(감사) | transformers 적재 불가 타깃(modelopt_fp4)의 GSM8K·KMMLU·형식 (PPL 은 불가 — 카드에서 행 생략) | 동일 게이트 + **gate-release** |
+| 5. 업로드 | `s5-00-upload-hf` | 준비된 산출물 → Hub (`tayaee/*`, full만) | 카드·감사 선행 (s4-31/34 없으면 중단) |
+| 6. 고객-transformers | `s6-05-verify-*-with-transformers` (Hub 카드의 '## Usage - transformers' 블록을 바이트 그대로 실행 — transformers 적재 가능 4종) | Hub README 실행 + `outputs/s6-<mode>/` | chat 응답 존재 (미발행 repo면 FAIL) |
+| 7. 고객-vLLM | `s7-05-verify-readme-with-*-and-vllm-fork` (Hub 카드의 '## Usage - vLLM' 블록을 **바이트 검증** 후 **카드 순서대로 실행** — nvfp4-awq-vllm 은 Step1 포크 빌드까지 포함, 5종 전부) / `s7-30-chat`(서버 상주·기동 판정) / `s7-35-pi-tool-call-test`(검증 후 정리) | Hub·로컬 서빙 + `logs/s7-30·s7-35.<slug>.log` | **gate-serving**: 서빙 응답 (현재 PTQ 4종 전체 실패 — 포크 한계, 아래 참조) |
 
 > 판정 기준(Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard), 용량 범위,
 > GSM8K 정확도 허용폭(base 대비 하락 ≤ 2%p)은 코드 하드코딩이 아니라
-> `config/acceptance.toml`(s1-04)이 단일 소스다.
+> `config/acceptance.toml`(s1-05)이 단일 소스다.
 >
 > **평가는 5개 검사**로 구성한다(각각 표준/결정론):
 > ① 표준 GSM8K(`openai/gsm8k` main/test) — 영어 수학 추론 정확도
 > ② 표준 한국어 KMMLU(`HAERAE-HUB/KMMLU`) — 한국어 능력(GSM8K가 못 재는 축)
 > ③ 지시/형식 준수 스위트(고정 10케이스) — 언어지시·JSON·마커·길이·bullet
 > ④ PPL(s4-01) — teacher-forced 회귀
-> ⑤ 서빙 처리량(`s4-50-servebench`, 서버 필요) — 양자화의 이유(속도)를 같은 축에서
+> ⑤ 서빙 처리량(`s4-55-servebench`, 서버 필요) — 양자화의 이유(속도)를 같은 축에서
 > 프롬프트는 `s4-05-prep-gsm8k.sh`가 결정론적으로 만든다 — 수작업 표본 금지.
 
 ## s0 베이스검증 (8절차 — transformers half + vLLM half)
@@ -57,14 +57,14 @@
 
 | # | 스크립트 | 내용 |
 |---|---|---|
-| 01 | `s0-01-serve-base-from-hf-with-transformers.sh` | transformers OpenAI 서버 기동(BASE_MODEL, endpoint 상주, s0-10이 정리) |
-| 04 | `s0-04-chat-with-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
-| 07 | `s0-07-pi-tool-call-with-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
-| 10 | `s0-10-bench-latency-with-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
-| 13 | `s0-13-serve-base-from-hf-with-vllm-fork.sh` | 포크 서빙(상주): sm_103/120은 MXFP8 직접 서빙, sm_121(GB10)은 KRAFTON 카드의 NVFP4+sm121 컨테이너. 그 외 GPU는 SKIP, 16/19/22 연쇄 SKIP |
-| 16 | `s0-16-chat-with-vllm-fork.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
-| 19 | `s0-19-pi-tool-call-with-vllm-fork.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
-| 22 | `s0-22-bench-latency-with-vllm-fork.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
+| 01 | `s0-00-serve-base-from-hf-with-transformers.sh` | transformers OpenAI 서버 기동(BASE_MODEL, endpoint 상주, s0-10이 정리) |
+| 04 | `s0-05-chat-with-transformers.sh` | endpoint chat 검증 (고정 질문, 응답 존재 → `outputs/s0-<mode>.json`) |
+| 07 | `s0-10-pi-tool-call-with-transformers.sh` | endpoint pi 툴콜 검증 (고정 질문, 서버 TOOL-CALL 증거 + 답 포함 판정) |
+| 10 | `s0-15-bench-latency-with-transformers.sh` | endpoint 벤치 8문항 측정(results.json, 최초 baseline 충전) + 서버 정리 |
+| 13 | `s0-25-serve-base-from-hf-with-vllm-fork.sh` | 포크 서빙(상주): sm_103/120은 MXFP8 직접 서빙, sm_121(GB10)은 KRAFTON 카드의 NVFP4+sm121 컨테이너. 그 외 GPU는 SKIP, 16/19/22 연쇄 SKIP |
+| 16 | `s0-30-chat-with-vllm-fork.sh` | 서빙 endpoint로 chat 검증 (OpenAI chat API) |
+| 19 | `s0-35-pi-tool-call-with-vllm-fork.sh` | 서빙 모델을 pi에 등록하고 동일 고정 질문으로 툴콜 왕복 검증 |
+| 22 | `s0-45-bench-latency-with-vllm-fork.sh` | vLLM endpoint 벤치 8문항 측정 + s0-13 서버 정리 |
 
 pi 고정 질문의 기대값은 `outputs/s0-pi-probe/` (파일 5개 고정)의 실제 파일 수와
 대조한다. 답이 단일 숫자가 아니면 FAIL(도구 호출 미동작).
@@ -84,12 +84,12 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 레시피 추가. 그 전까지 s7 실패는 파이프라인(s1~s4·s5)을 막지 않는다
 (`rq_gate_serving`은 미수행·실패를 실패가 아닌 기록으로 남긴다 — 단 `serve-*.json`
 `ok:false`는 릴리스 노트에 그대로 노출된다).
-구 s9-13/16/19 디스패처·순회는 `archive/`로 은퇴했다 (s7-19 감사도 삭제 — 기동 판정은 s7-13이 직접).
+구 s9-13/16/19 디스패처·순회는 `archive/`로 은퇴했다 (s7-19 감사도 삭제 — 기동 판정은 s7-30이 직접).
 
 ## 단계 원장 · 릴리스 노트
 
 - 원장: `outputs/stage-ledger-<mode>.json` (각 그룹의 status/artifact/verdict, 타깃별 집계)
-- 릴리스 노트: `python s4-75-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
+- 릴리스 노트: `python s4-80-release-notes.py --mode smoke` → `outputs/release-notes-<mode>.md`
   (원장 + 수용 기준 + 실측 지표 대조표)
 
 ## TARGETS는 필수
@@ -99,14 +99,14 @@ s7이 green이 되는 조건: 포크의 compressed-tensors 지원 추가, 또는
 "인수 깜빡하고 5종을 2시간씩 돌리는" 사고를 막기 위한 것이다.
 
 대상 스크립트
-(`s4-00-measure-ppl` · `s4-15-answer-benchmarks-quantized` · `s4-60-measure-speed__transformers-only` ·
-`s4-31-prep-upload` · `s4-70-verify-upload` · `s5-01-upload-hf`):
+(`s4-00-measure-ppl` · `s4-15-answer-benchmarks-quantized` · `s4-65-measure-speed__transformers-only` ·
+`s4-70-update-readme` · `s4-75-verify-upload` · `s5-00-upload-to-hf`):
 `$2` 인자 또는 `TARGETS` 환경변수가 없으면 사용법을 찍고 exit 2, 전체 실행은 `TARGETS=all`로만 된다.
 (s6/s7 검증 스크립트는 `[mode] [HF repo id|short target|all]` 형태다.)
 
 ```bash
 ./s4-00-measure-ppl__transformers-only.sh smoke base,nvfp4-awq-transformers   # 개별 스크립트 ($2 또는 TARGETS)
-TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all로만
+TARGETS=all ./s5-00-upload-to-hf.sh full        # 전체 실행은 TARGETS=all로만
 ```
 
 > 구 모놀리식 러너(`run-{smoke,full}.sh`, TARGETS/STEPS 다종 실행)는 `archive/`로
@@ -125,14 +125,14 @@ TARGETS=all ./s5-01-upload-to-hf.sh full        # 전체 실행은 TARGETS=all�
 ## 단일 타깃 실행 (`run-s1-to-s4-*.sh`)
 
 전체 빌드를 한 타깃으로 좁힌 진입점 8종 (STEPS 부분 실행 지원).
-**두 번째 번호 = 그룹 내 순서** (s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-20-aggregate-gsm8k):
+**두 번째 번호 = 그룹 내 순서** (s1-00-setup·s1-15-calib·s1-15-compat·s2-00-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-20-aggregate-gsm8k):
 
 | 파일 | 그룹 범위 | 양자화 스크립트 |
 |---|---|---|
-| `run-s1-to-s4-{smoke,full}-awq-w5-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w5-transformers |
-| `run-s1-to-s4-{smoke,full}-awq-w3-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-awq-w3-transformers |
-| `run-s1-to-s4-{smoke,full}-nvfp4-awq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-nvfp4-awq-transformers |
-| `run-s1-to-s4-{smoke,full}-nvfp4-gptq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-01-quant-nvfp4-gptq-transformers |
+| `run-s1-to-s4-{smoke,full}-awq-w5-transformers.sh` | s1~s4 (env체인~측정평가) | s3-05-quant-awq-w5-transformers |
+| `run-s1-to-s4-{smoke,full}-awq-w3-transformers.sh` | s1~s4 (env체인~측정평가) | s3-00-quant-awq-w3-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-awq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-10-quant-nvfp4-awq-transformers |
+| `run-s1-to-s4-{smoke,full}-nvfp4-gptq-transformers.sh` | s1~s4 (env체인~측정평가) | s3-20-quant-nvfp4-gptq-transformers |
 
 (engine: `build-ppl-eval.inc`)
 
@@ -151,15 +151,15 @@ timing은 `logs/timing-build-<mode>.log`에(run-*.sh와 별도 파일).
 
 ## 공유 스텝의 중복 실행 회피 (8종 build 병렬 실행 대비)
 
-`s1-01, s1-07, s1-10, s2-01`은 8종 build가 공통으로 쓰는 접두 스텝이다. 같은 스텝을 2개 build가
+`s1-00, s1-15, s1-15, s2-00`은 8종 build가 공통으로 쓰는 접두 스텝이다. 같은 스텝을 2개 build가
 동시에 돌면 **먼저 lock을 잡은 쪽이 수행하고, 나머지는 flock 대기 후 freshness/stamp로 skip**한다.
 
 | 스텝 | lock | freshness/stamp | 동시 실행 시 |
 |---|---|---|---|
-| s1-01-setup | `rq_lock $RQ_ROOT` (venv 변조 직렬화) | stamp `.venv/.rq-setup-stamp` (uv.lock 해시 + llmcompressor/compressed-tensors 버전) | 1번만 `uv sync`·`uv pip install`, 2번째는 skip (0.1s) |
-| s1-07-calib | `rq_lock $RQ_DATASETS` | `rq_fresh` (calib jsonl vs 스크립트 mtime) | 1번만 생성, 2번째는 skip |
-| s1-10-compat | `rq_lock $RQ_OUTPUTS/compat` | stamp `outputs/compat.stamp` (probe 해시 + GPU cc + llmcompressor/vllm 버전) | 1번만 probe(119s), 2번째는 skip + 마지막 리포트 재생 |
-| s2-01-dequant | `rq_lock $OUT` | `rq_fresh` (+ config.json mtime + shim grep) | 1번만 복원(999s), 2번째는 skip |
+| s1-00-setup | `rq_lock $RQ_ROOT` (venv 변조 직렬화) | stamp `.venv/.rq-setup-stamp` (uv.lock 해시 + llmcompressor/compressed-tensors 버전) | 1번만 `uv sync`·`uv pip install`, 2번째는 skip (0.1s) |
+| s1-15-calib | `rq_lock $RQ_DATASETS` | `rq_fresh` (calib jsonl vs 스크립트 mtime) | 1번만 생성, 2번째는 skip |
+| s1-15-compat | `rq_lock $RQ_OUTPUTS/compat` | stamp `outputs/compat.stamp` (probe 해시 + GPU cc + llmcompressor/vllm 버전) | 1번만 probe(119s), 2번째는 skip + 마지막 리포트 재생 |
+| s2-00-dequant | `rq_lock $OUT` | `rq_fresh` (+ config.json mtime + shim grep) | 1번만 복원(999s), 2번째는 skip |
 | s3 quant | `rq_lock $OUT` (타깃별) | `rq_fresh` | 타깃이 다르면 동시 실행 가능, 같으면 직렬+skip |
 | s4-01-ppl | `rq_lock $RQ_OUTPUTS/ppl-$MODE` | 타깃별 `rq_fresh` | 직렬(29B 모델 동시 로드 방지) |
 | s4-07-eval | `rq_lock $RQ_OUTPUTS/eval-$MODE` | 타깃별 `rq_fresh` | 직렬(동일) |

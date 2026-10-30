@@ -1,9 +1,9 @@
 # config/acceptance.toml — Stage 1 산출물: 수용 기준의 단일 소스 (SSOT)
 #
 # 9단계 SDLC의 1단계(요구사항·수용 기준)를 코드로 옮긴 파일이다.
-# 이 값이 바뀌면 s4-00-measure-ppl.py(Δ 판정) · s4-70-verify-upload.py(용량 범위) ·
-# s4-31-prep-upload.py(모델 카드) · s4-75-release-notes.py(릴리스 노트)가 함께 따라간다.
-# 스키마 검증: s1-04-acceptance.py (sdlc.acceptance_errors)
+# 이 값이 바뀌면 s4-00-measure-ppl.py(Δ 판정) · s4-75-verify-upload.py(용량 범위) ·
+# s4-70-update-readme.py(모델 카드) · s4-80-release-notes.py(릴리스 노트)가 함께 따라간다.
+# 스키마 검증: s1-05-setup-acceptance-criteria.py (sdlc.acceptance_errors)
 #
 # 판정 규칙 (base 대비 ΔPPL):
 #   Δ < ppl_delta_warn  → Accept

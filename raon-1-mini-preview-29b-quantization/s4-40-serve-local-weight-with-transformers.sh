@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # s4-40-serve-local-weight-with-transformers.sh [mode] [target] — 로컬 가중치를 transformers OpenAI 서버로 서빙.
-# s4-50-servebench가 붙는 endpoint를 연다. in-process 측정(s4-01/07/10/28) 이후에 실행할 것 (모델 이중 적재 방지).
+# s4-55-servebench가 붙는 endpoint를 연다. in-process 측정(s4-00/10/15/20) 이후에 실행할 것 (모델 이중 적재 방지).
 # target: base|awq-w3-transformers|awq-w5-transformers|nvfp4-awq-transformers|nvfp4-gptq-transformers (기본 base).
-# PORT 기본 8000 (s4-50 기본값과 동일). 서버는 상주, s4-55-stop-serve-local-weight.sh이 내린다.
+# PORT 기본 8000 (s4-55 기본값과 동일). 서버는 상주, s4-60-stop-serve-local-weight.sh이 내린다.
 # 이미 잰 타깃×동시성이면 기동 생략 (FORCE=1이면 강제).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-${MODE:-smoke}}"
@@ -64,4 +64,4 @@ done
 curl -s --max-time 3 "http://localhost:${PORT}/v1/models" 2>/dev/null | grep -q '"id"' \
   || { echo "FAIL: endpoint 미기동 (${TIMEOUT}s, 상세: $SERVLOG)" >&2; exit 1; }
 echo ---- result ----
-rq_log "s4-24 OK endpoint=http://localhost:${PORT}/v1 (server kept for s4-25, pidfile=$PIDF)"
+rq_log "s4-40 OK endpoint=http://localhost:${PORT}/v1 (server kept for s4-50, pidfile=$PIDF)"

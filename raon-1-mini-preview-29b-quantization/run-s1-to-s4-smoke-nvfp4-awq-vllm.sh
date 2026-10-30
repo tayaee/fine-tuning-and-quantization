@@ -6,20 +6,20 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 MODE="smoke"; TARGET="nvfp4-awq-vllm"
-QSCRIPT="s3-01-quant-nvfp4-awq-vllm.sh"; QFORMAT="mopt-nvfp4"
+QSCRIPT="s3-15-quant-nvfp4-awq-vllm.sh"; QFORMAT="mopt-nvfp4"
 source "$ROOT/config/common.env" "$MODE"
 # vLLM 전용 포맷: transformers 지표(PPL/eval) 불가 → 카드·감사 지표 면제, 품질 게이트는 s7 서빙
 export ALLOW_MISSING_METRICS=1
 rq_banner "run-s1-to-s4-smoke-nvfp4-awq-vllm" "s1-s4 pipeline for a single target (setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval)"
 rq_repro_echo
 
-./s1-01-setup-environment.sh "$MODE"
-./s1-04-setup-acceptance-criteria.sh "$MODE"
+./s1-00-setup-environment.sh "$MODE"
+./s1-05-setup-acceptance-criteria.sh "$MODE"
 rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
 rq_gate_acceptance "$MODE"
-./s1-07-prep-calibration.sh "$MODE"
-./s1-10-preflight-check.sh "$MODE"
-./s2-01-dequant-mxfp8-into-bf16.sh "$MODE"
+./s1-10-prep-calibration.sh "$MODE"
+./s1-15-preflight-check.sh "$MODE"
+./s2-00-dequant-mxfp8-into-bf16.sh "$MODE"
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then QC="env CUDA_VISIBLE_DEVICES="; else QC="env"; fi
 $QC ./$QSCRIPT "$MODE"
 rq_gate_quant "$RQ_MODELS/raon-$TARGET-$MODE" "$QFORMAT"
@@ -32,11 +32,11 @@ rq_stage_record 4 measure pass "$RQ_OUTPUTS/ppl-$MODE/summary.json"
 ./s4-35-check-format__transformers_vllm_both.sh "$MODE" --prepare
 ./s4-10-answer-benchmarks-base__transformers-only.sh "$MODE"
 ./s4-15-answer-benchmarks-quantized__transformers-only.sh "$MODE" "$TARGET"
-# 서빙 벤치용 로컬 서버 (in-process 측정 이후 — 모델 이중 적재 방지). 기동 실패해도 계속 (s4-50이 skip 기록).
-./s4-40-serve-local-weight-with-vllm-fork.sh "$MODE" "$TARGET" || rq_log "WARN: local server start failed — s4-50 will skip"
-SERVE_BENCH_TARGET="$TARGET" ./s4-45-answer-via-server.sh "$MODE" "$TARGET" || rq_log "WARN: server answers missing — quality gates will skip"
-SERVE_BENCH_TARGET="$TARGET" ./s4-50-servebench__vllm-only.sh "$MODE"
-./s4-55-stop-serve-local-weight.sh
+# 서빙 벤치용 로컬 서버 (in-process 측정 이후 — 모델 이중 적재 방지). 기동 실패해도 계속 (s4-55가 skip 기록).
+./s4-45-serve-local-weight-with-vllm-fork.sh "$MODE" "$TARGET" || rq_log "WARN: local server start failed — s4-50 will skip"
+SERVE_BENCH_TARGET="$TARGET" ./s4-50-answer-via-server.sh "$MODE" "$TARGET" || rq_log "WARN: server answers missing — quality gates will skip"
+SERVE_BENCH_TARGET="$TARGET" ./s4-55-servebench__vllm-only.sh "$MODE"
+./s4-60-stop-serve-local-weight.sh
 ./s4-20-aggregate-gsm8k__transformers_vllm_both.sh "$MODE"
 ./s4-30-score-kmmluko__transformers_vllm_both.sh "$MODE"
 ./s4-35-check-format__transformers_vllm_both.sh "$MODE"
@@ -44,8 +44,8 @@ rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$TARGET.jsonl" "$TARGET" "$MODE"
 rq_gate_kmmluko "$MODE" "$TARGET"
 rq_gate_format "$MODE" "$TARGET"
 rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
-./s4-65-update-readme.sh "$MODE" "$TARGET"
+./s4-70-update-readme.sh "$MODE" "$TARGET"
 rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
-./s4-70-verify-upload.sh "$MODE" "$TARGET"
+./s4-75-verify-upload.sh "$MODE" "$TARGET"
 rq_gate_release "$MODE"
 echo "run-s1-to-s4-smoke-nvfp4-awq-vllm done"

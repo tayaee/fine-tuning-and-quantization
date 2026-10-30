@@ -24,22 +24,22 @@ for f in "$RQ_OUTPUTS"/s0-bench-* "$RQ_OUTPUTS"/s0-pi-probe "$RQ_ROOT"/logs/s0-*
   [ -e "$f" ] && echo "$f" || true
 done
 
-echo "### [s1-01] setup — $RQ_ROOT/.venv/.rq-setup-stamp"
+echo "### [s1-00] setup — $RQ_ROOT/.venv/.rq-setup-stamp"
 show "$RQ_ROOT/.venv/.rq-setup-stamp"
 
-echo "### [s1-04] acceptance contract — $RQ_OUTPUTS/acceptance-{smoke,full}.json"
+echo "### [s1-05] acceptance contract — $RQ_OUTPUTS/acceptance-{smoke,full}.json"
 for m in smoke full; do show "$RQ_OUTPUTS/acceptance-$m.json"; done
 
-echo "### [s1-07] calibration set — $RQ_DATASETS/raon-calibration-*.jsonl"
+echo "### [s1-15] calibration set — $RQ_DATASETS/raon-calibration-*.jsonl"
 for f in "$RQ_DATASETS"/raon-calibration-*.jsonl "$RQ_DATASETS"/raon-calibration-*.meta; do
   # shellcheck disable=SC2317
   [ -e "$f" ] && echo "$f" || true
 done
 
-echo "### [s1-10] preflight — $RQ_OUTPUTS/compat.{stamp,log}"
+echo "### [s1-15] preflight — $RQ_OUTPUTS/compat.{stamp,log}"
 show "$RQ_OUTPUTS/compat.stamp" "$RQ_OUTPUTS/compat.log"
 
-echo "### [s2-01] dequant (base bf16) — $RQ_MODELS/raon-bf16"
+echo "### [s2-00] dequant (base bf16) — $RQ_MODELS/raon-bf16"
 show "$RQ_MODELS/raon-bf16"
 
 echo "### [s4-00] PPL — $RQ_OUTPUTS/ppl-{smoke,full}/*.json"
@@ -76,7 +76,7 @@ for m in smoke full; do
   done
 done
 
-echo "### [s4-45] answers (vLLM-served) — eval-<mode>/nvfp4-awq-vllm.jsonl + bench details"
+echo "### [s4-50] answers (vLLM-served) — eval-<mode>/nvfp4-awq-vllm.jsonl + bench details"
 for m in smoke full; do
   show "$RQ_OUTPUTS/eval-$m/nvfp4-awq-vllm.jsonl"
   for f in "$RQ_OUTPUTS/eval-$m"/bench/*/nvfp4-awq-vllm.jsonl; do
@@ -91,27 +91,27 @@ for m in smoke full; do show "$RQ_OUTPUTS/eval-$m/score.json"; done
 echo "### [s4-25] kmmluko prep — $RQ_OUTPUTS/eval-{smoke,full}/{prompts-kmmluko.jsonl,evalset-kmmluko.json}"
 for m in smoke full; do show "$RQ_OUTPUTS/eval-$m/prompts-kmmluko.jsonl" "$RQ_OUTPUTS/eval-$m/evalset-kmmluko.json"; done
 
-echo "### [s4-30/35/50] checks — $RQ_OUTPUTS/eval-{smoke,full}/checks.json (+ servebench/bench-transformers)"
+echo "### [s4-30/35/55] checks — $RQ_OUTPUTS/eval-{smoke,full}/checks.json (+ servebench/bench-transformers)"
 for m in smoke full; do
   show "$RQ_OUTPUTS/eval-$m/checks.json" "$RQ_OUTPUTS/eval-$m/prompts-format.jsonl" \
     "$RQ_OUTPUTS/eval-$m/servebench-$m.json" "$RQ_OUTPUTS/eval-$m/bench-transformers-$m.json"
 done
 
-echo "### [s4-40/55] local serve — transient, no output files (servers only)"
+echo "### [s4-40/45/60] local serve — transient, no output files (servers only)"
 true
 
-echo "### [s4-60] (see s4-50 bench-transformers — same file)"
+echo "### [s4-65] (see s4-55 bench-transformers — same file)"
 
-echo "### [s4-65] prep-upload manifest — $RQ_OUTPUTS/prep-upload-{smoke,full}.json + $RQ_MODELS/README-{smoke,full}.md"
+echo "### [s4-70] prep-upload manifest — $RQ_OUTPUTS/prep-upload-{smoke,full}.json + $RQ_MODELS/README-{smoke,full}.md"
 for m in smoke full; do show "$RQ_OUTPUTS/prep-upload-$m.json" "$RQ_MODELS/README-$m.md"; done
 
-echo "### [s4-70] verify-upload — $RQ_OUTPUTS/verify-upload-{smoke,full}.json"
+echo "### [s4-75] verify-upload — $RQ_OUTPUTS/verify-upload-{smoke,full}.json"
 for m in smoke full; do show "$RQ_OUTPUTS/verify-upload-$m.json"; done
 
-echo "### [s4-75] release notes — $RQ_OUTPUTS/release-notes-{smoke,full}.md"
+echo "### [s4-80] release notes — $RQ_OUTPUTS/release-notes-{smoke,full}.md"
 for m in smoke full; do show "$RQ_OUTPUTS/release-notes-$m.md"; done
 
-echo "### [s5-01] HF upload (remote, no local files)"
+echo "### [s5-00] HF upload (remote, no local files)"
 for t in awq-w3-transformers awq-w5-transformers nvfp4-awq-transformers nvfp4-gptq-transformers nvfp4-awq-vllm; do
   echo "https://huggingface.co/tayaee/Raon-1-mini-preview-$t"
 done

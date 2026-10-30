@@ -41,9 +41,9 @@ def _isolate(mod: Any, d: str) -> None:
 g80 = _load_script("s4-20-aggregate-gsm8k__transformers_vllm_both.py")
 ko = _load_script("s4-30-score-kmmluko__transformers_vllm_both.py")
 fmt = _load_script("s4-35-check-format__transformers_vllm_both.py")
-sb = _load_script("s4-50-servebench__vllm-only.py")
+sb = _load_script("s4-55-servebench__vllm-only.py")
 ev = _load_script("s4-eval-backend__transformers-only.py")
-prep = _load_script("s4-65-update-readme.py")
+prep = _load_script("s4-70-update-readme.py")
 
 
 # ---------------------------------------------------------------- GSM8K 통계

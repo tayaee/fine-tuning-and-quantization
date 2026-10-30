@@ -6,9 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
-GUARDED="s4-00-measure-ppl__transformers-only.sh s4-15-answer-benchmarks-quantized__transformers-only.sh s4-45-answer-via-server.sh
-  s4-60-measure-speed__transformers-only.sh s4-65-update-readme.sh s4-70-verify-upload.sh
-  s5-01-upload-to-hf.sh"
+GUARDED="s4-00-measure-ppl__transformers-only.sh s4-15-answer-benchmarks-quantized__transformers-only.sh s4-50-answer-via-server.sh
+  s4-65-measure-speed__transformers-only.sh s4-70-update-readme.sh s4-75-verify-upload.sh
+  s5-00-upload-to-hf.sh"
 
 for f in config/common.env build-ppl-eval.inc $GUARDED; do
   bash -n "$ROOT/$f" || { echo "FAIL: $f bash -n"; fail=1; }

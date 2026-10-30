@@ -36,12 +36,19 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-65-update-readme.py")
+prep = _load_script("s4-70-update-readme.py")
 
 SNIPPET_TARGETS = ["awq-w3-transformers", "awq-w5-transformers",
                    "nvfp4-awq-transformers", "nvfp4-gptq-transformers",
                    "nvfp4-awq-vllm"]
 UNLOADABLE_TARGETS = ["nvfp4-awq-vllm"]
+S7_TARGET_NUM = {
+    "awq-w3-transformers": "05",
+    "awq-w5-transformers": "10",
+    "nvfp4-awq-transformers": "15",
+    "nvfp4-awq-vllm": "20",
+    "nvfp4-gptq-transformers": "25",
+}
 
 
 def _render(target: str, mode: str) -> str:
@@ -89,11 +96,11 @@ def test_snippet_placeholders_only_for_repo_id():
 
 
 def test_s7_wrappers_exec_serve_snippet():
-    """s7-01 래퍼는 자기 타깃의 serve-vllm.sh 스니펫을 카드 명령 그대로 실행한다."""
+    """s7 래퍼는 자기 타깃의 serve-vllm.sh 스니펫을 카드 명령 그대로 실행한다."""
     inc = (ROOT / "config" / "s7-serve.inc").read_text(encoding="utf-8")
     assert "serve-vllm.sh" in inc and "__REPO_ID__" in inc, "s7-serve.inc가 카드 명령을 실행하지 않음"
     for target in SNIPPET_TARGETS:
-        w = ROOT / f"s7-02-verify-readme-with-{target}-and-vllm-fork.sh"
+        w = ROOT / f"s7-{S7_TARGET_NUM[target]}-verify-readme-with-{target}-and-vllm-fork.sh"
         assert w.is_file(), f"{w.name} 없음"
         text = w.read_text(encoding="utf-8")
         assert f's7_serve_frozen "{target}"' in text, f"{w.name}가 자기 타깃 스니펫을 지정하지 않음"
@@ -101,12 +108,12 @@ def test_s7_wrappers_exec_serve_snippet():
 
 
 def test_s7_wrappers_accept_mode():
-    """s7-01 래퍼는 mode 를 받아 repo id 를 맞춰야 한다.
+    """s7 래퍼는 mode 를 받아 repo id 를 맞춰야 한다.
 
     mode 를 고정하면 smoke 검증에서 full 모델을 서빙해버린다 (조용히 잘못 검증).
     """
     for target in SNIPPET_TARGETS:
-        w = ROOT / f"s7-02-verify-readme-with-{target}-and-vllm-fork.sh"
+        w = ROOT / f"s7-{S7_TARGET_NUM[target]}-verify-readme-with-{target}-and-vllm-fork.sh"
         text = w.read_text(encoding="utf-8")
         assert 's7_serve_frozen "' in text, f"{w.name}가 공용 헬퍼를 쓰지 않음"
         assert '"$MODE"' in text, f"{w.name}가 mode 를 넘기지 않음"

@@ -35,8 +35,8 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-65-update-readme.py")
-up = _load_script("s5-01-upload-to-hf.py")
+prep = _load_script("s4-70-update-readme.py")
+up = _load_script("s5-00-upload-to-hf.py")
 
 NVFP4 = "nvfp4-pack-quantized"
 PACK = "pack-quantized"
@@ -140,7 +140,7 @@ def _write_metrics(root: Path, mode: str = "smoke") -> None:
     )
 
 
-# ---------------------------------------------------------------- s4-65-update-readme
+# ---------------------------------------------------------------- s4-70-update-readme
 
 
 def test_prep_rejects_dense_fallback(workspace):

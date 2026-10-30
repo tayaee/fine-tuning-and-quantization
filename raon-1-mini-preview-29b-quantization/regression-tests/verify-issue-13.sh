@@ -9,9 +9,9 @@ fail=0
 
 # 번호가 붙은 실행 스크립트만 대상(공용 모듈 .inc/.py 제외).
 # frozen 카드 래퍼(s7-02-verify-readme-with-<target>-and-vllm-fork.sh)는 README 명령
-# as-is 실행이 설계라 배너 면제 (배너는 s7-13-chat이 찍는다).
+# as-is 실행이 설계라 배너 면제 (배너는 s7-30-chat이 찍는다).
 # (구 명칭 s7-<num>-test-<target>.sh → 2026-10-28 개명. 패턴도 같이 갱신했다.)
-mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s1-to-s4-*.sh | grep -vE 's7-02-verify-readme-with-.+-and-vllm-fork\.sh' | sort)
+mapfile -t SCRIPTS < <(cd "$ROOT" && ls -1 s?-*.sh run-s1-to-s4-*.sh | grep -vE 's7-[0-9]{2}-verify-readme-with-.+-and-vllm-fork\.sh' | sort)
 [ "${#SCRIPTS[@]}" -ge 25 ] || { echo "FAIL: 대상 스크립트 수=${#SCRIPTS[@]} (25개 이상 기대)"; fail=1; }
 
 for f in "${SCRIPTS[@]}"; do
@@ -39,15 +39,15 @@ for f in "$ROOT"/run-s1-to-s4-*.sh; do
   n_build=$((n_build + 1))
 done
 [ "$n_build" = 10 ] || { echo "FAIL: 빌드 wrapper 수=$n_build (10 기대)"; fail=1; }
-for f in s4-75-release-notes.py; do
+for f in s4-80-release-notes.py; do
   grep -qE 'print\("\[s[0-9]-' "$ROOT/$f" || { echo "FAIL: $f 에 배너 출력 없음"; fail=1; }
 done
 echo "OK: 헬퍼 + 진입점 배너"
 
 # 실제 출력 확인(07)
-out="$(cd "$ROOT" && ./s1-04-setup-acceptance-criteria.sh smoke 2>&1 || true)"
-echo "$out" | grep -qE '^\[s1-04-setup-acceptance-criteria\] Stage 1 - .*[A-Za-z]' \
-  || { echo "FAIL: s1-04-setup-acceptance-criteria.sh 시작 배너 출력 형식 불일치"; fail=1; }
-echo "OK: s1-04-setup-acceptance-criteria.sh 실제 출력"
+out="$(cd "$ROOT" && ./s1-05-setup-acceptance-criteria.sh smoke 2>&1 || true)"
+echo "$out" | grep -qE '^\[s1-05-setup-acceptance-criteria\] Stage 1 - .*[A-Za-z]' \
+  || { echo "FAIL: s1-05-setup-acceptance-criteria.sh 시작 배너 출력 형식 불일치"; fail=1; }
+echo "OK: s1-05-setup-acceptance-criteria.sh 실제 출력"
 
 exit $fail

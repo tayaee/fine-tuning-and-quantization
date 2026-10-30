@@ -1,5 +1,5 @@
 # config/s0-bench.inc — s0/s6 벤치 실행 공용 헬퍼 (endpoint 대상 측정).
-# s0-10/s0-22(베이스), s6-13은 각자 로딩하고, 본 측정은 여기서 endpoint로 수행한다.
+# s0-15/s0-45(베이스), s6-13은 각자 로딩하고, 본 측정은 여기서 endpoint로 수행한다.
 # 산출물 변경 없음(bench 디렉터리 아래 results.json + 최초 1회 baseline.json 충전).
 
 # s0_bench_run <base_url> <model> <dir> — <dir>/prompts.jsonl을 endpoint로 측정해

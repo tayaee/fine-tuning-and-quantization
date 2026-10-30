@@ -22,7 +22,7 @@ rq_gate_acceptance() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/acceptance-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-04-setup-acceptance-criteria.sh $mode)" >&2
+    echo "FAIL: $f 없음 — Stage 1(수용 기준) 미수행 (run ./s1-05-setup-acceptance-criteria.sh $mode)" >&2
     return 1
   fi
   ( set -x; rq_py - "$f" <<'PY'
@@ -249,7 +249,7 @@ rq_gate_serving() {
   local mode="${1:-$MODE}"
   local f="$RQ_OUTPUTS/serve-$mode.json"
   if [ ! -s "$f" ]; then
-    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-13-chat.sh/s7-16-pi-tool-call-test.sh에서 판정)"
+    echo "SKIP: $f 없음 — 서빙 검증 미수행 (s7-30-chat.sh/s7-35-pi-tool-call-test.sh에서 판정)"
     return 0
   fi
   ( set -x; rq_py - "$f" <<'PY'

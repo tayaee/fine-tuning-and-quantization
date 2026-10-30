@@ -1,4 +1,4 @@
-# config/s7-serve.inc — s7-02 (README as-is 검증) 공용 로직.
+# config/s7-serve.inc — s7-05~25 (README as-is 검증) 공용 로직.
 #
 # s7 의 정의: **Hub 카드의 '## Usage - vLLM' 코드 예제를 as-is 그대로 실행한다.**
 #   1) 카드 검증: Hub README 의 '## Usage - vLLM' 블록을 snippets/ 와 **바이트 비교**
@@ -11,7 +11,7 @@
 #      실행 예제가 없어야 한다 (있으면 FAIL — 그 예제는 반드시 실패한다).
 #
 # 원칙: **카드의 명령은 손대지 않는다.** 여기서 하는 일은 검증·추출·실행뿐이고,
-# (사전 점검으로 막지 못하는 것은 vLLM 엔진 기동 실패이고, 그것은 s7-13이 판정한다.)
+# (사전 점검으로 막지 못하는 것은 vLLM 엔진 기동 실패이고, 그것은 s7-30이 판정한다.)
 
 # s7_verify_card <target> <repo> — Hub 카드 ↔ snippets/ 바이트 대조 + 블록 추출.
 #   추출된 블록: <outdir>/block-<i>.sh  (Hub 카드 원본 바이트)
@@ -52,7 +52,7 @@ s7_verify_card() {
 }
 
 # s7_run_card_blocks <rdir> — 카드의 vLLM 블록을 README 순서대로 실행.
-#   마지막 블록(서빙)은 상주 프로세스라 여기서 끝나지 않는다 — 그 판정은 s7-13/s7-16 이 한다.
+#   마지막 블록(서빙)은 상주 프로세스라 여기서 끝나지 않는다 — 그 판정은 s7-30/s7-35 이 한다.
 s7_run_card_blocks() {
   local rdir="$1" f n=0 _venv
   shopt -s nullglob
@@ -77,7 +77,7 @@ s7_run_card_blocks() {
 
 # s7_serve_frozen <target> [mode]
 #   mode: smoke|full (기본 full). repo id 는 mode 에 따라 조립한다.
-#     - 이전에는 full 로 고정돼 있어, s7-13 이 smoke 에서 이 래퍼를 부르면
+#     - 이전에는 full 로 고정돼 있어, s7-30 이 smoke 에서 이 래퍼를 부르면
 #       full 모델을 서빙했다 (조용히 잘못된 모델 검증).
 s7_serve_frozen() {
   local target="$1" mode="${2:-full}" repo rdir

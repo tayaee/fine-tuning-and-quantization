@@ -9,10 +9,10 @@
 
 | # | 스크립트 | 타깃 | 레시피 (llm-compressor) | 서빙 `--quantization` | 비고 |
 |---|---|---|---|---|---|
-| s3-01 | `s3-01-quant-awq-w3-transformers` | `awq-w3-transformers` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
-| s3-01 | `s3-01-quant-awq-w5-transformers` | `awq-w5-transformers` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
-| s3-01 | `s3-01-quant-nvfp4-awq-transformers` | `nvfp4-awq-transformers` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
-| s3-01 | `s3-01-quant-nvfp4-gptq-transformers` | `nvfp4-gptq-transformers` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
+| s3-01 | `s3-00-quant-awq-w3-transformers` | `awq-w3-transformers` (W3A16-g128) | AWQ smoothing + GPTQ W3 | `gptq` | 품질 붕괴 위험 최대, smoke 우선 |
+| s3-01 | `s3-05-quant-awq-w5-transformers` | `awq-w5-transformers` (W5A16-g128) | AWQ smoothing + GPTQ W5 | `gptq` | 비표준 비트, 서빙 백엔드 확인 필요 |
+| s3-01 | `s3-10-quant-nvfp4-awq-transformers` | `nvfp4-awq-transformers` (NVFP4) | AWQ smoothing + NVFP4 | `compressed-tensors` | Blackwell 필수, calib 필수 |
+| s3-01 | `s3-20-quant-nvfp4-gptq-transformers` | `nvfp4-gptq-transformers` (NVFP4) | GPTQModifier NVFP4 | `compressed-tensors` | smoke 마지막 순서 |
 
 출력: `$RQ_MODELS/raon-<target>-<mode>` (예: `raon-nvfp4-gptq-transformers-full`).
 업로드명: `tayaee/Raon-1-mini-preview-<target>[-smoke]` (상세 `output-models-tree.txt`).
@@ -31,7 +31,7 @@ Raon은 한국어 대화·thinking 모델이므로 GSM8K 영어 슬라이스 재
 | `HuggingFaceH4/ultrachat_200k` | 영어 유지 (소량) | NVFP4 스킬 기본값, EN 보존용 |
 | `eouya2/KGuard-Korean-MoE-Calibration-v1` | MoE 특화 대안 (24,576 한국어 calib) | MoE expert routing 관찰 포함, 대안 |
 
-기본 혼합 (`s1-07-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
+기본 혼합 (`s1-15-prep-calibration.sh`): smoke = KoAlpaca 8 (seq 512, 10분 목표),
 full = KoAlpaca 128 + ultrachat-ko 64 + ultrachat-en 64 (seq 2048).
 chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
@@ -39,20 +39,20 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
 
 모든 stage 스크립트는 모드(smoke/full)를 인자로 받는다. **인자를 생략하면 환경변수 `MODE`를 보고**,
 그것도 없으면 smoke다. 타깃을 받는 스크립트는 타깃도 필수다 (미지정 시 사용법 출력 후 종료,
-`TARGETS=all`로 전체) — 예: `MODE=full ./s4-65-update-readme.sh full nvfp4-awq-transformers`.
+`TARGETS=all`로 전체) — 예: `MODE=full ./s4-70-update-readme.sh full nvfp4-awq-transformers`.
 
 ```bash
-./s0-01-serve-base-from-hf-with-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
-./s0-04-chat-with-transformers.sh full       # s0: chat 생성 검증 (GPU)
-./s0-13-serve-base-from-hf-with-vllm-fork.sh full               # s0: 포크로 베이스 서빙 (이후 s0-16/19, s0-22가 정리)
-./s1-01-setup-environment.sh                        # 양 노드 1회 (env + HF gated 로그인)
-./s1-04-setup-acceptance-criteria.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
-./s1-07-prep-calibration.sh smoke      # calib jsonl 생성
-./s1-10-preflight-check.sh                 # custom_arch 지원 사전 점검 (필수)
+./s0-00-serve-base-from-hf-with-transformers.sh full       # s0 베이스 검증: 접근+메타데이터 (gated)
+./s0-05-chat-with-transformers.sh full       # s0: chat 생성 검증 (GPU)
+./s0-25-serve-base-from-hf-with-vllm-fork.sh full               # s0: 포크로 베이스 서빙 (이후 s0-16/19, s0-22가 정리)
+./s1-00-setup-environment.sh                        # 양 노드 1회 (env + HF gated 로그인)
+./s1-05-setup-acceptance-criteria.sh smoke             # Stage 1: 수용 기준(acceptance.toml) 검증 + 계약 스냅샷
+./s1-15-prep-calibration.sh smoke      # calib jsonl 생성
+./s1-15-preflight-check.sh                 # custom_arch 지원 사전 점검 (필수)
 ./s4-05-prep-gsm8k.sh full            # 표준 GSM8K 평가 세트(프롬프트+매니페스트) 준비
 ./s4-25-prep-kmmluko.sh full          # 표준 한국어 KMMLU 평가 세트 준비
 ./s4-35-check-format__transformers_vllm_both.sh full --prepare      # 지시/형식 준수 고정 10케이스 준비
-./s2-01-dequant-mxfp8-into-bf16.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
+./s2-00-dequant-mxfp8-into-bf16.sh                # BF16 복원 (s3 양자화의 선행 조건, 1회)
 
 # 단일 타깃 빌드 (mode × target = 8종) — dequant→quant→PPL→eval + 게이트
 ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh  # smoke × nvfp4-awq-transformers (TARGETS 불필요, 1종 고정)
@@ -89,13 +89,13 @@ chat template 적용 + thinking 포함 (Raon은 thinking mode 권장).
   - 프롬프트 생성: `s4-05-prep-gsm8k.sh` · `s4-25-prep-kmmluko.sh` · `s4-35-check-format__transformers_vllm_both.sh` (모두 결정론·멱등)
 - 모델 카드: **Check 1 PPL** · **Check 2 GSM8K** · **Check 3 KMMLU** · **Check 4 형식 준수** (참고: 서빙 성능)
 - 게이트 구현: `gates.inc` — `build-ppl-eval.inc` 단일 경로가 **같은 함수**를 사용
-- 증빙: `outputs/stage-ledger-<mode>.json` → `s4-75-release-notes.py` → 릴리스 노트
+- 증빙: `outputs/stage-ledger-<mode>.json` → `s4-80-release-notes.py` → 릴리스 노트
 - 정의 문서: `docs/SDLC.md`
 
 ## 알려진 위험 (스캐폴딩 시점 미검증)
 
 0. **베이스가 MXFP8 (2026-10-22 실측)**: 메인 repo 텐서가 F8_E4M3 9216 + 스케일.
-   llmcompressor가 기양자화 모델을 거부하므로 `s2-01-dequant-mxfp8`으로 BF16 복원 후 PTQ.
+   llmcompressor가 기양자화 모델을 거부하므로 `s2-00-dequant-mxfp8`으로 BF16 복원 후 PTQ.
    복원본(`raon-bf16`)이 s4-01·s4-07의 base 기준. 복원 수치 검증은 19 스크립트 내장.
 1. **custom_code MoE 지원 미검증**: RDA/MLA/MoE-128expert 구조에 AWQModifier/GPTQModifier가
    그대로 동작하는지 smoke 첫 실행으로 확인. gate/router/lm_head는 양자화 제외.

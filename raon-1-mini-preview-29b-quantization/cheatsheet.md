@@ -6,9 +6,9 @@
 그것도 없으면 `smoke`다.
 
 ```bash
-./s4-65-update-readme.sh full nvfp4-awq-transformers     # 인자 우선 (targets 필수)
-MODE=full ./s4-65-update-readme.sh full nvfp4-awq-transformers   # 환경변수 MODE (타깃 인자는 그대로 필수)
-MODE=full TARGETS=nvfp4-awq-transformers ./s4-65-update-readme.sh   # 타깃도 함께
+./s4-70-update-readme.sh full nvfp4-awq-transformers     # 인자 우선 (targets 필수)
+MODE=full ./s4-70-update-readme.sh full nvfp4-awq-transformers   # 환경변수 MODE (타깃 인자는 그대로 필수)
+MODE=full TARGETS=nvfp4-awq-transformers ./s4-70-update-readme.sh   # 타깃도 함께
 ```
 
 > `export MODE=full` 후 인자 없이 실행하면 **full**로 돈다.
@@ -16,42 +16,42 @@ MODE=full TARGETS=nvfp4-awq-transformers ./s4-65-update-readme.sh   # 타깃도 
 
 ```bash
 # s0. 베이스모델 검증 (transformers half + vLLM half, 각 chat·pi·벤치)
-./s0-01-serve-base-from-hf-with-transformers.sh full      # transformers 서버 기동 (endpoint 상주)
-./s0-04-chat-with-transformers.sh full       # endpoint chat 검증
-./s0-07-pi-tool-call-with-transformers.sh full     # endpoint pi 툴콜 검증 (고정 질문)
-./s0-10-bench-latency-with-transformers.sh full      # endpoint 벤치 측정 + 서버 정리
-./s0-11-stop-server-with-transformers.sh            # 잔존 transformers 서버 수동 정리 (3단위 예외)
-./s0-13-serve-base-from-hf-with-vllm-fork.sh full               # 포크로 베이스 서빙 (서버 상주)
-./s0-16-chat-with-vllm-fork.sh full               # 서빙 chat 검증
-./s0-19-pi-tool-call-with-vllm-fork.sh full             # 서빙 모델 pi 툴콜 검증 (고정 질문)
-./s0-22-bench-latency-with-vllm-fork.sh full              # vLLM endpoint 벤치 측정 + 서버 정리
-./s0-21-stop-server-with-vllm-fork.sh                    # 잔존 vLLM 서버 수동 정리 (3단위 예외)
+./s0-00-serve-base-from-hf-with-transformers.sh full      # transformers 서버 기동 (endpoint 상주)
+./s0-05-chat-with-transformers.sh full       # endpoint chat 검증
+./s0-10-pi-tool-call-with-transformers.sh full     # endpoint pi 툴콜 검증 (고정 질문)
+./s0-15-bench-latency-with-transformers.sh full      # endpoint 벤치 측정 + 서버 정리
+./s0-20-stop-server-with-transformers.sh            # 잔존 transformers 서버 수동 정리 (3단위 예외)
+./s0-25-serve-base-from-hf-with-vllm-fork.sh full               # 포크로 베이스 서빙 (서버 상주)
+./s0-30-chat-with-vllm-fork.sh full               # 서빙 chat 검증
+./s0-35-pi-tool-call-with-vllm-fork.sh full             # 서빙 모델 pi 툴콜 검증 (고정 질문)
+./s0-45-bench-latency-with-vllm-fork.sh full              # vLLM endpoint 벤치 측정 + 서버 정리
+./s0-40-stop-server-with-vllm-fork.sh                    # 잔존 vLLM 서버 수동 정리 (3단위 예외)
 
 # s1. 환경 체인 (setup·수용기준·calib·compat — 양 노드 setup 1회 + gated 로그인)
-./s1-01-setup-environment.sh
+./s1-00-setup-environment.sh
 uv run hf auth login
 
 # s1. 환경 체인 — 수용 기준: config/acceptance.toml을 검증해 계약 스냅샷을 만든다
-./s1-04-setup-acceptance-criteria.sh smoke
-./s1-04-setup-acceptance-criteria.sh full
+./s1-05-setup-acceptance-criteria.sh smoke
+./s1-05-setup-acceptance-criteria.sh full
 
 # s1. 환경 체인 — calib (smoke 8 / full 256)
-./s1-07-prep-calibration.sh smoke
-./s1-07-prep-calibration.sh full
+./s1-15-prep-calibration.sh smoke
+./s1-15-prep-calibration.sh full
 
 # s1. 환경 체인 — compat (양자화 전 필수)
-./s1-10-preflight-check.sh
+./s1-15-preflight-check.sh
 
 # s2. dequant (s3 양자화의 선행 조건, 1회)
-./s2-01-dequant-mxfp8-into-bf16.sh
+./s2-00-dequant-mxfp8-into-bf16.sh
 
 # s3. PTQ 개별 (smoke 예시, calib 수 직접 지정 가능)
-./s3-01-quant-awq-w3-transformers.sh smoke
-./s3-01-quant-awq-w5-transformers.sh smoke
-./s3-01-quant-nvfp4-awq-transformers.sh smoke
-./s3-01-quant-nvfp4-gptq-transformers.sh smoke
-RQ_AWQ_FIRST=0 ./s3-01-quant-awq-w3-transformers.sh smoke   # custom_arch AWQ 실패 시 pure-GPTQ 폴백
-RQ_TARGETS=all ./s3-01-quant-nvfp4-gptq-transformers.sh smoke  # experts-only 대신 전 Linear
+./s3-00-quant-awq-w3-transformers.sh smoke
+./s3-05-quant-awq-w5-transformers.sh smoke
+./s3-10-quant-nvfp4-awq-transformers.sh smoke
+./s3-20-quant-nvfp4-gptq-transformers.sh smoke
+RQ_AWQ_FIRST=0 ./s3-00-quant-awq-w3-transformers.sh smoke   # custom_arch AWQ 실패 시 pure-GPTQ 폴백
+RQ_TARGETS=all ./s3-20-quant-nvfp4-gptq-transformers.sh smoke  # experts-only 대신 전 Linear
 
 # s4. 측정·평가 — PPL (일부 타깃만 — 타겟마다 별도 프로세스, 마지막에 캐시 집계, targets 필수)
 TARGETS=all ./s4-00-measure-ppl__transformers-only.sh smoke
@@ -80,43 +80,43 @@ RQ_EVAL_BACKEND=transformers ./s4-15-answer-benchmarks-quantized__transformers-o
 ./s4-20-aggregate-gsm8k__transformers_vllm_both.sh smoke        # → outputs/eval-<mode>/score.json
 ./s4-30-score-kmmluko__transformers_vllm_both.sh smoke     # → checks.json "kmmluko"
 ./s4-35-check-format__transformers_vllm_both.sh smoke      # → checks.json "format"
-STEPS=serve ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh   # 서빙 처리량 측정(s4-25, 서버가 떠 있어야)
+STEPS=serve ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh   # 서빙 처리량 측정(s4-55, 서버가 떠 있어야)
 # transformers 인프로세스 처리량 (서버 불필요, Raon 정석 스택 — stock vLLM은 커스텀 아키 미지원)
-./s4-60-measure-speed__transformers-only.sh smoke base,nvfp4-awq-transformers   # → bench-transformers-<mode>.json + checks.json servebench
+./s4-65-measure-speed__transformers-only.sh smoke base,nvfp4-awq-transformers   # → bench-transformers-<mode>.json + checks.json servebench
 
 # s4. 측정·평가 — 모델카드 및 업로드 전 감사 (README.md 생성 + 디렉터리·모델사이즈·vLLM·지표 전수 검증, targets 필수)
 #    - 모델 디렉터리 README.md = base + 그 모델 1개 비교 (Hub 업로드 대상)
 #    - models/README-<mode>.md      = 그 모드의 전체 양자화 버전 비교 리포트 (업로드 아님)
-TARGETS=all ./s4-65-update-readme.sh smoke
-./s4-65-update-readme.sh smoke nvfp4-gptq-transformers,nvfp4-awq-transformers
-./s4-70-verify-upload.sh smoke nvfp4-awq-transformers
-./s4-70-verify-upload.sh full nvfp4-awq-transformers
+TARGETS=all ./s4-70-update-readme.sh smoke
+./s4-70-update-readme.sh smoke nvfp4-gptq-transformers,nvfp4-awq-transformers
+./s4-75-verify-upload.sh smoke nvfp4-awq-transformers
+./s4-75-verify-upload.sh full nvfp4-awq-transformers
 
 # s5. 업로드 (full만 업로드, s4-31 산출물이 있어야 함, targets 필수)
-TARGETS=all DRY_RUN=1 ./s5-01-upload-to-hf.sh full     # 네트워크 없이 준비 상태만 검증
-TARGETS=all ./s5-01-upload-to-hf.sh full
+TARGETS=all DRY_RUN=1 ./s5-00-upload-to-hf.sh full     # 네트워크 없이 준비 상태만 검증
+TARGETS=all ./s5-00-upload-to-hf.sh full
 
 # s6. 고객 시나리오 (transformers) — Hub 카드의 '## Usage - transformers' 예제를 바이트 그대로 실행
 #     (transformers 적재 가능 4종만 — nvfp4-awq-vllm 은 vLLM 전용이라 s7 에서 검증한다)
 ./s6-00-clean-serving-workspace.sh full                 # README 예제가 쓰는 작업 디렉터리 정리 (먼저 실행)
-./s6-02-verify-readme-with-nvfp4-awq-transformers-and-transformers.sh full   # Hub README를 바이트 그대로 실행 (미발행 repo면 FAIL)
+./s6-15-verify-readme-with-nvfp4-awq-transformers-and-transformers.sh full   # Hub README를 바이트 그대로 실행 (미발행 repo면 FAIL)
 
 # s7. 고객 시나리오 (vLLM 서빙) — Hub 카드의 '## Usage - vLLM' 예제를 바이트 검증 후 실행
 ./s7-00-clean-serving-workspace.sh full                 # vLLM 예제 작업 디렉터리 정리 (포크 빌드 포함)
-./s7-02-verify-readme-with-nvfp4-awq-vllm-and-vllm-fork.sh (카드 블록이 Step1 빌드까지 포함) full    # 카드 Step 1: GB10 vLLM 포크 소스 빌드 (nvfp4-awq-vllm 전용, 수십 분)
-./s7-02-verify-readme-with-nvfp4-awq-transformers-and-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
-./s7-13-chat.sh full nvfp4-awq-transformers       # 서버 기동+chat 검증 (서버 상주)
-./s7-16-pi-tool-call-test.sh full nvfp4-awq-transformers         # pi 검증 후 서버 정리
+./s7-20-verify-readme-with-nvfp4-awq-vllm-and-vllm-fork.sh (카드 블록이 Step1 빌드까지 포함) full    # 카드 Step 1: GB10 vLLM 포크 소스 빌드 (nvfp4-awq-vllm 전용, 수십 분)
+./s7-15-verify-readme-with-nvfp4-awq-transformers-and-vllm-fork.sh   # 터미널1 (상주, 카드 명령 as-is)
+./s7-30-chat.sh full nvfp4-awq-transformers       # 서버 기동+chat 검증 (서버 상주)
+./s7-35-pi-tool-call-test.sh full nvfp4-awq-transformers         # pi 검증 후 서버 정리
 
 # s4/s7. 릴리스 증빙 — 단계 원장 → 릴리스 노트 / CAT 서빙 검증
 # transformers 적재 불가 타깃(modelopt_fp4)의 품질 지표는 서빙 스택으로 잰다:
 ./run-s4-metrics-via-serving.sh full nvfp4-awq-vllm  # 서버→벤치 응답→집계→카드 갱신
-./s5-01-upload-to-hf.sh full nvfp4-awq-vllm          # 갱신된 카드로 재게시
-python s4-75-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
+./s5-00-upload-to-hf.sh full nvfp4-awq-vllm          # 갱신된 카드로 재게시
+python s4-80-release-notes.py --mode smoke     # outputs/release-notes-smoke.md
 
 # 단일 타깃 원샷 (mode × target = 8종) — dequant→quant→PPL→eval (+게이트)
 #   run-s1-to-s4-{smoke,full}-{awq-w3-transformers|awq-w5-transformers|nvfp4-awq-transformers|nvfp4-gptq-transformers}.sh
-#   (두 번째 번호 = 그룹 내 순서, 01부터 3단위: s1-01-setup·s1-07-calib·s1-10-compat·s2-01-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-20-aggregate-gsm8k)
+#   (두 번째 번호 = 그룹 내 순서, 01부터 3단위: s1-00-setup·s1-15-calib·s1-15-compat·s2-00-dequant·s3-<quant>·s4-01-ppl·s4-07-eval·s4-20-aggregate-gsm8k)
 ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh    # smoke × nvfp4-awq-transformers
 ./run-s1-to-s4-full-nvfp4-awq-transformers.sh     # full  × nvfp4-awq-transformers
 STEPS=quant,ppl ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh      # 일부 스텝만
@@ -124,7 +124,7 @@ STEPS=prep,verify ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh    # 모델카�
 FORCE=1 ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh               # freshness 무시(강제 재계산)
 # 게이트: gate-quant(패킹 계약·global_scale) → gate-ppl(유한 PPL) → gate-eval(응답 생성)
 #        게이트 실패 시 즉시 중단 — NaN 모델을 eval에 흘려보내지 않는다.
-# 공유 접두(s1-01/07/10·s2-01)는 lock+freshness/stamp로 중복 실행이 자동 회피된다.
+# 공유 접두(s1-00/07/10·s2-00)는 lock+freshness/stamp로 중복 실행이 자동 회피된다.
 #   (2개 build 동시 실행 → 먼저 들어온 쪽만 수행, 나머지는 대기 후 skip)
 
 # 빌드 (mode × target = 8종 원샷 + STEPS 부분 실행)
@@ -140,4 +140,4 @@ QUANT_CPU_ONLY=1 ./run-s1-to-s4-smoke-nvfp4-awq-transformers.sh   # 양자화만
 # 구 모놀리식 러너(run-{smoke,full}.sh, TARGETS/STEPS 다종 실행)는 archive/로 은퇴.
 ```
 
-env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./s7-13-chat.sh smoke nvfp4-awq-transformers`
+env 핀: `INFRA=dgx-spark-2x TP=2 MASTER_ADDR=<spark1-ip> ./s7-30-chat.sh smoke nvfp4-awq-transformers`

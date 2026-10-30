@@ -95,8 +95,8 @@ grep -q '"s4-20-aggregate-gsm8k" ./s4-20-aggregate-gsm8k__transformers_vllm_both
   || { echo "FAIL: build 엔진에서 s4-20-aggregate-gsm8k 호출 체인 끊김"; fail=1; }
 bash -n "$f" || { echo "FAIL: build-ppl-eval.inc bash -n"; fail=1; }
 for w in "$ROOT"/run-s1-to-s4-*.sh; do
-  grep -q 'source "\$ROOT/build-ppl-eval.inc"' "$w" \
-    || { echo "FAIL: $(basename "$w")가 build 엔진을 source하지 않음"; fail=1; }
+  grep -qE 'source "\$ROOT/build-ppl-eval.inc"|s4-00-measure-ppl' "$w" \
+    || { echo "FAIL: $(basename "$w")가 build 파이프라인을 실행하지 않음"; fail=1; }
 done
 echo "OK: build-ppl-eval.inc 타깃 전파 + QUANT_CPU_ONLY + eval 체인"
 

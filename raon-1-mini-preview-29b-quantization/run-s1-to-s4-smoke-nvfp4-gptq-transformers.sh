@@ -6,18 +6,18 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 MODE="smoke"; TARGET="nvfp4-gptq-transformers"
-QSCRIPT="s3-01-quant-nvfp4-gptq-transformers.sh"; QFORMAT="nvfp4-pack-quantized"
+QSCRIPT="s3-20-quant-nvfp4-gptq-transformers.sh"; QFORMAT="nvfp4-pack-quantized"
 source "$ROOT/config/common.env" "$MODE"
 rq_banner "run-s1-to-s4-smoke-nvfp4-gptq-transformers" "s1-s4 pipeline for a single target (setup -> acceptance -> calib -> compat -> dequant -> quant -> ppl -> eval)"
 rq_repro_echo
 
-./s1-01-setup-environment.sh "$MODE"
-./s1-04-setup-acceptance-criteria.sh "$MODE"
+./s1-00-setup-environment.sh "$MODE"
+./s1-05-setup-acceptance-criteria.sh "$MODE"
 rq_stage_record 1 acceptance pass "$RQ_OUTPUTS/acceptance-$MODE.json"
 rq_gate_acceptance "$MODE"
-./s1-07-prep-calibration.sh "$MODE"
-./s1-10-preflight-check.sh "$MODE"
-./s2-01-dequant-mxfp8-into-bf16.sh "$MODE"
+./s1-10-prep-calibration.sh "$MODE"
+./s1-15-preflight-check.sh "$MODE"
+./s2-00-dequant-mxfp8-into-bf16.sh "$MODE"
 if [ "${QUANT_CPU_ONLY:-0}" = 1 ]; then QC="env CUDA_VISIBLE_DEVICES="; else QC="env"; fi
 $QC ./$QSCRIPT "$MODE"
 rq_gate_quant "$RQ_MODELS/raon-$TARGET-$MODE" "$QFORMAT"
@@ -37,12 +37,12 @@ rq_gate_eval "$RQ_OUTPUTS/eval-$MODE/$TARGET.jsonl" "$TARGET" "$MODE"
 rq_gate_kmmluko "$MODE" "$TARGET"
 rq_gate_format "$MODE" "$TARGET"
 rq_stage_record 4 eval pass "$RQ_OUTPUTS/eval-$MODE/score.json"
-# 서빙 벤치용 로컬 서버 (in-process 측정 이후 — 모델 이중 적재 방지). 기동 실패해도 계속 (s4-50이 skip 기록).
+# 서빙 벤치용 로컬 서버 (in-process 측정 이후 — 모델 이중 적재 방지). 기동 실패해도 계속 (s4-55가 skip 기록).
 ./s4-40-serve-local-weight-with-transformers.sh "$MODE" "$TARGET" || rq_log "WARN: local server start failed — s4-50 will skip"
-SERVE_BENCH_TARGET="$TARGET" ./s4-50-servebench__vllm-only.sh "$MODE"
-./s4-55-stop-serve-local-weight.sh
-./s4-65-update-readme.sh "$MODE" "$TARGET"
+SERVE_BENCH_TARGET="$TARGET" ./s4-55-servebench__vllm-only.sh "$MODE"
+./s4-60-stop-serve-local-weight.sh
+./s4-70-update-readme.sh "$MODE" "$TARGET"
 rq_stage_record 4 eval pass "$RQ_OUTPUTS/prep-upload-$MODE.json"
-./s4-70-verify-upload.sh "$MODE" "$TARGET"
+./s4-75-verify-upload.sh "$MODE" "$TARGET"
 rq_gate_release "$MODE"
 echo "run-s1-to-s4-smoke-nvfp4-gptq-transformers done"

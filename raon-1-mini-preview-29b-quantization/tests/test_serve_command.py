@@ -5,7 +5,7 @@
   - s7 frozen 래퍼는 그 스니펫을 repo id 고정으로 exec한다.
 양쪽이 어긋나면 "카드대로 했는데 안 돈다"가 된다. llmcompressor 4종 양자화 타깃은
 repo id를 제외하고 동일 명령이다. ModelOpt판(nvfp4-awq-vllm)은
---quantization 없이 자동 감지된다. s7-13-chat.sh이 타깃→래퍼 테이블로 묶는다.
+--quantization 없이 자동 감지된다. s7-30-chat.sh이 타깃→래퍼 테이블로 묶는다.
 개별 래퍼 번호: awq-w3-transformers=01, awq-w5-transformers=01, nvfp4-awq-vllm=01, nvfp4-awq-transformers=01, nvfp4-gptq-transformers=01.
 """
 
@@ -32,15 +32,21 @@ def _load_script(name: str):
     return mod
 
 
-prep = _load_script("s4-65-update-readme.py")
+prep = _load_script("s4-70-update-readme.py")
 
 QUANT_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-vllm", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
 LLMC_TARGETS = ["awq-w3-transformers", "awq-w5-transformers", "nvfp4-awq-transformers", "nvfp4-gptq-transformers"]
-WRAPPER_NUM = {"awq-w3-transformers": "02", "awq-w5-transformers": "02", "nvfp4-awq-vllm": "02", "nvfp4-awq-transformers": "02", "nvfp4-gptq-transformers": "02"}
+WRAPPER_NUM = {
+    "awq-w3-transformers": "05",
+    "awq-w5-transformers": "10",
+    "nvfp4-awq-transformers": "15",
+    "nvfp4-awq-vllm": "20",
+    "nvfp4-gptq-transformers": "25",
+}
 # 래퍼 파일명의 타깃 토큰 (= 타깃 슬러그)
 WRAPPER_SLUG = {"awq-w3-transformers": "awq-w3-transformers", "awq-w5-transformers": "awq-w5-transformers", "nvfp4-awq-vllm": "nvfp4-awq-vllm",
                 "nvfp4-awq-transformers": "nvfp4-awq-transformers", "nvfp4-gptq-transformers": "nvfp4-gptq-transformers"}
-S713 = (ROOT / "s7-13-chat.sh").read_text(encoding="utf-8")
+S713 = (ROOT / "s7-30-chat.sh").read_text(encoding="utf-8")
 
 
 def _vllm_block(readme: str) -> str:
@@ -111,10 +117,10 @@ def test_readme_modelopt_command_has_no_quantization_flag():
 
 
 def test_s713_table_matches_readme_spec():
-    """s7-13의 case 테이블이 s4-31 VLLM_SERVE 스펙과 일치한다."""
+    """s7-30의 case 테이블이 s4-31 VLLM_SERVE 스펙과 일치한다."""
     for t in QUANT_TARGETS:
         m = re.search(rf"^\s*{re.escape(t)}\)\s*SUF=\"([^\"]+)\";\s*QUANT=\"([^\"]*)\";\s*VTP_DEF=(\S+?);\s*NUM=(\S+)", S713, re.M)
-        assert m, f"s7-13 case arm 없음: {t}"
+        assert m, f"s7-30 case arm 없음: {t}"
         assert m.group(2) == prep.VLLM_SERVE[t]["quant"], t
         assert m.group(3) == str(prep.VLLM_SERVE[t]["tp"]), t
         assert m.group(4) == str(WRAPPER_NUM[t]), t
@@ -148,7 +154,7 @@ def test_wrapper_scripts_embed_readme_block():
 
 
 def test_s713_manages_wrapper_server():
-    """s7-13은 frozen 래퍼를 백그라운드로 띄워 slug 확인 후 상주시킨다 (s7-16이 재사용)."""
+    """s7-30은 frozen 래퍼를 백그라운드로 띄워 slug 확인 후 상주시킨다 (s7-35가 재사용)."""
     assert 'WRAPPER="$RQ_ROOT/s7-$NUM-verify-readme-with-${TARGET}-and-vllm-fork.sh"' in S713
     assert 'nohup "$WRAPPER" "$MODE" >"$SERVLOG" 2>&1 &' in S713
     assert "model-slug.sh" in S713

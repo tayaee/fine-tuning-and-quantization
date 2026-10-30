@@ -16,16 +16,16 @@ echo "OK: docs/SDLC.md"
 for tok in '8개 그룹' 'gate-quant'; do
   grep -qF -- "$tok" "$ROOT/PROCEDURE.md" || { echo "FAIL: PROCEDURE.md에 '$tok' 없음"; fail=1; }
 done
-# s1-04 스크립트는 'setup-acceptance-criteria' 로 개명됐고, 표에서는 축약형
-# ('s1-04-acceptance')을 쓴다 — 둘 다 인정한다.
+# s1-05 스크립트는 'setup-acceptance-criteria' 로 개명됐고, 표에서는 축약형
+# ('s1-05-acceptance')을 쓴다 — 둘 다 인정한다.
 for f in README.md cheatsheet.md; do
-  grep -qE -- 's1-04-(setup-)?acceptance' "$ROOT/$f" \
-    || { echo "FAIL: $f에 's1-04-acceptance' 없음"; fail=1; }
+  grep -qE -- 's1-05-(setup-)?acceptance' "$ROOT/$f" \
+    || { echo "FAIL: $f에 's1-05-acceptance' 없음"; fail=1; }
 done
 for tok in 'docs/SDLC.md'; do
   grep -qF -- "$tok" "$ROOT/README.md" || { echo "FAIL: README.md에 '$tok' 없음"; fail=1; }
 done
-for tok in 's4-75-release-notes'; do
+for tok in 's4-80-release-notes'; do
   grep -qF -- "$tok" "$ROOT/cheatsheet.md" || { echo "FAIL: cheatsheet.md에 '$tok' 없음"; fail=1; }
 done
 echo "OK: PROCEDURE/README/cheatsheet 정렬"

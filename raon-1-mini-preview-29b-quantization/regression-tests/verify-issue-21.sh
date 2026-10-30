@@ -28,11 +28,11 @@ done
 echo "OK: freshness가 요청 벤치 응답 존재까지 확인"
 
 # 3. 카드 가드 + PPL delta 3자리
-grep -q 'no GSM8K accuracy for' "$ROOT/s4-65-update-readme.py" \
+grep -q 'no GSM8K accuracy for' "$ROOT/s4-70-update-readme.py" \
   || { echo "FAIL: prep-upload가 GSM8K 정확도 누락을 거부하지 않음"; fail=1; }
-grep -q "_fmt(delta, 3)" "$ROOT/s4-65-update-readme.py" \
+grep -q "_fmt(delta, 3)" "$ROOT/s4-70-update-readme.py" \
   || { echo "FAIL: 수용 기준 표의 PPL delta가 3자리가 아님"; fail=1; }
-grep -q "_fmt(pr.get('delta'), 3)" "$ROOT/s4-65-update-readme.py" \
+grep -q "_fmt(pr.get('delta'), 3)" "$ROOT/s4-70-update-readme.py" \
   || { echo "FAIL: Check 1 표의 PPL delta가 3자리가 아님"; fail=1; }
 echo "OK: GSM8K 누락 거부 · PPL delta 3자리"
 
