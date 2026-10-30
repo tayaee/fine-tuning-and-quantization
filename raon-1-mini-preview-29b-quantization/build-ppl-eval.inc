@@ -30,7 +30,7 @@ rq_bpe_spec() {
     awq-w5-transformers) echo "s3-05-quant-awq-w5-transformers.sh pack-quantized" ;;
     nvfp4-awq-transformers) echo "s3-10-quant-nvfp4-awq-transformers.sh nvfp4-pack-quantized" ;;
     nvfp4-gptq-transformers) echo "s3-20-quant-nvfp4-gptq-transformers.sh nvfp4-pack-quantized" ;;
-    nvfp4-awq-vllm) echo "s3-15-quant-nvfp4-awq-vllm.sh mopt-nvfp4" ;;
+    nvfp4-awq-vllm) echo "s3-15-quant-nvfp4-awq-vllm.sh modelopt_fp4" ;;
     *) echo "" ;;
   esac
 }

@@ -74,7 +74,7 @@ class _PackedContract(NamedTuple):
 PACK_QUANTIZED = "pack-quantized"
 NVFP4_PACK_QUANTIZED = "nvfp4-pack-quantized"
 # ModelOpt NVFP4 (modelopt_fp4 표지): packed weight 구조가 컴프레서와 달라 별도 계약.
-MOPT_NVFP4 = "mopt-nvfp4"
+MOPT_NVFP4 = "modelopt_fp4"
 CUSTOM_CODE_FILES = ("configuration_raon1_mini.py", "modeling_raon1_mini.py")
 
 # nvfp4: U8 패킹 + F8_E4M3 블록 스케일 + F32 전역 스케일, 대칭 전용.

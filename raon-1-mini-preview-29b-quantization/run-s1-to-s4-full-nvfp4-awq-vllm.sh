@@ -6,7 +6,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 MODE="full"; TARGET="nvfp4-awq-vllm"
-QSCRIPT="s3-15-quant-nvfp4-awq-vllm.sh"; QFORMAT="mopt-nvfp4"
+QSCRIPT="s3-15-quant-nvfp4-awq-vllm.sh"; QFORMAT="modelopt_fp4"
 source "$ROOT/config/common.env" "$MODE"
 # vLLM 전용 포맷: transformers 지표(PPL/eval) 불가 → 카드·감사 지표 면제, 품질 게이트는 s7 서빙
 export ALLOW_MISSING_METRICS=1

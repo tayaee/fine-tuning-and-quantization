@@ -710,13 +710,19 @@ python app.py  # runs in .venv above
     else:
         intro_banner = ""
 
+    format_sentence = (
+        f"The checkpoint is stored in the `{storage_format}` format{load_claim}."
+        if is_mopt
+        else f"The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`){load_claim}."
+    )
+
     return "\n".join(fm) + f"""
 
 # {repo_id}
 {intro_banner}
 This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
-The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`){load_claim}.
+{format_sentence}
 
 ## Quantization spec
 

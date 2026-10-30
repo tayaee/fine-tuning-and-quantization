@@ -55,7 +55,7 @@ DEFAULT_ACCEPTANCE: dict[str, Any] = {
             "ppl_delta_max": 1.0,
         },
         "nvfp4-awq-vllm": {
-            "quant_format": "mopt-nvfp4",
+            "quant_format": "modelopt_fp4",
             "size_gb": [15.0, 28.0],
             "ppl_delta_warn": 0.3,
             "ppl_delta_max": 1.0,
