@@ -32,12 +32,15 @@ grep -q 'def load_snippet(' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: 스니펫 로더 없음"; fail=1; }
 grep -q '__REPO_ID__", repo_id)' "$ROOT/s4-65-update-readme.py" \
   || { echo "FAIL: 스니펫 repo id 치환 없음"; fail=1; }
-for _t in awq-w3-transformers awq-w5-transformers nvfp4-awq-vllm nvfp4-awq-transformers nvfp4-gptq-transformers; do
+for _t in awq-w3-transformers awq-w5-transformers nvfp4-awq-transformers nvfp4-gptq-transformers; do
   grep -q 'model_id = "__REPO_ID__"' "$ROOT/snippets/$_t/app-transformers.py" \
     || { echo "FAIL: snippets/$_t/app-transformers.py에 repo id 자리 없음"; fail=1; }
   grep -q '__REPO_ID__' "$ROOT/snippets/$_t/serve-vllm.sh" \
     || { echo "FAIL: snippets/$_t/serve-vllm.sh에 repo id 자리 없음"; fail=1; }
 done
+# nvfp4-awq-vllm은 transformers 적재 불가(vLLM 전용)이므로 serve-vllm.sh만 검사
+grep -q '__REPO_ID__' "$ROOT/snippets/nvfp4-awq-vllm/serve-vllm.sh" \
+  || { echo "FAIL: snippets/nvfp4-awq-vllm/serve-vllm.sh에 repo id 자리 없음"; fail=1; }
 echo "OK: 카드 표·제목·사용 예제 = repo id"
 
 # 3. 업로드 전 감사가 repo id 기준

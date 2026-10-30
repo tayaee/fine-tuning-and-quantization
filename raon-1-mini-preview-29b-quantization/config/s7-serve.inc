@@ -38,13 +38,15 @@ s7_verify_card() {
     echo "FAIL: Hub 카드의 '## Usage - vLLM' 이 snippets/ 와 바이트 불일치 — 카드 재업로드 필요" >&2
     return 1
   fi
-  # transformers 적재 불가 타깃의 카드에도 transformers 실행 예제가 있을 수 있다
-  # (modelopt_fp4 는 예제 안에서 BF16 로 변환한다) → 예제 유무만 확인한다.
+  # transformers 적재 불가 타깃: 카드가 transformers 실행 예제를 제시하면 안 된다
+  # (그 예제는 반드시 실패한다 — 2026-10-29 s6-02 실측).
   if rq_skip_transformers "$target"; then
-    "$RQ_PY" "$RQ_ROOT/config/readme-blocks.py" "$rdir/README.md" "Usage - transformers" "$rdir" "$repo" \
-        --expect-blocks >/dev/null 2>&1 \
-      || { echo "FAIL: 카드의 '## Usage - transformers' 에 실행 예제가 없다" >&2; return 1; }
-    rq_log "OK: 카드에 transformers 실행 예제 있음 (BF16 변환 경로)"
+    if ! "$RQ_PY" "$RQ_ROOT/config/readme-blocks.py" "$rdir/README.md" "Usage - transformers" "$rdir" "$repo" \
+        --expect-no-blocks; then
+      echo "FAIL: transformers 적재 불가 타깃인데 카드의 '## Usage - transformers' 에 실행 예제가 있다" >&2
+      return 1
+    fi
+    rq_log "OK: 카드에 transformers 실행 예제 없음 (vLLM 전용 카드)"
   fi
   return 0
 }
@@ -52,12 +54,19 @@ s7_verify_card() {
 # s7_run_card_blocks <rdir> — 카드의 vLLM 블록을 README 순서대로 실행.
 #   마지막 블록(서빙)은 상주 프로세스라 여기서 끝나지 않는다 — 그 판정은 s7-13/s7-16 이 한다.
 s7_run_card_blocks() {
-  local rdir="$1" f n=0
+  local rdir="$1" f n=0 _venv
   shopt -s nullglob
   for f in "$rdir"/block-*.sh; do
     n=$((n + 1))
     echo "---- README 블록 $n: $f ----"
     cat "$f"
+    _venv="$(sed -n 's|^[[:space:]]*VENV=\([^[:space:]]*\).*|\1|p' "$f" | head -n 1)"
+    if [ -n "$_venv" ] && grep -q 'MAX_JOBS' "$f" 2>/dev/null; then
+      if [ "${FORCE:-0}" != 1 ] && [ -x "$_venv/bin/vllm" ] && "$_venv/bin/python" -c "import vllm" >/dev/null 2>&1; then
+        rq_log "skip build: $_venv/bin/vllm 이미 준비됨 (FORCE=1 로 재빌드)"
+        continue
+      fi
+    fi
     echo "---- 실행 ----"
     bash "$f"
   done

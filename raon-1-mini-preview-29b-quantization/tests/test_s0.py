@@ -124,15 +124,18 @@ def test_s7_serve_set_covers_all_targets():
         assert b.is_file(), f"{b.name} 없음"
 
 
-def test_s6_transformers_set_covers_all_targets():
-    """s6(카드의 '## Usage - transformers' 예제 검증) — 5종 전부.
+def test_s6_transformers_set_covers_targets_with_transformers_example():
+    """s6(카드의 '## Usage - transformers' 예제 검증) — 그 예제가 있는 타깃만.
 
-    s6/s7 은 'README 의 인스트럭션을 as-is 그대로 타이핑하면 돌아가는가'를 본다.
-    타깃별로 transformers 예제(s6-02) 와 vLLM 예제(s7-02) 가 모두 있어야 한다.
+    nvfp4-awq-vllm(modelopt_fp4)은 transformers 가 못 읽는다(2026-10-29 실측) → 카드는
+    vLLM 전용이고 transformers 예제가 없다 → 검증할 예제가 없으니 s6 스텝도 없다.
     """
     for target in ALL_TARGETS:
         a = ROOT / f"s6-02-verify-readme-with-{target}-and-transformers.sh"
-        assert a.is_file(), f"{a.name} 없음"
+        if target in UNLOADABLE_TARGETS:
+            assert not a.exists(), f"{a.name} 이 남아 있다 — 검증할 transformers 예제가 없는 카드다"
+        else:
+            assert a.is_file(), f"{a.name} 없음"
 
 
 STOP_SCRIPTS = ["s0-11-stop-server-with-transformers.sh", "s0-21-stop-server-with-vllm-fork.sh"]
@@ -154,5 +157,5 @@ if __name__ == "__main__":
     test_s0_shared_server_and_bench()
     test_group_numbering_follows_convention()
     test_s7_serve_set_covers_all_targets()
-    test_s6_transformers_set_excludes_unloadable_targets()
+    test_s6_transformers_set_covers_targets_with_transformers_example()
     print("test_s0 OK")

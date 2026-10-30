@@ -607,8 +607,9 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     gb10_build_block = ("```bash\n" + load_snippet(target, "build-vllm-gb10.sh", repo_id) + "\n```"
                         if is_mopt else "")
     serve_body = load_snippet(target, "serve-vllm.sh", repo_id)
-    usage_body = load_snippet(target, "usage-transformers.sh", repo_id)
-    app_body = load_snippet(target, "app-transformers.py", repo_id)
+    # transformers 예제는 vLLM 전용 타깃(modelopt_fp4)에선 카드에 없으므로 읽지 않는다.
+    usage_body = "" if is_mopt else load_snippet(target, "usage-transformers.sh", repo_id)
+    app_body = "" if is_mopt else load_snippet(target, "app-transformers.py", repo_id)
     if is_mopt:
         vllm_step1 = ("Step 1 — build vLLM from source (GB10). Prerequisites: `nvcc`\n"
                       "from CUDA 13.0 on `PATH`, ~50 GB free disk. Run verbatim in order;\n"
@@ -633,34 +634,33 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
                       "(`VLLM_USE_PRECOMPILED=1` selects the precompiled wheels; the first start\n"
                       "compiles the model's kernels and takes about 10 minutes).")
 
-    # transformers 가 못 읽는 포맷(modelopt_fp4)의 카드도 transformers 실행 예제는 싣는다 —
-    # 예제 안에서 BF16 로 변환하고(모델 repo 에 동봉된 nvfp4_to_bf16.py) 그것을 로드한다.
-    # '아예 안 싣기'는 옛 판: 그랬더니 s6(transformers) 검증 대상이 사라져 카드가
-    # transformers 경로로 검증되지 않은 채 게시됐다.
+    # transformers 로 읽을 수 없는 타깃(modelopt_fp4)의 카드에는 transformers 실행 예제를
+    # 싣지 않는다 — 싣으면 고객이 그대로 복사해 실행하고 반드시 실패한다 (2026-10-29 실측:
+    # transformers 5.14.1 에 modelopt_fp4 양자화기가 없고, NVFP4 패킹된 가중치가 raw uint8 로
+    # 적재되어 shape mismatch 로 죽는다).
+    # BF16 변환 경로(동봉된 nvfp4_to_bf16.py)는 예제가 아니라 '참고'로만 언급한다 —
+    # 변환본은 56GB 로 BF16 베이스(53.6GB)보다 커서, 양자화 모델의 transformers 경로로는
+    # 이득이 없다. 이 모델의 고객 경로는 vLLM 포크 하나뿐이다.
     if is_mopt:
-        transformers_section = f"""## Usage - transformers
+        transformers_section = """## Usage - transformers
 
-`transformers` has no `modelopt_fp4` quantizer, so it cannot read this checkpoint
-directly (`Unknown quantization type, got modelopt_fp4`, then a weight shape
-mismatch — the NVFP4-packed tensors are never unpacked). This repository ships
-`nvfp4_to_bf16.py`, which converts the packed weights to BF16; the snippet below
-converts once and then loads the converted copy. If you only want to *serve* the
-model, the vLLM fork below reads `modelopt_fp4` natively and needs no conversion.
+**`transformers` cannot load this checkpoint.** It is stored in the `modelopt_fp4`
+format (NVFP4-packed weights plus ModelOpt scales), which `transformers` does not
+implement: `AutoModelForCausalLM.from_pretrained` logs
+`Unknown quantization type, got modelopt_fp4` and then aborts with a weight shape
+mismatch, because the packed tensors are never unpacked.
 
-```bash
-{usage_body}
-```
+Serve it with the vLLM fork instead (see **Usage - vLLM** below) — the fork
+implements the `modelopt_fp4` loader path natively, so the checkpoint stays at its
+19 GB size.
 
-```python
-{app_body}
-```
-```bash
-python app.py  # runs in .venv above
-```
+If you specifically need a `transformers`-loadable copy, this repository ships
+`nvfp4_to_bf16.py`, which converts the packed weights to BF16. Note that the result
+is ~56 GB — larger than the BF16 base model — so it is a convenience, not the
+intended path.
 """
-        load_claim = (", which `transformers` cannot read directly — convert it with the\n"
-                      "shipped `nvfp4_to_bf16.py` (see **Usage - transformers** below) or serve\n"
-                      "it with the vLLM fork (see **Usage - vLLM** below)")
+        load_claim = (", which `transformers` cannot read —\n"
+                      "serve it with the vLLM fork (see **Usage - vLLM** below)")
     else:
         transformers_section = f"""## Usage - transformers
 
@@ -693,10 +693,23 @@ python app.py  # runs in .venv above
         *(f"- {t}" for t in tags.split(", ")),
         "---",
     ]
+    if is_mopt:
+        intro_banner = f"""
+> [!IMPORTANT]
+> **Target Hardware: NVIDIA GB10 (DGX Spark, sm_121)**
+> 
+> * **Model Lineage**: [`{BASE_MODEL}`](https://huggingface.co/{BASE_MODEL}) (Base) ➔ **`{repo_id}`** (4-bit AWQ NVFP4)
+> * **Required Serving Engine**: This model requires our customized vLLM engine targeting GB10 Blackwell hardware:  
+>   👉 **[tayaee/raon-vllm-spark (branch: gb10-support)](https://github.com/tayaee/raon-vllm-spark/tree/gb10-support)**
+> * **Notice for Non-GB10 Users**: This checkpoint is stored in `modelopt_fp4` format and is optimized strictly for GB10. If you are using other hardware (e.g., B300, H100, RTX 4090), standard `transformers` or stock `vLLM` will **not** load this checkpoint. Please use the official base model [`{BASE_MODEL}`](https://huggingface.co/{BASE_MODEL}) instead.
+"""
+    else:
+        intro_banner = ""
+
     return "\n".join(fm) + f"""
 
 # {repo_id}
-
+{intro_banner}
 This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}. Only the weights are
 compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
 The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`){load_claim}.

@@ -625,16 +625,15 @@ def _check_readme(
             errors.append(f"{readme_fp}: 본문에 필수 항목 '{req_body}' 누락")
 
     if is_mopt:
-        # transformers 로 적재 불가한 타깃(modelopt_fp4)도 카드는 transformers 경로를
-        # 안내한다 — 예제 안에서 동봉된 nvfp4_to_bf16.py 로 BF16 변환 후 로드한다.
-        # 예제가 없으면 transformers 사용자를 막는다.
+        # transformers 로 적재 불가한 타깃(modelopt_fp4)의 카드는 transformers 실행 예제를
+        # 제시하면 안 된다 (고객이 그대로 복사해 실행하면 반드시 실패한다 — 2026-10-29 s6-02 실측).
         _sec = re.search(r"^## Usage - transformers[ \t]*\n(.*?)(?=^## |\Z)", text, re.DOTALL | re.MULTILINE)
-        if not (_sec and re.search(r"^```", _sec.group(1), re.MULTILINE)):
-            errors.append(f"{readme_fp}: '## Usage - transformers' 에 실행 예제가 없다 — "
-                          "이 타깃은 transformers 로 바로 못 읽으므로(BF16 변환 경로) 예제를 반드시 제시해야 한다")
-        if "nvfp4_to_bf16.py" not in text:
-            errors.append(f"{readme_fp}: 변환 도구 nvfp4_to_bf16.py 를 언급하지 않는다 — "
-                          "transformers 경로에서 BF16 변환 방법이 사라졌다")
+        if _sec and re.search(r"^```", _sec.group(1), re.MULTILINE):
+            errors.append(f"{readme_fp}: '## Usage - transformers' 에 실행 예제가 있음 — "
+                          "이 타깃은 transformers 적재 불가(vLLM 전용)이므로 카드가 예제를 제시하면 안 된다")
+        if "nvfp4_to_bf16.py" in text and not (d / "nvfp4_to_bf16.py").is_file():
+            errors.append(f"{readme_fp}: nvfp4_to_bf16.py 를 언급하지만 모델 디렉터리에 없다 — "
+                          "카드의 안내가 깨진다")
 
     # 비교표에서 현재 타겟 수치 확인 (This Model 컬럼 = 측정값, 미기입 '—' 금지)
     repo_id = hf_repo_id(target, mode)

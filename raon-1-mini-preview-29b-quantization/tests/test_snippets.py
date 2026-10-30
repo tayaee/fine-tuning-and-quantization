@@ -41,6 +41,7 @@ prep = _load_script("s4-65-update-readme.py")
 SNIPPET_TARGETS = ["awq-w3-transformers", "awq-w5-transformers",
                    "nvfp4-awq-transformers", "nvfp4-gptq-transformers",
                    "nvfp4-awq-vllm"]
+UNLOADABLE_TARGETS = ["nvfp4-awq-vllm"]
 
 
 def _render(target: str, mode: str) -> str:
@@ -55,18 +56,28 @@ def _render(target: str, mode: str) -> str:
 
 def test_snippets_embedded_verbatim_in_cards():
     for target in SNIPPET_TARGETS:
+        # vLLM 전용 타깃(modelopt_fp4)은 transformers 예제를 카드에 싣지 않는다 →
+        # 해당 스니펫 파일도 존재하지 않는다.
         names = ["usage-transformers.sh", "app-transformers.py", "serve-vllm.sh"]
-        if target == "nvfp4-awq-vllm":
+        if target in UNLOADABLE_TARGETS:
+            names.remove("usage-transformers.sh")
+            names.remove("app-transformers.py")
             names.append("build-vllm-gb10.sh")
         for mode in ("full", "smoke"):
             repo = prep.hf_repo_id(target, mode)
             card = _render(target, mode)
             for name in names:
-                if target == "nvfp4-awq-vllm" and name in ("usage-transformers.sh", "app-transformers.py"):
-                    continue  # vLLM 전용 카드 — transformers 예제를 싣지 않는다 (modelopt_fp4)
                 body = (prep.SNIPPET_DIR / target / name).read_text(encoding="utf-8")
                 body = body.removesuffix("\n").replace("__REPO_ID__", repo)
                 assert body in card, f"{target}/{mode}: snippets/{name} 내용이 카드에 없음"
+
+
+def test_unloadable_target_has_no_transformers_snippets():
+    """vLLM 전용 타깃에는 transformers 스니펫이 없어야 한다 (있으면 카드 예제와 어긋난다)."""
+    for target in UNLOADABLE_TARGETS:
+        for name in ("usage-transformers.sh", "app-transformers.py"):
+            p = prep.SNIPPET_DIR / target / name
+            assert not p.exists(), f"{target}/{name} 이 남아 있다 — 카드는 transformers 예제를 싣지 않는다"
 
 
 def test_snippet_placeholders_only_for_repo_id():
@@ -134,12 +145,12 @@ def test_s6_readme_verify_uses_snippets():
 def test_transformers_unloadable_target_documents_conversion_path():
     """transformers 적재 불가 타깃(modelopt_fp4)의 카드도 transformers 경로를 안내한다.
 
-    카드가 transformers 예제를 아예 싣지 않으면 그 경로는 검증되지 않은 채 게시된다.
-    예제 안에서 동봉된 nvfp4_to_bf16.py 로 BF16 변환한 뒤 로드하는 경로를 제시한다.
+    modelopt_fp4는 transformers 적재 불가이므로 실행 예제(코드 블록)는 싣지 않고,
+    동봉된 nvfp4_to_bf16.py 로 변환 가능하다는 안내만 담는다.
     """
     card = _render("nvfp4-awq-vllm", "full")
     sec = card.split("## Usage - transformers", 1)[1].split("\n## ", 1)[0]
-    assert "```" in sec, "modelopt_fp4 카드에 transformers 실행 예제가 없다"
+    assert "```" not in sec, "modelopt_fp4 카드에 transformers 실행 예제가 없어야 한다 (vLLM 전용)"
     assert "nvfp4_to_bf16.py" in sec, "modelopt_fp4 카드가 BF16 변환 도구를 안내하지 않는다"
     assert "modelopt_fp4" in sec, "modelopt_fp4 카드가 왜 변환이 필요한지 설명하지 않는다"
     # 다른 타깃은 transformers 예제가 있어야 한다 (반대 케이스도 함께 고정)
