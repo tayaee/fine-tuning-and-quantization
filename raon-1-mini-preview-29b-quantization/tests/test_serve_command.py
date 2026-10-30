@@ -104,7 +104,7 @@ def test_readme_modelopt_command_has_no_quantization_flag():
     r = prep.render_readme("nvfp4-awq-vllm", "full", {}, {}, 20.0)
     b = _vllm_serve_block(r)
     assert "--quantization" not in b, "ModelOpt 카드에 --quantization 잔존"
-    assert "tayaee/Raon-1-mini-preview-nvfp4-awq-vllm" in b
+    assert "tayaee/Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM" in b
     for f in ("--tensor-parallel-size 1", "--trust-remote-code",
               "--max-model-len 262144", "--reasoning-parser raon_1"):
         assert f in b, f

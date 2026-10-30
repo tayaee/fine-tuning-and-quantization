@@ -158,7 +158,11 @@ BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id) — 카드 표의 Model 컬럼 값."""
-    name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    if target == "nvfp4-awq-vllm":
+        slug = "Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM"
+    else:
+        slug = f"{BASE_SLUG}-{target}"
+    name = f"{HF_ID}/{slug}"
     if mode == "smoke":
         name += "-smoke"
     return name

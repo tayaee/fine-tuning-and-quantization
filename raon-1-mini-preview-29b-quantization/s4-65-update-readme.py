@@ -70,7 +70,7 @@ SPECS: dict[str, dict] = {
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
     },
     "nvfp4-awq-vllm": {
-        "format": MOPT_NVFP4, "tags": ["nvfp4", "w4a4", "awq", "modelopt"],
+        "format": MOPT_NVFP4, "tags": ["nvfp4", "w4a4", "awq", "modelopt", "gb10"],
         "algorithm": "NVFP4 (AWQ Lite, ModelOpt)", "precision": "W4A4 (FP8 dynamic activation scale)",
         "bits": "NVFP4 (E2M1)", "group_size": "block_size=16",
         "ignored": "`lm_head`, `moe.gate` (router), `self_attn`, `shared_experts`",
@@ -137,7 +137,11 @@ def load_snippet(target: str, name: str, repo_id: str) -> str:
 
 def hf_repo_id(target: str, mode: str) -> str:
     """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
-    name = f"{HF_ID}/{BASE_SLUG}-{target}"
+    if target == "nvfp4-awq-vllm":
+        slug = "Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM"
+    else:
+        slug = f"{BASE_SLUG}-{target}"
+    name = f"{HF_ID}/{slug}"
     if mode == "smoke":
         name += "-smoke"
     return name

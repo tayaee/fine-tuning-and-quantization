@@ -82,7 +82,11 @@ s7_run_card_blocks() {
 s7_serve_frozen() {
   local target="$1" mode="${2:-full}" repo rdir
   case "$mode" in smoke|full) ;; *) echo "usage: s7_serve_frozen <target> [smoke|full]" >&2; return 2 ;; esac
-  repo="tayaee/${BASE_MODEL##*/}-$target"
+  if [ "$target" = "nvfp4-awq-vllm" ]; then
+    repo="tayaee/Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM"
+  else
+    repo="tayaee/${BASE_MODEL##*/}-$target"
+  fi
   [ "$mode" = smoke ] && repo="$repo-smoke"
   rdir="$RQ_OUTPUTS/s7-$MODE/readme-$target"
   # 카드 검증 (바이트 as-is) — s7 의 본래 목적.
