@@ -12,6 +12,12 @@ smoke는 절대 업로드하지 않는다 (우회 수단 없음). full만 업로
 
 import argparse
 import os
+import sys
+from pathlib import Path
+
+# 저장소 이름 규칙의 단일 소스 (sdlc.hf_repo_id) — 카드(s4-70)와 동일해야 한다.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sdlc import hf_repo_id  # noqa: E402
 
 SHARED = os.environ.get("RQ_SHARED", "/rosenas/data/AIML/raon-1-mini-preview-29b-quantization-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
@@ -24,10 +30,8 @@ def MODELS_DIR(mode: str) -> str:
 
 
 def repo_name(target: str, mode: str) -> str:
-    name = f"{HF_ID}/{BASE_SLUG}-{target}"
-    if mode == "smoke":
-        name += "-smoke"
-    return name
+    """업로드 대상 Hub repo id — 카드(s4-70)가 박는 repo id 와 **같은 값**이어야 한다."""
+    return hf_repo_id(target, mode)
 
 
 def check_ready(target: str, mode: str) -> str | None:

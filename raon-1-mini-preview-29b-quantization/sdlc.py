@@ -38,6 +38,24 @@ QUANT_TARGETS: tuple[str, ...] = ("awq-w3-transformers", "awq-w5-transformers", 
 #: 평가/측정에 참여하는 전체 대상 (base가 기준선).
 ALL_TARGETS: tuple[str, ...] = ("base",) + QUANT_TARGETS
 
+#: Hub repo id 규칙 (단일 소스) — 모델 카드(s4-70)와 업로드(s5-00)가 반드시 같은 값을 써야 한다.
+#: 두 곳의 규칙이 어긋나면 카드는 A 저장소에, 가중치는 B 저장소에 올라간다.
+#: nvfp4-awq-vllm 만 예외적으로 marketing slug 를 쓴다 (GB10 전용 vLLM 포크용).
+HF_ID = os.environ.get("HF_ID", "tayaee")
+BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/")[-1]
+REPO_SLUGS: dict[str, str] = {
+    "nvfp4-awq-vllm": "Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM",
+}
+
+
+def hf_repo_id(target: str, mode: str = "full") -> str:
+    """정식 HF 모델명(Hub repo id). 카드·업로드·검증 공통 소스."""
+    slug = REPO_SLUGS.get(target, f"{BASE_SLUG}-{target}")
+    name = f"{HF_ID}/{slug}"
+    if mode == "smoke":
+        name += "-smoke"
+    return name
+
 #: 수용 기준 파일이 없을 때 쓰는 기본값 — 2026-10 기준 기존 하드코딩 값과 동일.
 DEFAULT_ACCEPTANCE: dict[str, Any] = {
     "version": 1,

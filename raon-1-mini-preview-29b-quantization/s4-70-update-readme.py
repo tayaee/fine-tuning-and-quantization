@@ -136,15 +136,14 @@ def load_snippet(target: str, name: str, repo_id: str) -> str:
 
 
 def hf_repo_id(target: str, mode: str) -> str:
-    """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다."""
-    if target == "nvfp4-awq-vllm":
-        slug = "Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM"
-    else:
-        slug = f"{BASE_SLUG}-{target}"
-    name = f"{HF_ID}/{slug}"
-    if mode == "smoke":
-        name += "-smoke"
-    return name
+    """정식 HF 모델명(Hub repo id). 표의 Model 컬럼에 쓴다.
+
+    규칙의 단일 소스는 sdlc.hf_repo_id (업로드 스크립트 s5-00 도 같은 값을 쓴다 —
+    두 곳의 규칙이 어긋나면 카드와 가중치가 다른 저장소에 올라간다).
+    """
+    from sdlc import hf_repo_id as _hf_repo_id
+
+    return _hf_repo_id(target, mode)
 
 
 def model_label(target: str, mode: str) -> str:
@@ -233,6 +232,75 @@ def _vllm_base_bench():
         return {}
 
 
+
+
+def _checkpoint_facts(target: str, mode: str) -> dict:
+    """카드에 적을 양자화 사실을 **체크포인트 파일에서** 읽는다 (하드코딩 금지).
+
+    modelopt_fp4 타깃에서 BF16 로 남는 모듈 목록은 config.json 의
+    quantization_config.ignore 가, 블록 크기는 hf_quant_config.json 이 진짜 소스다.
+    카드의 문구가 실제 산출물과 어긋나면 사용자는 틀린 정보를 읽는다
+    (예: group_size 를 하드코딩하면 config.json 에 없는 값을 카드에 적는다).
+
+    파일이 없으면 빈 dict — 호출부가 SPECS 기본값으로 대체한다
+    (카드만 단독 렌더링하는 테스트 경로).
+    """
+    facts: dict = {}
+    d = model_dir(mode, target)
+    try:
+        cfg = json.loads((d / "config.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cfg = {}
+    qc = cfg.get("quantization_config") or {}
+    facts["ignore"] = qc.get("ignore") or []
+    facts["quant_method"] = qc.get("quant_method")
+    facts["quant_algo"] = qc.get("quant_algo")
+    try:
+        hq = json.loads((d / "hf_quant_config.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        hq = {}
+    hqq = hq.get("quantization") or {}
+    if hqq.get("group_size"):
+        facts["group_size"] = hqq["group_size"]
+    if hqq.get("kv_cache_quant_algo") is not None:
+        facts["kv_cache_quant_algo"] = hqq["kv_cache_quant_algo"]
+    # compressed-tensors: 블록 크기는 config_groups 안에 있다
+    cg = ((qc.get("config_groups") or {}).get("group_0") or {})
+    if (cg.get("weights") or {}).get("group_size"):
+        facts.setdefault("group_size", cg["weights"]["group_size"])
+    return facts
+
+
+def _ignored_note(facts: dict) -> str:
+    """ignore 목록을 사람이 읽는 한 줄로 접는다 (실제 산출물 기준)."""
+    ignore = facts.get("ignore") or []
+    if not ignore:
+        return IGNORE_NOTE
+    blob = "\n".join(ignore)
+    items: list[str] = []
+    if "lm_head" in blob:
+        items.append("`lm_head`")
+    if "embed_tokens" in blob:
+        items.append("`embed_tokens`")
+    if any(p.startswith("model.layers.0*") or p == "model.layers.0" for p in ignore):
+        items.append("the dense layer 0")
+    if "self_attn" in blob:
+        items.append("`self_attn`")
+    if "moe.gate" in blob:
+        items.append("`moe.gate` (router)")
+    if "shared_experts" in blob:
+        items.append("`shared_experts`")
+    if not items:
+        return IGNORE_NOTE
+    return ", ".join(items) + " (kept in BF16)"
+
+
+def _group_size_note(facts: dict, spec: dict) -> str:
+    """블록/그룹 크기 표기 — 체크포인트에 있으면 그것을 쓴다."""
+    gs = facts.get("group_size")
+    if gs:
+        return f"block_size={gs}"
+    return spec.get("group_size", "-")
 
 
 def _checks(mode: str) -> dict:
@@ -327,17 +395,18 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     lo, hi = (spec.get("size_gb") or [None, None])[:2]
     size_ok = "PASS" if (isinstance(lo, (int, float)) and isinstance(hi, (int, float))
                          and float(lo) <= float(size_gb) <= float(hi)) else "-"
-    size_note = f"{size_ok} (contract {lo} ~ {hi} GB)"
+    size_note = f"{size_ok} (within the expected {lo}–{hi} GB range)"
 
     fmt_ok = "PASS" if spec.get("quant_format") == SPECS[target]["format"] else "FAIL"
-    fmt_note = f"{fmt_ok} (contract `{spec.get('quant_format')}`)"
+    fmt_note = f"{fmt_ok} (stored as `{spec.get('quant_format')}`)"
 
     b_acc, b_cnt = _gsm8k_acc_n(scores, "base")
     c_acc, c_cnt = _gsm8k_acc_n(scores, target)
     gdrop_max = spec.get("gsm8k_acc_drop_max", 0.02)
     gsm_v = _gsm8k_verdict(c_acc, b_acc, gdrop_max)
     gsm_drop = "-" if b_acc is None or c_acc is None else f"{float(b_acc) - float(c_acc):.3f}"
-    gsm_note = f"{gsm_v} (drop {gsm_drop} <= {gdrop_max})"
+    gsm_note = (f"{gsm_v} (drop {gsm_drop}, allowed ≤ {gdrop_max})"
+                if c_acc is not None else "not measured yet — measured through the vLLM fork")
 
     k_acc = _kmmluko_acc(checks, target)
     kb_acc = _kmmluko_acc(checks, "base")
@@ -347,7 +416,8 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     k_v = _kmmluko_contract_verdict(checks, target)
     k_cnt = "-" if not k_row.get("n") else f"{round(float(k_acc or 0) * float(k_row['n']))}/{k_row['n']}"
     kb_cnt = "-" if not kb_row.get("n") else f"{round(float(kb_acc or 0) * float(kb_row['n']))}/{kb_row['n']}"
-    k_note = f"{k_v} (drop {_fmt(_kmmluko_drop(checks, target), 3)} <= {kdrop_max})"
+    k_note = (f"{k_v} (drop {_fmt(_kmmluko_drop(checks, target), 3)}, allowed ≤ {kdrop_max})"
+              if k_row.get("n") else "not measured yet — measured through the vLLM fork")
 
     f_row = ((checks.get("format") or {}).get("targets") or {}).get(target) or {}
     fb_row = ((checks.get("format") or {}).get("targets") or {}).get("base") or {}
@@ -356,7 +426,8 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
     f_cnt = "-" if not f_row.get("n") else f"{round((f_rate or 0) * f_row['n'])}/{f_row['n']}"
     fb_cnt = "-" if not fb_row.get("n") else f"{round((fb_rate or 0) * fb_row['n'])}/{fb_row['n']}"
     f_min = float(f_row.get("pass_rate_min", spec.get("format_pass_rate_min", 0.9)))
-    f_note = f"{_format_contract_verdict(checks, target)} (>= {f_min})"
+    f_note = (f"{_format_contract_verdict(checks, target)} (pass rate ≥ {f_min})"
+              if f_row.get("n") else "not measured yet — measured through the vLLM fork")
 
     sb = checks.get("servebench") or {}
     sbt = sb.get("targets") or {}
@@ -411,27 +482,88 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
         "| # | Configuration | Base Model | This Model | Change | Notes |",
         "| --- | --- | ---: | ---: | --- | --- |",
         # 측정 불가 항목은 빼고 번호를 다시 매긴다 (예: ModelOpt는 in-process PPL 불가).
-        *_numbered_rows([
-            (SPECS[target]["format"] != MOPT_NVFP4,
-             f"PPL (in-domain) | {_fmt(base_p.get('ppl'), 3)} | {_fmt(cur_p.get('ppl'), 3)} | Δ {_fmt(delta, 3)} | {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd})"),
+        *_numbered_rows(_comparison_items(target, spec, base_p, cur_p, delta, warn, maxd,
+                                         base_size, size_gb, size_change, size_note,
+                                         fmt_note, b_acc, b_cnt, c_acc, c_cnt, gsm_drop, gsm_note,
+                                         kb_acc, kb_cnt, k_acc, k_cnt, k_note,
+                                         fb_rate, fb_cnt, f_rate, f_cnt, f_note,
+                                         btps, tps, tf_change, blat, lat, lat_change,
+                                         v_rows, v_ok, v_lat, run, checks, mode)),
+        "",
+        *(_comparison_notes(target, v_rows, v_ok)),
+    ]
+    if _stack_note:
+        rows.append(_stack_note)
+    return "\n".join(rows) + "\n"
+
+
+def _comparison_items(target, spec, base_p, cur_p, delta, warn, maxd,
+                      base_size, size_gb, size_change, size_note, fmt_note,
+                      b_acc, b_cnt, c_acc, c_cnt, gsm_drop, gsm_note,
+                      kb_acc, kb_cnt, k_acc, k_cnt, k_note,
+                      fb_rate, fb_cnt, f_rate, f_cnt, f_note,
+                      btps, tps, tf_change, blat, lat, lat_change,
+                      v_rows, v_ok, v_lat, run, checks, mode):
+    """비교표의 행 목록. (표시 여부, 본문) — 번호는 _numbered_rows 가 다시 매긴다.
+
+    modelopt_fp4(vLLM 전용) 타깃은 transformers 인프로세스 측정이 불가능하다:
+      - transformers 처리량/지연 행은 이 체크포인트의 성질이 아니라 스택의 성질 → 제외
+      - 대신 vLLM 포크 서빙값을 적는다 (포크는 이 체크포인트를 실제로 서빙한다)
+      - 'unmeasurable' 설명(포크가 못 읽는다)은 이 타깃엔 사실과 반대 → 다른 문구
+    """
+    is_mopt = SPECS[target]["format"] == MOPT_NVFP4
+    acc_cell = (lambda a, c: f"{_fmt(a, 3)} ({c})" if a is not None else "not measured yet")
+    items: list[tuple[bool, str]] = [
+        (not is_mopt,
+         f"PPL (in-domain) | {_fmt(base_p.get('ppl'), 3)} | {_fmt(cur_p.get('ppl'), 3)} | Δ {_fmt(delta, 3)} | {cur_p.get('verdict', '-')} (Accept < {warn}, Conditional < {maxd})"),
+        (True,
+         f"Checkpoint size | {base_size} GB | {size_gb} GB | {size_change} | {size_note}"),
+        (True,
+         f"Storage format | BF16 (dequantized) | `{SPECS[target]['format']}` | — | {fmt_note}"),
+        (True,
+         f"GSM8K accuracy | {acc_cell(b_acc, b_cnt)} | {acc_cell(c_acc, c_cnt)} | "
+         f"{('drop ' + gsm_drop) if c_acc is not None else '—'} | {gsm_note}"),
+        (True,
+         f"KMMLU accuracy | {acc_cell(kb_acc, kb_cnt)} | {acc_cell(k_acc, k_cnt)} | "
+         f"{('drop ' + _fmt(_kmmluko_drop(checks, target), 3)) if k_acc is not None else '—'} | {k_note}"),
+        (True,
+         f"Format compliance | {acc_cell(fb_rate, fb_cnt)} | {acc_cell(f_rate, f_cnt)} | — | {f_note}"),
+    ]
+    if is_mopt:
+        m_tps = run.get("tok_per_s_p50")
+        m_lat = run.get("req_latency_s_p50")
+        tps_txt = f"{m_tps} tok/s" if m_tps else "not measured yet"
+        lat_txt = f"{m_lat} s" if m_lat else "not measured yet"
+        items += [
             (True,
-             f"Checkpoint size | {base_size} GB | {size_gb} GB | {size_change} | {size_note}"),
+             f"Serving throughput, vLLM fork (C=1) | — | {tps_txt} | — | "
+             "measured through the vLLM fork that serves this checkpoint"),
             (True,
-             f"Storage format | BF16 (dequantized) | `{SPECS[target]['format']}` | — | {fmt_note}"),
-            (True,
-             f"GSM8K accuracy | {_fmt(b_acc, 3)} ({b_cnt}) | {_fmt(c_acc, 3)} ({c_cnt}) | drop {gsm_drop} | {gsm_note}"),
-            (True,
-             f"KMMLU accuracy | {_fmt(kb_acc, 3)} ({kb_cnt}) | {_fmt(k_acc, 3)} ({k_cnt}) | drop {_fmt(_kmmluko_drop(checks, target), 3)} | {k_note}"),
-            (True,
-             f"Format compliance | {_fmt(fb_rate, 3)} ({fb_cnt}) | {_fmt(f_rate, 3)} ({f_cnt}) | — | {f_note}"),
+             f"Serving latency p50, vLLM fork (C=1) | — | {lat_txt} | — | "
+             "same fixed 8-prompt workload, single GB10"),
+        ]
+    else:
+        items += [
             (True,
              f"Throughput C=1, transformers | {btps} | {tps} | {tf_change} | reference only[^2] — both slow eager (stack, not a quantization regression)"),
             (True,
              f"Latency p50, transformers | {blat} | {lat} | {lat_change} | same fixed workload[^2]"),
             (True,
              f"vLLM fork latency, s (C=1; n={len(v_rows)}, ok={v_ok}) | {v_lat if v_lat is not None else '—'} | n/a[^1] | unmeasurable — see note"),
-        ]),
-        "",
+        ]
+    return items
+
+
+def _comparison_notes(target: str, v_rows: list, v_ok: int) -> list[str]:
+    """비교표 각주. modelopt_fp4 타깃엔 '포크가 못 읽는다' 설명이 사실과 반대라 붙이지 않는다."""
+    if SPECS[target]["format"] == MOPT_NVFP4:
+        return [
+            "The serving rows are measured through the vLLM fork — this checkpoint "
+            "cannot be loaded in-process by `transformers`, so there is no in-process "
+            "base comparison. Base accuracy above was measured in-process on the "
+            "dequantized BF16 base."
+        ]
+    return [
         "[^2]: Rows 7–8 measured on a single NVIDIA GB10 (DGX Spark), in-process "
         "transformers, same fixed 8 prompts. Numbers move with hardware — compare "
         "Base vs This Model relatively, not absolutely.",
@@ -440,9 +572,6 @@ def _comparison_table(target: str, mode: str, ppl: dict, scores: dict, size_gb: 
         "profiles → `TypeError`), and upstream vLLM lacks RDA `linear_attention`. "
         "Serving these PTQ checkpoints needs a ModelOpt-NVFP4 recipe.",
     ]
-    if _stack_note:
-        rows.append(_stack_note)
-    return "\n".join(rows) + "\n"
 
 
 def _check_tables(
@@ -602,7 +731,14 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     """
     spec = SPECS[target]
     checks = _checks(mode)
+    facts = _checkpoint_facts(target, mode)
+    ignored_note = _ignored_note(facts)
+    group_note = _group_size_note(facts, spec)
+    acc_spec = _acceptance_target_spec(target)
     gsm8k_meta = _evalset_meta(mode)
+    scored_n = (((scores.get("base") or {}).get("benchmarks") or {}).get("gsm8k") or {}).get("n")
+    if scored_n:
+        gsm8k_meta += f", {scored_n} answered and scored"
     repo_id = hf_repo_id(target, mode)
     comparison = _comparison_table(target, mode, ppl, scores, size_gb, checks)
     is_mopt = target == "nvfp4-awq-vllm"
@@ -646,7 +782,7 @@ def render_readme(target: str, mode: str, ppl: dict, scores: dict, size_gb: floa
     # 변환본은 56GB 로 BF16 베이스(53.6GB)보다 커서, 양자화 모델의 transformers 경로로는
     # 이득이 없다. 이 모델의 고객 경로는 vLLM 포크 하나뿐이다.
     if is_mopt:
-        transformers_section = """## Usage - transformers
+        transformers_section = f"""## Usage - transformers
 
 **`transformers` cannot load this checkpoint.** It is stored in the `modelopt_fp4`
 format (NVFP4-packed weights plus ModelOpt scales), which `transformers` does not
@@ -659,9 +795,12 @@ implements the `modelopt_fp4` loader path natively, so the checkpoint stays at i
 19 GB size.
 
 If you specifically need a `transformers`-loadable copy, this repository ships
-`nvfp4_to_bf16.py`, which converts the packed weights to BF16. Note that the result
-is ~56 GB — larger than the BF16 base model — so it is a convenience, not the
-intended path.
+`nvfp4_to_bf16.py`, which converts the packed weights to BF16:
+
+    python nvfp4_to_bf16.py {repo_id} --out ./bf16
+
+Note that the result is ~56 GB — larger than the BF16 base model — so it is a
+convenience, not the intended path.
 """
         load_claim = (", which `transformers` cannot read —\n"
                       "serve it with the vLLM fork (see **Usage - vLLM** below)")
@@ -716,12 +855,108 @@ python app.py  # runs in .venv above
         else f"The checkpoint is stored in the `{storage_format}` format (`{spec['format']}`){load_claim}."
     )
 
+    # W4A4(NVFP4) 계열은 가중치만 4bit 가 아니라 **활성화도 FP8 로 동적 스케일**된다
+    # (체크포인트에 input_scale 텐서가 있다). "activations kept in BF16" 라고 쓰면
+    # 카드 안에서 서로 모순된다.
+    if str(spec["precision"]).startswith("W4A4"):
+        precision_sentence = (
+            "Weights are NVFP4 (E2M1) with per-block scales, and activations are "
+            "dynamically scaled to FP8 at inference time; normalization, attention, "
+            "the MoE router, the shared experts and the LM head stay in BF16."
+        )
+    else:
+        precision_sentence = (
+            f"Only the weights are compressed to {spec['precision']}; activations and "
+            "normalization layers are kept in BF16."
+        )
+
+    # 사용자에게 필요한 최소 사용 정보 — thinking 모드 권장 + 권장 샘플링값.
+    sampling_section = """## Sampling parameters
+
+Raon-1-mini is a thinking model — keep thinking mode enabled (the serve command
+below does this through `--default-chat-template-kwargs '{"enable_thinking": true}'`).
+
+| Setting | Value |
+| --- | --- |
+| temperature | 1.0 |
+| top_p | 0.95 |
+| top_k | 20 |
+| repetition_penalty | 1.0 |
+| frequency_penalty | 0 |
+| min_p | 0 |
+| presence_penalty | 1.5 (chat, summarization, knowledge Q&A, agents) · 0 (coding, math) |
+
+`presence_penalty` is applied by the model's own remote code, not by
+`transformers` or the vLLM sampler.
+"""
+
+    request_section = f"""## Request example
+
+```bash
+curl http://localhost:8000/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "model": "{repo_id}",
+    "messages": [{{"role": "user", "content": "Tell me about KRAFTON AI."}}],
+    "max_tokens": 8192,
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 1.5,
+    "chat_template_kwargs": {{
+      "enable_thinking": true,
+      "truncate_history_thinking": false
+    }}
+  }}'
+```
+
+The reasoning is returned in `message.reasoning` and the answer in
+`message.content`. Set `presence_penalty` to `0` for coding and math.
+"""
+
+    # 품질 게이트를 못 넘은 체크포인트는 카드 상단에 경고를 단다 (표 한 줄로는 안 보일 수 있음).
+    # 가중치가 이미 Hub에 공개되어 있으므로, 사용자가 받는 카드에서 실패가 드러나야 한다.
+    quality_warning = ""
+    _b_acc = _gsm8k_acc_n(scores, "base")[0]
+    _c_acc = _gsm8k_acc_n(scores, target)[0]
+    _gsm_fail = (_gsm8k_verdict(_c_acc, _b_acc, acc_spec.get("gsm8k_acc_drop_max", 0.02)) == "FAIL")
+    _k_fail = (_kmmluko_contract_verdict(checks, target) == "FAIL")
+    if _gsm_fail or _k_fail:
+        parts = []
+        if _gsm_fail:
+            parts.append(f"GSM8K accuracy {_fmt(_c_acc, 3)} vs base {_fmt(_b_acc, 3)} "
+                         f"(allowed drop ≤ {acc_spec.get('gsm8k_acc_drop_max', 0.02)})")
+        if _k_fail:
+            parts.append(f"KMMLU accuracy {_fmt(_kmmluko_acc(checks, target), 3)} vs base "
+                         f"{_fmt(_kmmluko_acc(checks, 'base'), 3)} "
+                         f"(allowed drop ≤ {acc_spec.get('kmmluko_acc_drop_max', 0.03)})")
+        quality_warning = (
+            "\n> [!WARNING]\n"
+            "> **This checkpoint fails the quality bar** — it is published for "
+            "experimentation, not for production use. Measured on the GB10 vLLM fork:\n"
+            + "".join(f"> - {p}\n" for p in parts)
+            + "> The weights load and respond, but the answers are far below the base model.\n"
+            "> For production use, pick the base model "
+            f"[`{BASE_MODEL}`](https://huggingface.co/{BASE_MODEL}) or one of the\n"
+            "> checkpoints that passes the same gate.\n"
+        )
+
+    # 카드 꼬리 부분 — 섹션 사이 빈 줄을 정확히 넣는다 (빈 줄이 없으면 마크다운에서
+    # 제목이 앞 문단에 붙어 헤더로 렌더되지 않는다).
+    tail = "\n"
+    if is_mopt:
+        tail = ("\n" + sampling_section.rstrip("\n") + "\n\n"
+                + request_section.rstrip("\n") + "\n\n")
+
     return "\n".join(fm) + f"""
 
 # {repo_id}
-{intro_banner}
-This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}. Only the weights are
-compressed to {spec['precision']}; activations and normalization layers are kept in BF16.
+{intro_banner}{quality_warning}
+This is a **{repo_id}** quantized version of `{BASE_MODEL}`{', targeting DGX Spark GB10' if is_mopt else ''}.
+{precision_sentence}
 {format_sentence}
 
 ## Quantization spec
@@ -733,16 +968,18 @@ compressed to {spec['precision']}; activations and normalization layers are kept
 | Quantization algorithm | {spec['algorithm']} |
 | Weight precision | {spec['precision']} |
 | Bit width | {spec['bits']} |
-| Group size | {spec['group_size']} |
-| Layers left unquantized | {IGNORE_NOTE} |
+| Group size | {group_note} |
+| Layers left unquantized | {ignored_note} |
 | Calibration | {CALIB_NOTE} |
 | Checkpoint size | {size_gb} GB |
 | Storage format | `{spec['format']}` |
 
 ## Base vs this model
 
-What changed against the bf16 base model (`{BASE_MODEL}`). Eval sets: GSM8K
-({gsm8k_meta}). Verdict thresholds are listed in the table notes.
+What changed against the bf16 base model (`{BASE_MODEL}`).
+
+- **Eval sets**: GSM8K ({gsm8k_meta}); Korean KMMLU (`HAERAE-HUB/KMMLU`); instruction/format compliance (10 fixed cases).
+- **Acceptance thresholds**: GSM8K accuracy may drop at most {acc_spec.get('gsm8k_acc_drop_max', 0.02)} below the base model, KMMLU at most {acc_spec.get('kmmluko_acc_drop_max', 0.03)}, and format compliance must stay at or above {acc_spec.get('format_pass_rate_min', 0.9)}.
 
 {comparison}
 
@@ -766,7 +1003,7 @@ layers keep KV cache (~8 KiB/token), so 262K context needs ~2 GB of KV cache.
 > On a busy node lower `--gpu-memory-utilization` (e.g. `0.3`).
 > Compatibility note: the fork is verified against KRAFTON's own checkpoints
 > (`modelopt_fp4` NVFP4).{(' This checkpoint uses the same `modelopt_fp4` loader path.' if is_mopt else ' This repository’s other checkpoints use the `compressed-tensors` format, which is a different loader path — serving them on the fork is untested.')}
-{vllm_prebuilt_note}## License and source
+{vllm_prebuilt_note}{tail}## License and source
 
 - Apache License 2.0. The code in this repository is distributed under Apache-2.0.
 - Base model: [{BASE_MODEL}](https://huggingface.co/{BASE_MODEL}) (rev `{BASE_REVISION}`), Apache-2.0.

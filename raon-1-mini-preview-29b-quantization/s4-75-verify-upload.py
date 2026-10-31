@@ -157,15 +157,13 @@ BASE_SLUG = os.environ.get("BASE_MODEL", "KRAFTON/Raon-1-mini-preview").split("/
 
 
 def hf_repo_id(target: str, mode: str) -> str:
-    """정식 HF 모델명(Hub repo id) — 카드 표의 Model 컬럼 값."""
-    if target == "nvfp4-awq-vllm":
-        slug = "Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM"
-    else:
-        slug = f"{BASE_SLUG}-{target}"
-    name = f"{HF_ID}/{slug}"
-    if mode == "smoke":
-        name += "-smoke"
-    return name
+    """정식 HF 모델명(Hub repo id) — 카드 표의 Model 컬럼 값.
+
+    규칙의 단일 소스는 sdlc.hf_repo_id (카드 s4-70 · 업로드 s5-00 과 같은 값).
+    """
+    from sdlc import hf_repo_id as _hf_repo_id
+
+    return _hf_repo_id(target, mode)
 
 
 def _scan_safetensors_headers(d: Path) -> tuple[dict[str, set[str]], dict[str, str], dict[str, int]]:

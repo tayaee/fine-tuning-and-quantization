@@ -10,16 +10,21 @@ fail=0
 PY="${PY:-$ROOT/.venv/bin/python}"
 [ -x "$PY" ] || PY="$(command -v python3)"
 
-# 1. repo id 규칙 일치 (양쪽 다 "<HF_ID>/<BASE_SLUG>-<target>" + smoke 접미사)
-for f in s4-70-update-readme.py s4-75-verify-upload.py; do
-  grep -q 'def hf_repo_id(target: str, mode: str) -> str:' "$ROOT/$f" \
-    || { echo "FAIL: $f 에 hf_repo_id() 없음"; fail=1; }
-  grep -q 'BASE_SLUG = os.environ.get("BASE_MODEL"' "$ROOT/$f" \
-    || { echo "FAIL: $f 의 BASE_SLUG 규칙이 업로드 스크립트와 다름"; fail=1; }
-done
-grep -q 'name += "-smoke"' "$ROOT/s4-70-update-readme.py" \
+# 1. repo id 규칙 일치 (단일 소스 sdlc.hf_repo_id — 카드·감사·업로드 3곳이 공유)
+#    이전에는 각 스크립트가 자기 사본을 들고 있었고, vLLM 전용 타깃의 slug 가 어긋났다.
+grep -q 'def hf_repo_id(target: str, mode: str = "full") -> str:' "$ROOT/sdlc.py" \
+  || { echo "FAIL: sdlc.py 에 단일 소스 hf_repo_id() 없음"; fail=1; }
+grep -q 'name += "-smoke"' "$ROOT/sdlc.py" \
   || { echo "FAIL: smoke 접미사 규칙 없음"; fail=1; }
-echo "OK: repo id 규칙(43/46/49 동일)"
+grep -q 'Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM' "$ROOT/sdlc.py" \
+  || { echo "FAIL: vLLM 전용 타깃의 정식 slug 가 sdlc.py 에 없음"; fail=1; }
+for f in s4-70-update-readme.py s4-75-verify-upload.py; do
+  grep -q 'from sdlc import hf_repo_id as _hf_repo_id' "$ROOT/$f" \
+    || { echo "FAIL: $f 가 sdlc.hf_repo_id 를 쓰지 않는다 (규칙 분산)"; fail=1; }
+done
+grep -q 'from sdlc import hf_repo_id' "$ROOT/s5-00-upload-to-hf.py" \
+  || { echo "FAIL: s5-00-upload-to-hf.py 가 sdlc.hf_repo_id 를 쓰지 않는다"; fail=1; }
+echo "OK: repo id 규칙(단일 소스 · 카드/감사/업로드 동일)"
 
 # 2. 카드가 repo id를 쓴다 (실행 예제는 snippets/ 단일 소스, __REPO_ID__ 자리)
 grep -q 'def render_readme(target: str' "$ROOT/s4-70-update-readme.py" \
