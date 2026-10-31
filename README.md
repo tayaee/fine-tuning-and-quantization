@@ -61,10 +61,6 @@ repository are listed; local-only artifacts are omitted.
 - [`Llama-3.2-1B-math-qlora-gguf-q6_k`](https://huggingface.co/tayaee/Llama-3.2-1B-math-qlora-gguf-q6_k) — GGUF Q6_K
 - [`Llama-3.2-1B-math-qlora-gguf-q8_0`](https://huggingface.co/tayaee/Llama-3.2-1B-math-qlora-gguf-q8_0) — GGUF Q8_0
 
-### Earlier Llama mini artifact
-
-- [`p5-1B-math-fft-mini`](https://huggingface.co/tayaee/p5-1B-math-fft-mini) — early mini FFT checkpoint
-
 ### Raon-1-mini-preview
 
 - [`Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM`](https://huggingface.co/tayaee/Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM) — NVFP4/AWQ ModelOpt checkpoint for the GB10 vLLM fork; published for experimentation because the current checkpoint does not pass the quality gates
