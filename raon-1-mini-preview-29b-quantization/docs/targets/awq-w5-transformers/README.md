@@ -6,6 +6,8 @@
 
 📋 **Planned** — this target has not started yet.
 
+Historical timing evidence: [observed wall-clock durations](timing-log.md).
+
 ## Goal
 
 Quantize the MoE expert weights of `KRAFTON/Raon-1-mini-preview` to W5A16 and produce a

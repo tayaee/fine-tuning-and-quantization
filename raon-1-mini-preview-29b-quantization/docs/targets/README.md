@@ -4,13 +4,13 @@ This repository completes five quantized models **one at a time**, rather than b
 of them concurrently. Select one target from the table below and follow only that target's
 README. Run every command from the repository root.
 
-| # | Target | Runtime / format | Status | Detailed procedure |
-|---:|---|---|---|---|
-| 1 | [`awq-w3-transformers`](awq-w3-transformers/README.md) | Transformers / `pack-quantized` | 📋 Planned | [README](awq-w3-transformers/README.md) |
-| 2 | [`awq-w5-transformers`](awq-w5-transformers/README.md) | Transformers / `pack-quantized` | 📋 Planned | [README](awq-w5-transformers/README.md) |
-| 3 | [`nvfp4-awq-transformers`](nvfp4-awq-transformers/README.md) | Transformers / `nvfp4-pack-quantized` | 🚧 In progress | [README](nvfp4-awq-transformers/README.md) |
-| 4 | [`nvfp4-gptq-transformers`](nvfp4-gptq-transformers/README.md) | Transformers / `nvfp4-pack-quantized` | 📋 Planned | [README](nvfp4-gptq-transformers/README.md) |
-| 5 | [`nvfp4-awq-vllm`](nvfp4-awq-vllm/README.md) | GB10 vLLM fork / `modelopt_fp4` | ✅ Published | [README](nvfp4-awq-vllm/README.md) |
+| # | Target | Runtime / format | Status | Detailed procedure | Timing |
+|---:|---|---|---|---|---|
+| 1 | [`awq-w3-transformers`](awq-w3-transformers/README.md) | Transformers / `pack-quantized` | 📋 Planned | [README](awq-w3-transformers/README.md) | [Timing log](awq-w3-transformers/timing-log.md) |
+| 2 | [`awq-w5-transformers`](awq-w5-transformers/README.md) | Transformers / `pack-quantized` | 📋 Planned | [README](awq-w5-transformers/README.md) | [Timing log](awq-w5-transformers/timing-log.md) |
+| 3 | [`nvfp4-awq-transformers`](nvfp4-awq-transformers/README.md) | Transformers / `nvfp4-pack-quantized` | 🚧 In progress | [README](nvfp4-awq-transformers/README.md) | [Timing log](nvfp4-awq-transformers/timing-log.md) |
+| 4 | [`nvfp4-gptq-transformers`](nvfp4-gptq-transformers/README.md) | Transformers / `nvfp4-pack-quantized` | 📋 Planned | [README](nvfp4-gptq-transformers/README.md) | [Timing log](nvfp4-gptq-transformers/timing-log.md) |
+| 5 | [`nvfp4-awq-vllm`](nvfp4-awq-vllm/README.md) | GB10 vLLM fork / `modelopt_fp4` | ✅ Published | [README](nvfp4-awq-vllm/README.md) | [Timing log](nvfp4-awq-vllm/timing-log.md) |
 
 ## Shared principles
 

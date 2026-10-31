@@ -8,6 +8,8 @@
 throughput review and deployment preparation remain. A local artifact alone does not mean
 that the target is ready for release.
 
+Observed timing evidence: [wall-clock durations from collected logs](timing-log.md).
+
 ## Goal
 
 Quantize the MoE expert weights of `KRAFTON/Raon-1-mini-preview` to NVFP4 and produce an

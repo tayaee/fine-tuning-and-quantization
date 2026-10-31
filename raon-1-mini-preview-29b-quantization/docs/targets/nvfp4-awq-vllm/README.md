@@ -7,6 +7,8 @@
 ✅ **Published** — Hugging Face model:
 [`tayaee/Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM`](https://huggingface.co/tayaee/Raon-1-mini-preview-NVFP4-AWQ-GB10-vLLM)
 
+Observed timing evidence: [wall-clock durations from collected logs](timing-log.md).
+
 However, **publication and quality-gate completion are separate states**. The current
 published checkpoint has a known quality issue that must be resolved through the
 [revalidation procedure](#known-issue-and-revalidation) below.
